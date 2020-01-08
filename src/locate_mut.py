@@ -8,6 +8,7 @@ import sys
 import re
 import math
 import difflib
+import itertools
 from operator import itemgetter
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -17,45 +18,99 @@ from Bio.Seq import MutableSeq
 
 class MutParser(object):
 
-    def __init__(self, ref_dir, reads, gene):
-        fasta = os.path.join(ref_dir, gene+".fasta")
-        fasta_coding = os.path.join(ref_dir, gene+"_coding.fasta")
-        
-        #self._read_len = 151
-        self._seq = list(SeqIO.parse(fasta, "fasta"))[0].seq
-        self._seq_coding = list(SeqIO.parse(fasta_coding, "fasta"))[0].seq
-        self._start_pos = self._seq.find(self._seq_coding)
-        self._post_len = len(self._seq)-len(self._seq_coding)-self._start_pos
+    def __init__(self, row, full_seq, cds_seq, seq_lookup):
+        """
+        row: input row includes both reads from sam file
+        full_seq: full sequence (including cds and padding sequence)
+        cds_seq: coding sequence (includes stop codon)
+        seq: read from json file - seq, cds_start, cds_end 
+        """
+        self._seq = Seq(full_seq["seq"].item())
+        self._cds = Seq(cds_seq)
+        self._start_pos = full_seq.cds_start.item() # 1 posisiton
+        self._end_pos = full_seq.cds_end.item()
+
+        # Note all the position in this df are 1-based
+        self._seq_lookup = seq_lookup
+
         # get paired reads and their cigar scores
-        self._reads = reads
-    
-        self._gene = gene
+        self._reads = row
 
     def _get_seq(self):
         """
         Parse the sequence and CIGAR string
         For R1 and R2, get reference sequence
         """
-        # get the ref sequence for R1
-        self._r1_pos = self._reads.pos_start        
-        self._r1_cigar = list(cigar.Cigar(self._reads.CIGAR).items())
+        # get information for R1
+        # where the mapping starts
+        self._r1_pos = self._reads.pos_start_r1
+        # CIGAR string for r1
+        self._r1_cigar = list(cigar.Cigar(self._reads.CIGAR_r1).items())
+        # 
         self._r1_readlen = sum([i[0] for i in self._r1_cigar])
-        self._r1_ref = self._seq[int(self._r1_pos)-1:int(self._r1_pos)+len(self._reads.seq)-1]
-        self._r1_qual = self._reads.qual
-        self._r1_read = self._reads.seq
-        self._r1_mdz = self._reads.mdz
+        # reference sequence for r1
+        self._r1_ref = self._seq[int(self._r1_pos)-1:int(self._r1_pos)+len(self._reads.seq_r1)-1]
+        # quality score string for R1
+        self._r1_qual = self._reads.qual_r1
+        # R1 sequence
+        self._r1_read = self._reads.seq_r1
+        # MD:Z string for R1
+        self._r1_mdz = self._reads.mdz_r1
+
         # get the ref sequence for R2
+        # where the mapping starts
         self._r2_pos = self._reads.pos_start_r2
+        # CIGAR string for R2
         self._r2_cigar = list(cigar.Cigar(self._reads.CIGAR_r2).items())
+        #
         self._r2_readlen = sum([i[0] for i in self._r2_cigar])
+        # get reference sequence
         self._r2_ref = self._seq[int(self._r2_pos)-1:int(self._r2_pos)+len(self._reads.seq_r2)-1]
+        # quality socre string for R2
         self._r2_qual = self._reads.qual_r2
+        # R2 sequence
         self._r2_read = self._reads.seq_r2
+        # MD:Z string 
         self._r2_mdz = self._reads.mdz_r2
 
         return self
 
-    def _parse_mdz(self, cigar, mdz, ref, read, read_pos, qual):
+    def _parse_mut(self, cigar, mdz, ref, read, pos, qual):
+        """
+        Given a read and information from sam files 
+        Return mutations found in this read 
+        
+        if you are unclear about this function 
+        check wiki page:
+
+        cigar: cigar string
+        mdz: mdz string
+        ref: Reference sequence for this read
+        read: Read sequence
+        pos: Starting position of this read
+        qual: Quality string
+
+        """
+        # join cigar into string
+        cigar_joined = [str(i[0])+str(i[1]) for i in cigar]
+        
+        mut_list = []
+        if "I" in "".join(cigar_joined):
+            # insertions are only represented in CIGAR string
+            # combine mdz and CIGAR to get all the mutations 
+            print(cigar)
+            print(mdz)
+            exit()
+        else: 
+            # when no insertion found, we can process the MD:Z and 
+            # find mutations
+            mut_list = self._parse_mdz(cigar, mdz, ref, read, pos, qual)
+        
+        return mut_list
+
+        
+
+    def _parse_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
         cigar: CIGAR string from SAM file
         mdz: MD:Z:tag from SAM file
@@ -65,52 +120,39 @@ class MutParser(object):
         qual: Quality score sequence of this read
         
         Get mutation from MD:Z string
-        Insertion is not represented by MD:Z tag
+        Insertions are not represented by MD:Z tag
+        Insertions are processed from CIGAR string
         """
-        start_pos = int(read_pos)-1-self._start_pos
-
-        if len(cigar) == 0 or mdz == "":
-            return False
+        pos = int(pos)
 
         # 1. check starting point of the sequence 
         # remove soft clipped bases and adjust for location 
         if cigar[0][1] =="S":
             # adjust read position
-            start_pos -= cigar[0][0]
+            pos -= cigar[0][0]
         
         # 2. for the MD:Z string
         # split the string into chunks with mutations
         # i.e ['13C', '14T', '0T', '0G']
-        mdz = re.findall('.*?[.ATCG]', mdz)
+        mdz = re.findall('.*?[.ATCG]+', mdz_raw)
         r = re.compile("([0-9]+)([a-zA-Z\^]+)")
-
+        
         read_pos = 0
         mut_list = []
         for i in mdz:
-            if len(i) == 1:
-                # means the first item in MD:Z is a letter
-                mut_list.append(i+"|"+str(start_pos+read_pos+1)+"|"+read[read_pos])
-                read_pos += 1
-            else:
-                # for each item in the MD:Z string 
-                # split the item into number and letter
-                m = r.match(i)
-                match_len = int(m.group(1))
-                base = m.group(2)
-                
-                if "^" not in base:
-                    mut_list.append(base+"|"+str(start_pos+read_pos+match_len+1)+"|"+read[read_pos+match_len+1])
-                    
-                    read_pos += match_len+1 
-                else: # deletion
-                    mut_list.append("del"+"|"+str(start_pos+read_pos+match_len+1)+"|"+base[-1])
-                    read_pos += match_len
-                
-            if "I" in "".join(cigar):
-                # insertion 
-                mut_list = self._parse_cigar(cigar, ref, read, read_pos, qual)
+            # for each item in the MD:Z string 
+            # split the item into number and letter
+            m = r.match(i)
+            match_len = int(m.group(1))
+            base = m.group(2)
+            if "^" not in base:
+                # this mean a single nt change
+                mut_list.append(base+"|"+str(pos+read_pos+match_len)+"|"+read[read_pos+match_len])
+                read_pos += match_len+1 
+            else: # deletion
+                mut_list.append(str(pos+match_len+1)+"|"+base[1:]+"|del")
+                read_pos += match_len
         
-        print(mut_list)
         return mut_list
 
     def _parse_cigar(self, cigar, ref, read, read_pos, qual):
@@ -134,12 +176,12 @@ class MutParser(object):
         #if len(cigar) == 1 and cigar[0][1] == "M":
             # the read mapped, no mutation found
 
-        ref_pos = start_pos
+        ref_pos = int(start_pos)
         mut_seq = self._seq[:ref_pos]
         mut = []
         n_del = 0
         for i in cigar:
-
+            
             if i[1] == "H":
                 # need an example of this read
                 ref_pos+=i[0]
@@ -159,7 +201,7 @@ class MutParser(object):
                 # get the deleted base from reference 
                 # store mut in the format: start pos | ref bases | end_pos | type
                 ref_bp=self._seq[ref_pos:ref_pos+i[0]]
-                nt_mut = str(ref_pos)+"|"+str(ref_bp)+"|"+str(ref_pos+i[0])+"|del"
+                nt_mut = str(ref_pos)+"|"+str(ref_bp)+"|"+str(ref_pos+int(i[0]))+"|del"
                 ref_pos += i[0]
                 #read_inx += i[0]
                 mut.append(nt_mut)
@@ -216,48 +258,39 @@ class MutParser(object):
             pass
         return mut
 
-
     def _translate_mut(self, mut_list):
         """
-        mut_list mutation list in the format ['1160|A|1161|del', '1163|T|1164|ins'] (example)
+        mut_list mutation list in the format ['1160|A|1161|del', '1163|T|1164|ins']
         translate a list of mut to aa changes
         return list of aa changes 
         return list of nt changes
         """
-        # translate the reference DNA to reference protein
-        self._ref_pro = self._seq_coding.translate()
         
-        # move the first part and the last part of the sequence 
-        mut_seq = self._seq_coding.tomutable()
-        mut_pro = self._ref_pro.tomutable()
-        deleted_bp = 0
-        inserted_bp = 0
-        mut_list = [i.split("|") for i in mut_list]
-        mut_list = sorted(mut_list, key=itemgetter(0))
+        # go through mutation list generated by _parse_mdz and _parse_cigar
+        # make changes to the DNA sequence 
+        # output protein changes for this read
+        
+        # there are two types of mutations in mut list
+        # ins del 
+        mut_seq = self._cds.tomutable()
         for mut in mut_list:
-            # coding loc
-            start = int(mut[0]) - self._start_pos
-            end = int(mut[2]) - self._start_pos
-            if mut[-1] == "del":
-                deleted_bp += len(mut[1])
-                ref_bp=mut_seq[start+inserted_bp:end+inserted_bp] # deleted base pairs
-                mut_seq[start+inserted_bp:end+inserted_bp] = ""*(end-start)
+            if "del" in mut:
+                # check reference 
+                mut = mut.split("|")
+                ref_pos = int(mut[0])
+                ref_bp = str(mut[1])
+                # get cds position for this mutation 
+                cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
+                cds_bp = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds.item()
                 
-                # check if it equals
-                if ref_bp != mut[1]:
-                    print("not match")
-            elif mut[-1] == "ins":
-                inserted_bp+=len(mut[1])
-                ref_bp=mut_seq[start-deleted_bp:end-deleted_bp] # one bp before the insertion 
-                mut_seq=mut_seq[:start-deleted_bp]+mut[1]+mut_seq[start-deleted_bp:]
-        
-        # find nucleotide differences of two dna sequences 
-        # SNP
-        # if they have the same len
-        if len(str(self._seq_coding)) == len(str(mut_seq)):
-            mut_list = self._mut_change(str(self._seq_coding), str(mut_seq))
-        else:
-            mut_list = None
+                # remove base from mut_seq
+                
+                
+            elif "ins" in mut:
+                pass
+            else:
+                pass
+
         return mut_list
     
     def _indel_change(self, ref, mut):

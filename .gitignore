@@ -1,3 +1,5 @@
 output/*
 for_testing/*
 test.sh
+*.csv
+*.json

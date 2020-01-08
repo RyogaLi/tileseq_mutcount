@@ -7,41 +7,42 @@
 import os
 import settings
 
-class Alignment(object):
-
-    def __init__(self, fasta, fastq, output_sam, log):
-        self._fasta = fasta # path to fasta reference files 
-        self._fastq = fastq # path to fastq reference files
-        self._output_sam = output_sam # path to save the sam output files
-        self._log = log # alignemnt log (saved in the same folder as sam files 
-
-    def _align(self):
-
-        # align with bowtie 
-        # path to bowtie and bowtie build can be found in settings 
+def make_ref(name, ref_seq, ref_path, bowtie_build):
+    """
+    given the reference sequence and ref_path
+    make fasta file and build from fasta
+    """
+    ref_fasta = os.path.join(ref_path, name+".fasta")
+    with open(ref_fasta, "w") as fasta:
+        fasta.write(">"+name+"\n")
+        fasta.write(ref_seq+"\n")
     
-        # check if bowtie index file were built 
-        basename = os.path.basename(self._fasta)
-        bt = basename.replace(".fasta", "")
+    build_cmd =f"{bowtie_build}--quiet -f {ref_fasta} {os.path.join(ref_path, name)}"
+    os.system(build_cmd)
 
-        # align fastq 
-        
-        # direct output sam file to output sam folder
-        pass
+    return os.path.join(ref_path, name) 
 
-
-def align_main(ref, fastq, output_sam, shfiles):
+def align_main(ref, r1, r2, sam_path, bowtie, shfile):
     """
     ref: reference fatsa file
-    fastq: input fastq file
-    output_sam: path to sam files
-    shfiles: path to folder to save files to be submitted to the cluster
+    r1: input fastq file - R1
+    r2: input fastq file - R2
+    sam_path: path to sam files
+    bowtie2: path to bowtie2
+    shfile: write the command to this file 
+    return shfile
     """
+    log_file = os.path.join(sam_path, os.path.basename(shfile).replace(".sh", ".log"))
 
-    pass
+    r1_sam_file = os.path.join(sam_path, os.path.basename(r1).replace(".fastq.gz", ".sam"))
+    r2_sam_file = os.path.join(sam_path, os.path.basename(r2).replace(".fastq.gz", ".sam"))
 
+    r1_cmd = f"{bowtie}--no-head --no-sq --local -x {ref} -U {r1} -S {r1_sam_file}"
+    r2_cmd = f"{bowtie}--no-head --no-sq --local -x {ref} -U {r2} -S {r2_sam_file}"
+    
 
-if __name__ == "__main__":
+    with open(shfile, "w") as f:
+        f.write(r1_cmd + "\n")
+        f.write(r2_cmd + "\n")
 
-    # for testing this script
-
+    return log_file
