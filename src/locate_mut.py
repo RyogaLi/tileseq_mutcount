@@ -49,7 +49,7 @@ class MutParser(object):
         # 
         self._r1_readlen = sum([i[0] for i in self._r1_cigar])
         # reference sequence for r1
-        self._r1_ref = self._seq[int(self._r1_pos)-1:int(self._r1_pos)+len(self._reads.seq_r1)-1]
+        self._r1_ref = self._seq[int(self._r1_pos)-1:int(self._r1_pos)+len(self._reads.seq_r1)]
         # quality score string for R1
         self._r1_qual = self._reads.qual_r1
         # R1 sequence
@@ -81,7 +81,7 @@ class MutParser(object):
         Return mutations found in this read 
         
         if you are unclear about this function 
-        check wiki page:
+        check wiki page: 
 
         cigar: cigar string
         mdz: mdz string
@@ -93,22 +93,107 @@ class MutParser(object):
         """
         # join cigar into string
         cigar_joined = [str(i[0])+str(i[1]) for i in cigar]
-        
+        pos = int(pos) 
         mut_list = []
         if "I" in "".join(cigar_joined):
             # insertions are only represented in CIGAR string
             # combine mdz and CIGAR to get all the mutations 
-            print(cigar)
-            print(mdz)
-            exit()
+            mut_list = self._parse_cigar_ins(cigar, mdz, ref, read, pos, qual)
         else: 
             # when no insertion found, we can process the MD:Z and 
             # find mutations
             mut_list = self._parse_mdz(cigar, mdz, ref, read, pos, qual)
-        
+        print("-------------")
+        print(mut_list)
+        print(cigar)
+        print(mdz)
+        print(ref)
+        print(read)
+        print(pos)
         return mut_list
 
+    def _parse_cigar_ins(self, cigar, mdz_raw, ref, read, pos, qual):
+        """
+        Parse CIGAR string and mdz tags together to identify mutations in a read with insertions
         
+        cigar: cigar string
+        mdz_raw: mdz string
+        ref: Reference sequence for this read
+        read: Read sequence
+        pos: Starting position of this read
+        qual: Quality string
+        """
+        clip = 0
+        # soft clip reads
+        # check starting point of the sequence 
+        # remove soft clipped bases and adjust for location 
+        if cigar[0][1] =="S":
+            # adjust read position
+            clip += cigar[0][0]
+
+        # convert mdz to list
+        mdz = re.findall('.*?[.ATCG]+', mdz_raw)
+        
+        mut_list = []
+
+        # check insertion poistion in cigar string
+        # this postition is corresponded to the reference sequence
+        # i.e if pos = 110 means the base 111 is deleted (all 1-based indices)
+        ins_pos_ref = 0 # on ref sequence where was the insertion
+        total_len = 0 # total lenth indicates in CIGAR string
+        ins_pos = [] # store [ins_pos, ins_len]
+
+        mapped = 0
+        deleted = 0
+        for i in cigar:
+            if i[1] != "I": # not insertion
+                ins_pos_ref += int(i[0])
+                if i[1] == "M":
+                    mapped += int(i[0])
+                if i[1] == "D":
+                    deleted += int(i[0])
+            else:
+                ins_base = read[mapped:mapped+int(i[0])] 
+                ins_pos.append([ins_pos_ref, int(i[0])])
+
+                mut_list.append(str(pos+mapped+deleted)+"|"+ins_base+"|ins")
+            total_len += int(i[0])
+        # parse snp and deletion from mdz string
+        # given the inserted position on reference sequence
+        r = re.compile("([0-9]+)([a-zA-Z\^]+)")
+        
+        read_pos = 0 + clip # on the sam read
+        deleted_len = 0 # how many bp was deleted
+        map_pos = 0 # how many bp was mapped (non insertion track)
+        
+        iter_ins = iter(ins_pos)
+        ins = next(iter_ins, None)
+
+        for i in mdz:
+            # for each item in the MD:Z string 
+            # split the item into number and letter
+            m = r.match(i)
+            match_len = int(m.group(1))
+            base = m.group(2)
+
+            map_pos += match_len # update how many bp are mapped
+            print(map_pos) 
+            if ins and map_pos > ins[0]:
+                map_pos += ins[1]
+                ins = next(iter_ins, None)
+            
+            if "^" not in base:
+                # this means a single nt change
+                mut_list.append(base+"|"+str(pos+read_pos+match_len-clip)+"|"+read[read_pos+match_len])
+                read_pos += match_len+len(base)-deleted_len
+                map_pos += 1
+            else: # deletion
+                mut_list.append(str(pos+read_pos+match_len-clip)+"|"+base[1:]+"|del")
+                deleted_len += len(base[1:])
+                read_pos += match_len+deleted_len
+                map_pos -= len(base[1:])
+        
+        return mut_list
 
     def _parse_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
@@ -116,20 +201,19 @@ class MutParser(object):
         mdz: MD:Z:tag from SAM file
         ref: Reference sequence (templete sequence)
         read: Read from SAM file
-        read_pos: Mapping position of this read
+        read_pos: Mapping position of this read. Where the first base maps to
         qual: Quality score sequence of this read
         
         Get mutation from MD:Z string
         Insertions are not represented by MD:Z tag
         Insertions are processed from CIGAR string
         """
-        pos = int(pos)
-
+        clip = 0
         # 1. check starting point of the sequence 
         # remove soft clipped bases and adjust for location 
         if cigar[0][1] =="S":
             # adjust read position
-            pos -= cigar[0][0]
+            clip += cigar[0][0]
         
         # 2. for the MD:Z string
         # split the string into chunks with mutations
@@ -137,8 +221,9 @@ class MutParser(object):
         mdz = re.findall('.*?[.ATCG]+', mdz_raw)
         r = re.compile("([0-9]+)([a-zA-Z\^]+)")
         
-        read_pos = 0
+        read_pos = 0 + clip
         mut_list = []
+        deleted_len = 0
         for i in mdz:
             # for each item in the MD:Z string 
             # split the item into number and letter
@@ -146,119 +231,17 @@ class MutParser(object):
             match_len = int(m.group(1))
             base = m.group(2)
             if "^" not in base:
-                # this mean a single nt change
-                mut_list.append(base+"|"+str(pos+read_pos+match_len)+"|"+read[read_pos+match_len])
+                # this means a single nt change
+                mut_list.append(base+"|"+str(pos+read_pos+match_len-clip)+"|"+read[read_pos+match_len-deleted_len])
                 read_pos += match_len+1 
             else: # deletion
-                mut_list.append(str(pos+match_len+1)+"|"+base[1:]+"|del")
-                read_pos += match_len
+                mut_list.append(str(pos+match_len-clip)+"|"+base[1:]+"|del")
+                deleted_len += len(base[1:])
+                read_pos += match_len+len(base[1:])
         
         return mut_list
 
-    def _parse_cigar(self, cigar, ref, read, read_pos, qual):
-        """
-        given a list of cigar string, read and reference read
-        find the mutations based on CIGAR string
-        cigar: list of cigar strings 
-        ref: reference sequence
-        read: read in sam file
-        read_pos: start position of the read
-        qual: quality of the read
-        """
-        # pos = start position of the read on ref
-        start_pos = int(read_pos)-1
-
-        read_inx = 0
-        # if the read is soft clipped 
-        if cigar[0][1] =="S":
-            # adjust read position
-            start_pos -= cigar[0][0]
-        #if len(cigar) == 1 and cigar[0][1] == "M":
-            # the read mapped, no mutation found
-
-        ref_pos = int(start_pos)
-        mut_seq = self._seq[:ref_pos]
-        mut = []
-        n_del = 0
-        for i in cigar:
-            
-            if i[1] == "H":
-                # need an example of this read
-                ref_pos+=i[0]
-                
-            if i[1] == "S": # position clipped
-                # skipp this region  
-                read_inx += i[0]
-                ref_pos+=i[0]
-            
-            if i[1] == "M": # mapped region
-                
-                read_inx += i[0]
-                ref_pos += i[0]
-
-            if i[1] == "D": # deletion 
-                # ref base 
-                # get the deleted base from reference 
-                # store mut in the format: start pos | ref bases | end_pos | type
-                ref_bp=self._seq[ref_pos:ref_pos+i[0]]
-                nt_mut = str(ref_pos)+"|"+str(ref_bp)+"|"+str(ref_pos+int(i[0]))+"|del"
-                ref_pos += i[0]
-                #read_inx += i[0]
-                mut.append(nt_mut)
-                n_del +=1
-
-            if i[1] == "I": # insertion
-                
-                # from the read, get the bases that are inserted 
-                # store the mut in the format: start pos | inserted bases | end pos | type
-                inserted_bp = read[read_inx:read_inx+i[0]]
-                #print("merged insert")
-                mut_seq += inserted_bp
-                #print(mut_seq)
-                #print(inserted_bp)
-                nt_mut = str(ref_pos)+"|"+str(inserted_bp)+"|"+str(ref_pos+i[0])+"|ins"
-                ref_pos += len(inserted_bp)-1
-                #print(ref_pos)
-                mut.append(nt_mut)
-                n_del -=1
-
-        # add the rest seq to mut_seq
-        # mut_seq += self._seq[start_pos+len(read)+n_del:]
-        return mut
-
-    def _convert_qual(self):
-        """
-        get r1 qual and r2 qual
-        """
-        pass
-    
-    def _get_aa(self, pos, ref, alt, t=None):
-        """
-        pos: nt position
-        ref: reference bases 
-        alt: alt bases
-        """
-        if t == "SNP":
-            # convert pos to protein loc
-            pro_loc = math.ceil(pos / 3)
-            mut = self._ref_pro[pro_loc-1]+"|"+str(pro_loc)+"|"+self._mut_pro[pro_loc-1]
-        elif t == "del":
-            # in case of deletion
-            # pos is a tuple contains the nt range
-            # alt is NONE
-
-            pro_start = math.ceil(pos[0] / 3)
-            pro_end = math.ceil(pos[1] / 3)
-            deleted_pro = Seq(ref).translate()
-
-        elif t == "ins":
-            # incase of insertion
-            # pos is a tuple contains the nt range for the insertion
-            # ref is NONE
-            pass
-        return mut
-
-    def _translate_mut(self, mut_list):
+    def _get_hgvs(self, mut_list):
         """
         mut_list mutation list in the format ['1160|A|1161|del', '1163|T|1164|ins']
         translate a list of mut to aa changes
@@ -273,6 +256,7 @@ class MutParser(object):
         # there are two types of mutations in mut list
         # ins del 
         mut_seq = self._cds.tomutable()
+        mutations = ""
         for mut in mut_list:
             if "del" in mut:
                 # check reference 
@@ -288,82 +272,13 @@ class MutParser(object):
                 
             elif "ins" in mut:
                 pass
-            else:
-                pass
+            else: # snp
+                mut_change = mut.split("|")
+                hgvs = f"{mut_change[1]}{mut_change[0]}>{mut_change[2]}"
+                mutations.append(hgvs)
 
         return mut_list
     
-    def _indel_change(self, ref, mut):
-        """
-        small insertion and deletions
-        """
-        pass
-
-    def _mut_change(self, ref, mut):
-        """
-        len ref and len mut are the same
-        given reference seq and mut seq, find out nt changes 
-        return nt changes in the format of ref, pos, alt, codon_ref, codon_alt
-        """
-        
-        mut_summary = {"nt_ref":[], "nt_pos":[], "nt_alt":[], "codon_ref":[], "codon_alt":[], "aa_ref":[], "aa_alt":[], "aa_pos":[]}
-        nt = 0
-        while nt < len(ref):
-            if ref[nt] == mut[nt]:
-                nt+=1
-                continue 
-            else:
-                # get 3 bp codon of this nt
-                if (nt+1) %3 == 0: # last bp of a codon
-                    c1_ref, c1_alt = ref[nt-2], mut[nt-2]
-                    c2_ref, c2_alt = ref[nt-1], mut[nt-1]
-                    c3_ref, c3_alt = ref[nt], mut[nt]
-                elif (nt+1)%3 ==2: # second bp of a codon
-                    c1_ref, c1_alt = ref[nt-1], mut[nt-1]
-                    c2_ref, c2_alt = ref[nt], mut[nt]
-                    c3_ref, c3_alt =ref[nt+1], mut[nt+1]
-                elif (nt+1)%3 ==1: # first bp of a codon
-                    c1_ref, c1_alt = ref[nt], mut[nt]
-                    c2_ref, c2_alt = ref[nt+1], mut[nt+1]
-                    c3_ref, c3_alt = ref[nt+2], mut[nt+2]
-                codon_ref = c1_ref+c2_ref+c3_ref
-                codon_alt = c1_alt+c2_alt+c3_alt
-                aa_pos = math.ceil((nt+1)/3)
-                mut_summary["codon_ref"].append(codon_ref)
-                mut_summary["codon_alt"].append(codon_alt)
-                mut_summary["aa_ref"].append(str(Seq(codon_ref).translate()))
-                mut_summary["aa_alt"].append(str(Seq(codon_alt).translate()))
-                mut_summary["aa_pos"].append(aa_pos)
-                mut_summary["nt_ref"].append(ref[nt])
-                mut_summary["nt_alt"].append(mut[nt])
-                mut_summary["nt_pos"].append(nt+1) # 1 based position
-            nt+=1 
-        return pd.DataFrame(mut_summary)
-    
-    def _mut_change_mod(self, ref, mut):
-        """
-        get nt changes
-        """
-        mut_summary = {"nt_ref":[], "nt_pos":[], "nt_alt":[]}
-
-        nt = 0
-        while nt < len(ref):
-            if ref[nt] == mut[nt]:
-                nt+=1
-                continue
-            else:
-                if (nt+1) %3 == 0: # last bp of a codon
-                    codon_ref = ref[nt-2]+ref[nt-1]+ref[nt]
-                elif (nt+1)%3 ==2: # second bp of a codon
-                    codon_ref = ref[nt-1]+ref[nt]+ref[nt+1]
-                elif (nt+1)%3 ==1: # first bp of a codon
-                    codon_ref = ref[nt]+ref[nt+1]+ref[nt+2]
-                            
-            mut_summary["nt_ref"].append(ref[nt])
-            mut_summary["nt_alt"].append(mut[nt])
-            mut_summary["nt_pos"].append(nt+1)
-            mut_summary["aa_ref"].append(str(Seq(codon_ref).translate()))
-            
 
 if __name__ == "__main__":
     ref_dir = "/home/rothlab/rli/02_dev/11_tileSeq/tileseq_py/MTHFR_3del/bowtieIndex/"

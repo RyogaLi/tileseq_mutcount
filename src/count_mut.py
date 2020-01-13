@@ -150,6 +150,7 @@ class readSam(object):
             mp_update = mut_parser._get_seq()
             #mp_update = mut_parser._build_lookup()
             
+            print("R1 R2")
             # get mutation from R1
             r1_mut = mp_update._parse_mut(mp_update._r1_cigar, mp_update._r1_mdz, mp_update._r1_ref, mp_update._r1_read, mp_update._r1_pos, mp_update._r1_qual)
             
@@ -160,7 +161,6 @@ class readSam(object):
             both_mut = list(set(r1_mut) & set(r2_mut))
             if not both_mut == []:
                 mut_reads +=1
-                mp_update._translate_mut(both_mut)
 
 
 if __name__ == "__main__":
