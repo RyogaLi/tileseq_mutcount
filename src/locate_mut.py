@@ -103,13 +103,7 @@ class MutParser(object):
             # when no insertion found, we can process the MD:Z and 
             # find mutations
             mut_list = self._parse_mdz(cigar, mdz, ref, read, pos, qual)
-        print("-------------")
-        print(mut_list)
-        print(cigar)
-        print(mdz)
-        print(ref)
-        print(read)
-        print(pos)
+        
         return mut_list
 
     def _parse_cigar_ins(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -271,7 +265,9 @@ class MutParser(object):
         # output protein changes for this read
         
         # there are two types of mutations in mut list
-        # ins del 
+        # ins del
+
+        # how to track consecutive changes?
         mut_seq = self._cds.tomutable()
         mutations = ""
         for mut in mut_list:
@@ -291,7 +287,11 @@ class MutParser(object):
                 pass
             else: # snp
                 mut_change = mut.split("|")
-                hgvs = f"{mut_change[1]}{mut_change[0]}>{mut_change[2]}"
+                tmp_pos = int(mut_change[1])
+                # get cds position from look up table
+                cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+                hgvs = f"c.{cds_pos}{mut_change[0]}>{mut_change[2]}"
+
                 mutations.append(hgvs)
 
         return mut_list
