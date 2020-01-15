@@ -159,8 +159,12 @@ class readSam(object):
 
             # get overlap of mutations in R1 and mutations in R2
             both_mut = list(set(r1_mut) & set(r2_mut))
-            if not both_mut == []:
-                mut_reads +=1
+
+            both_mut.sort() # sort mutations based on the position 
+            if len(both_mut) > 3:
+                print(both_mut)
+                mp_update._get_hgvs(both_mut)
+                break
 
 
 if __name__ == "__main__":
