@@ -18,7 +18,8 @@ To run this pipeline on GALEN (Slurm)
 `/path/to/fastq/` - Full path to input fastq files 
 
 `param.csv` - CSV file contains information for this run (please see example
-[here]:https://docs.google.com/spreadsheets/d/1tIblmIFgOApPNzWN2KUwj8BKzBiJ1pOL7R4AOUGrqvE/edit?usp=sharing ).
+[here](https://docs.google.com/spreadsheets/d/1tIblmIFgOApPNzWN2KUwj8BKzBiJ1pOL7R4AOUGrqvE/edit?usp=sharing)
+).
 This file is required to be comma-seperated and saved in csv format. 
 
 
