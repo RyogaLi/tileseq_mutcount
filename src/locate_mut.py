@@ -267,11 +267,17 @@ class MutParser(object):
         # ins del
 
         # how to track consecutive changes?
+        
+        # track if SNP changes are concecutive
         concecutive_snp = [] # if the snp changes are concecutive, it will be represent as delins
         combined_snp = ""
+
         concecutive_delins = []
         mutations = []
+        print(mut_list)
         for mut in mut_list:
+            mut_change = mut.split("|")
+
             if "del" in mut:
                 # check reference 
                 mut = mut.split("|")
@@ -282,58 +288,55 @@ class MutParser(object):
                 cds_bp = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds.item()
                 
                 # remove base from mut_seq
-                
-                
             elif "ins" in mut:
                 pass
             else: # snp
-                mut_change = mut.split("|")
-                tmp_pos = int(mut_change[0])
+                tmp_pos = int(mut_change[0]) # original position 
+
                 # get cds position from look up table
                 cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
-                cds_ref = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds.item()
+                cds_ref = self._cds[cds_pos-1]
  
                 ## validate: if the reference base matches the ref in seq_lookup
                 if cds_ref != mut_change[1]:
                    raise ValueError(f"Reference base - pos {tmp_pos}, base {mut_change[1]} does not match the reference provided by user - base {cds_ref}")
                
                 # track concecutive changes
-                if len(concecutive_snp) == 0:
+                if concecutive_snp == []:
                     concecutive_snp.append(cds_pos)
                     combined_snp+=mut_change[2]
                 else:
-                    if cds_pos == concecutive_snp[-1] +1:
-                        combined_snp+=mut_change[2]
+                    if cds_pos == concecutive_snp[0] +1: # this is the next base
+                        # update position in concec_pos
                         concecutive_snp.append(cds_pos)
-                    elif cds_pos == concecutive_snp[-1] +2:
-                        print("here")
-                        pass
-                    elif cds_pos > concecutive_snp[-1] +2:
-                        # this snp is a single bp change
-                        hgvs = f"c.{cds_pos}{mut_change[1]}>{mut_change[2]}"
-                        # anything stored in the concecutive_snp and combined_snp are separate from this change         
-                        mutations.append(hgvs)
-                        if len(concecutive_snp) == 1: #snp
-                            ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
-                            hgvs = f"c.{concecutive_snp[0]}{ref}>{combined_snp}"
-                        else: # delins
-                            hgvs = f"c.{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
-                        mutations.append(hgvs)
-                        concecutive_snp = []
-                        combined_snp = ""
-        
-                    if mut == mut_list[-1]:
-                        if len(concecutive_snp) == 1: #snp
-                            ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
-                            hgvs = f"c.{concecutive_snp[0]}{ref}>{combined_snp}"
-                        else: # delins
-                            hgvs = f"c.{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
-                        mutations.append(hgvs)
-
-                            
-        print(mutations)
+                        # update basesin combined_bases
+                        combined_snp += mut_change[2]
+                    elif cds_pos == concecutive_snp[0] +2: # this is one bp apart from the last snp
+                        # get middle ref
+                        m_ref = self._cds[concecutive_snp[0]+2-1]
+                        concecutive_snp.append(cds_pos)
+                        combined_snp += m_ref+mut_change[2]
+                    elif cds_pos > concecutive_snp[0] +2: # this is independent from snps in concecutive_snp
+                        # convert things in concecutive_snp and combined_snp into hgvs
+                        hgvs = snp_to_hgvs(concecutive_snp, combined_snp, self._cds)
+                        # update combined_snp and hgvs with current mut
+                         
+        if len(concecutive_snp) != 0:
+            hgvs = snp_to_hgvs(concecutive_snp, combined_snp, self._cds)
+        print(hgvs)
+        print(mutations) # mutations should look like 21A>C or [13_15delinsTTG;29G>c]
         return mut_list
-    
+
+def snp_to_hgvs(concec_pos, combined_bases, cds):
+    """
+    helper function to obtain hgvs sstring given a list of positions and a string of bases combined.
+
+    """
+    if len(concec_pos) == 1:
+        ref_base = cds[concec_pos[0]-1]
+        hgvs = f"{concec_pos[0]}{ref_base}>{combined_bases}"
+
+    return hgvs
 
 if __name__ == "__main__":
     ref_dir = "/home/rothlab/rli/02_dev/11_tileSeq/tileseq_py/MTHFR_3del/bowtieIndex/"

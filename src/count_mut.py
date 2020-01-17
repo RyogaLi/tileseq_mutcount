@@ -162,8 +162,7 @@ class readSam(object):
 
             both_mut.sort() # sort mutations based on the position 
             if len(both_mut) > 3:
-                print(both_mut)
-                mp_update._get_hgvs(both_mut)
+                mp_update._get_hgvs(['1922|A|del', '1928|T|G', '1930|G|T'])
                 break
 
 
