@@ -105,18 +105,17 @@ class MutCount(object):
 			logging.info("All samples found")
 		else:
 			logging.error("fastq files do not match input samples.")
-				logging.error("Program terminated due to error")
-				exit()
+			logging.error("Program terminated due to error")
+			exit()
 
 		# create mapping for R1 and R2 for each sample
 		# ONLY samples provided in the parameter files will be analyzed
 		fastq_map = []
 		for r1 in self._fastq_list:
 			ID = os.path.basename(r1).split("_")[0]
-				if ("_R1_" in r1) and (ID in sample_names):
-					r2 = r1.replace("_R1_", "_R2_")
-						fastq_map.append([r1,r2])
-
+			if ("_R1_" in r1) and (ID in sample_names):
+				r2 = r1.replace("_R1_", "_R2_")
+				fastq_map.append([r1,r2])
 
 		# convert to df
 		fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
@@ -161,13 +160,14 @@ class MutCount(object):
 
 			# wait for alignment to finish and call mutations
 
-		elif self._env == "BC":
+		elif self._env == "BC2":
 			# make sh files to submit to BC
 			sh_output = os.path.join(self._output, "BC_sh")
 			os.system("mkdir "+sh_output)
 
-		
-
+			logging.info("Writing sh files for alignment (BC2)")
+			alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output)
+			logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
 def _mut_count(self):
 	"""
@@ -177,11 +177,32 @@ def _mut_count(self):
 	pass
 
 
-
 def mut_count_sh_guru():
 	"""
 		"""
 	pass
+
+def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
+	"""
+	"""
+	# build reference
+	ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.bc2_BOWTIE2_BUILD)
+
+	for index, row in fastq_map.iterrows(): # go through all the fastq pairs
+		sample_name = os.path.basename(row["R1"]).split("_")[0]
+
+		shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
+		log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.bc2_BOWTIE2, shfile)
+
+		time = 8 # schedule this alignment for 8 hours (this is more than what we need)
+		sub_cmd = f"submitjob {time} {shfile}"
+		os.system(sub_cmd)
+
+		shfile_ds = os.path.join(sh_output, f"Aln_ds_{sample_name}.sh")
+		log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.bc2_BOWTIE2, shfile_ds)
+		sub_cmd = f"submitjob {time} {shfile_ds}"
+		os.system(sub_cmd)
+		break
 
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
@@ -204,18 +225,18 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
 	for index, row in fastq_map.iterrows():
 		sample_name = os.path.basename(row["R1"]).split("_")[0]
 
-			shfile = os.path.join(sh_output, sample_name+"_aln.sh") # for each sample, the alignment is for both R1 and R2 (they are aligning separately)
-			log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.guru_BOWTIE2, shfile)
+		shfile = os.path.join(sh_output, sample_name+"_aln.sh") # for each sample, the alignment is for both R1 and R2 (they are aligning separately)
+		log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.guru_BOWTIE2, shfile)
 
-			sub_cmd = f"qsub -cwd -N {'aln_'+sample_name} -e {log_file} {shfile}"
-			os.system(sub_cmd)
+		sub_cmd = f"qsub -cwd -N {'aln_'+sample_name} -e {log_file} {shfile}"
+		os.system(sub_cmd)
 
-			shfile_ds = os.path.join(sh_output, sample_name+"_aln_ds.sh")
-			log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], sam_path, settings.guru_BOWTIE2, shfile_ds)
+		shfile_ds = os.path.join(sh_output, sample_name+"_aln_ds.sh")
+		log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.guru_BOWTIE2, shfile_ds)
 
-			sub_cmd = f"qsub -cwd -N {'aln_ds_'+sample_name} -e {log_file_ds} {shfile_ds}"
-			os.system(sub_cmd)
-			break
+		sub_cmd = f"qsub -cwd -N {'aln_ds_'+sample_name} -e {log_file_ds} {shfile_ds}"
+		os.system(sub_cmd)
+		break
 
 
 def ds_process(fastq_map, n, ds_output):
@@ -227,19 +248,19 @@ def ds_process(fastq_map, n, ds_output):
 	ds_r1files, ds_r2files = [], []
 	for index, row in fastq_map.iterrows():
 		os.system("gunzip "+row["R1"])
-			os.system("gunzip "+row["R2"])
+		os.system("gunzip "+row["R2"])
 
-			unziped_r1 = row["R1"].replace(".gz", "")
-			unziped_r2 = row["R2"].replace(".gz", "")
+		unziped_r1 = row["R1"].replace(".gz", "")
+		unziped_r2 = row["R2"].replace(".gz", "")
 
-			r1_ds, r2_ds = help_functions.downsample(n, unziped_r1, unziped_r2, ds_output)
-			os.system(f"gzip {unziped_r1}")
-			os.system(f"gzip {unziped_r2}")
-			r1_ds = r1_ds + ".gz"
-			r2_ds = r2_ds + ".gz"
-			ds_r1files.append(r1_ds)
-			ds_r2files.append(r2_ds)
-			break
+		r1_ds, r2_ds = help_functions.downsample(n, unziped_r1, unziped_r2, ds_output)
+		os.system(f"gzip {unziped_r1}")
+		os.system(f"gzip {unziped_r2}")
+		r1_ds = r1_ds + ".gz"
+		r2_ds = r2_ds + ".gz"
+		ds_r1files.append(r1_ds)
+		ds_r2files.append(r2_ds)
+		break
 	# gzip everything 
 	os.system(f"gzip {ds_output}/*.fastq")
 	fastq_map[["r1_ds", "r2_ds"]] = pd.DataFrame(list(zip(ds_r1files, ds_r2files)))
@@ -253,7 +274,7 @@ if __name__ == "__main__":
 	parser.add_argument("-o", "--output", help="Output folder", required = True)
 	parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug")
 	parser.add_argument("-p", "--param", help="json paramter file", required = True)
-	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="GURU")
+	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="BC2")
 	parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
 	args = parser.parse_args()
 
