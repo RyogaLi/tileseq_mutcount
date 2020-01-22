@@ -119,8 +119,8 @@ class MutParser(object):
 		# check starting point of the sequence 
 		# remove soft clipped bases and adjust for location 
 		if cigar[0][1] =="S":
-				# adjust read position
-				clip += cigar[0][0]
+			# adjust read position
+			clip += cigar[0][0]
 
 		# convert mdz to list
 		mdz = re.findall('.*?[.ATCG]+', mdz_raw)
@@ -151,101 +151,99 @@ class MutParser(object):
 				# add the insertion to mut_list
 				mut_list.append(str(pos+mapped+deleted)+"|"+ins_base+"|ins")
 		total_len += int(i[0])
-		
+
 		# parse snp and deletion from mdz string
 		# given the inserted position on reference sequence
 		r = re.compile("([0-9]+)([a-zA-Z\^]+)")
-		
+
 		read_pos = 0 + clip # on the sam read
 		deleted_len = 0 # how many bp was deleted
 		map_pos = 0 # how many bp was mapped (non insertion track)
-		
+
 		iter_ins = iter(ins_pos)
 		ins = next(iter_ins, None)
-		
+
 		inserted_pos = 0
 		for i in mdz:
-				# for each item in the MD:Z string 
-				# split the item into number and letter
-				m = r.match(i)
-				match_len = int(m.group(1))
-				base = m.group(2)
+			# for each item in the MD:Z string 
+			# split the item into number and letter
+			m = r.match(i)
+			match_len = int(m.group(1))
+			base = m.group(2)
 
-				map_pos += match_len # update how many bp are mapped
-				print(map_pos) 
-				
-				if ins and map_pos >= ins[0]:
-					inserted_pos += ins[1]
-					ins = next(iter_ins, None)
-				
-				if "^" not in base:
-					# this means a single nt change
-					read_pos += match_len 
-					mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos+inserted_pos-deleted_len])
-					map_pos += len(base)
-					read_pos += 1
-				else: # deletion
-					read_pos += match_len
-					mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
-					deleted_len += len(base[1:])
-					read_pos += len(base[1:])
-					map_pos -= len(base[1:])
-	
+			map_pos += match_len # update how many bp are mapped
+			print(map_pos)
+
+			if ins and map_pos >= ins[0]:
+				inserted_pos += ins[1]
+				ins = next(iter_ins, None)
+
+			if "^" not in base:
+				# this means a single nt change
+				read_pos += match_len 
+				mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos+inserted_pos-deleted_len])
+				map_pos += len(base)
+				read_pos += 1
+			else: # deletion
+				read_pos += match_len
+				mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
+				deleted_len += len(base[1:])
+				read_pos += len(base[1:])
+				map_pos -= len(base[1:])
+
 		return mut_list
 
 	def _parse_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
-			"""
-			cigar: CIGAR string from SAM file
-			mdz: MD:Z:tag from SAM file
-			ref: Reference sequence (templete sequence)
-			read: Read from SAM file
-			read_pos: Mapping position of this read. Where the first base maps to
-			qual: Quality score sequence of this read
-			
-			Get mutation from MD:Z string
-			Insertions are not represented by MD:Z tag
-			Insertions are processed from CIGAR string
-			"""
-			clip = 0
-			# 1. check starting point of the sequence 
-			# remove soft clipped bases and adjust for location 
-			if cigar[0][1] =="S":
-					# adjust read position
-					clip += cigar[0][0]
-			
-			# 2. for the MD:Z string
-			# split the string into chunks with mutations
-			# i.e ['13C', '14T', '0T', '0G']
-			mdz = re.findall('.*?[.ATCG]+', mdz_raw)
-			r = re.compile("([0-9]+)([a-zA-Z\^]+)")
-			
-			read_pos = 0 + clip
-			mut_list = []
-			deleted_len = 0
-			for i in mdz:
-					# for each item in the MD:Z string 
-					# split the item into number and letter
-					m = r.match(i)
-					match_len = int(m.group(1))
-					base = m.group(2)
-					if "^" not in base:
-							# this means a single nt change
-							# base = reference base
-							# pos+read_pos-clip = read starting point + # of bp mapped since that point - clipped base (because they are not on reference sequence)
-							# read_pos-deleted_len = # of bases mapped since the beginnig of this read - number of bases deleted
-							read_pos += match_len # update read position as we are moving to the right
-							# this means a single nt change
-							mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos-deleted_len])
-							read_pos += 1 # update read position
+		"""
+		cigar: CIGAR string from SAM file
+		mdz: MD:Z:tag from SAM file
+		ref: Reference sequence (templete sequence)
+		read: Read from SAM file
+		read_pos: Mapping position of this read. Where the first base maps to
+		qual: Quality score sequence of this read
 
-					else: # deletion
-							read_pos += match_len# update read position as we are moving to the right
-							# pos+read_pos-clip = read starting point + # of bp mapped since that point - clipped base (because they are not on reference sequence)
-							# base[1:] = bases that were deleted
-							mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
-							deleted_len += len(base[1:])
-							read_pos += len(base[1:])
-			
+		Get mutation from MD:Z string
+		Insertions are not represented by MD:Z tag
+		Insertions are processed from CIGAR string
+		"""
+		clip = 0
+		# 1. check starting point of the sequence 
+		# remove soft clipped bases and adjust for location 
+		if cigar[0][1] =="S":
+				# adjust read position
+				clip += cigar[0][0]
+		# 2. for the MD:Z string
+		# split the string into chunks with mutations
+		# i.e ['13C', '14T', '0T', '0G']
+		mdz = re.findall('.*?[.ATCG]+', mdz_raw)
+		r = re.compile("([0-9]+)([a-zA-Z\^]+)")
+
+		read_pos = 0 + clip
+		mut_list = []
+		deleted_len = 0
+		for i in mdz:
+			# for each item in the MD:Z string 
+			# split the item into number and letter
+			m = r.match(i)
+			match_len = int(m.group(1))
+			base = m.group(2)
+			if "^" not in base:
+				# this means a single nt change
+				# base = reference base
+				# pos+read_pos-clip = read starting point + # of bp mapped since that point - clipped base (because they are not on reference sequence)
+				# read_pos-deleted_len = # of bases mapped since the beginnig of this read - number of bases deleted
+				read_pos += match_len # update read position as we are moving to the right
+				# this means a single nt change
+				mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos-deleted_len])
+				read_pos += 1 # update read position
+
+			else: # deletion
+				read_pos += match_len# update read position as we are moving to the right
+				# pos+read_pos-clip = read starting point + # of bp mapped since that point - clipped base (because they are not on reference sequence)
+				# base[1:] = bases that were deleted
+				mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
+				deleted_len += len(base[1:])
+				read_pos += len(base[1:])
 			return mut_list
 
 	def _get_hgvs(self, mut_list):
@@ -254,82 +252,145 @@ class MutParser(object):
 			translate a list of mut to aa changes
 			return list of nt changes represent by hgvs strings 
 			"""
-			
 			# go through mutation list generated by _parse_mdz and _parse_cigar
 			# make changes to the DNA sequence 
 			# output protein changes for this read
-			
 			# there are two types of mutations in mut list
 			# ins del
 
 			# how to track consecutive changes?
 			concecutive_snp = [] # if the snp changes are concecutive, it will be represent as delins
 			combined_snp = ""
-			concecutive_delins = []
+
+			# use to track delins 
+			# if del and ins happened within 2bp from each other then we consider it a delins
+			# also record any snp that happened in the range
+			deletions = []
+			ins = []
+			deleted_bases = ""
 			mutations = []
 			for mut in mut_list:
-					if "del" in mut:
-							# check reference 
-							mut = mut.split("|")
-							ref_pos = int(mut[0])
-							ref_bp = str(mut[1])
-							# get cds position for this mutation 
-							cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
-							cds_bp = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds.item()
-							
-							# remove base from mut_seq
-							
-							
-					elif "ins" in mut:
-							pass
-					else: # snp
-							mut_change = mut.split("|")
-							tmp_pos = int(mut_change[0])
-							# get cds position from look up table
-							cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
-							cds_ref = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds.item()
+				if "del" in mut:
+					# check reference 
+					mut = mut.split("|")
+					ref_pos = int(mut[0])
+					ref_bp = str(mut[1]) # bases deleted
+					# get cds position for this mutation 
+					cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
 
-							## validate: if the reference base matches the ref in seq_lookup
-							if cds_ref != mut_change[1]:
-								 raise ValueError(f"Reference base - pos {tmp_pos}, base {mut_change[1]} does not match the reference provided by user - base {cds_ref}")
-						 
-							# track concecutive changes
-							if len(concecutive_snp) == 0:
-									concecutive_snp.append(cds_pos)
-									combined_snp+=mut_change[2]
+					# get deletion len
+					del_len = len(ref_bp)
+					del_pos = [cds_pos, cds_pos+del_len-1]
+
+					if deletions == []:
+						# if nothing is stored, means that no deletion on track
+						if ins == []:
+							# no ins on track 
+							# add this to del
+							deletions.append(del_pos) # keep track of deletions
+						else:
+							# check if this del is within 2 bp from the ins
+							# if yes, store this del to deletions
+							if del_pos[-1] <= ins[0][0] + 2:
+								# delins happens from the first base of the deletion to the end of the insertion
+								deletions.append(del_pos)
 							else:
-									if cds_pos == concecutive_snp[-1] +1:
-											combined_snp+=mut_change[2]
-											concecutive_snp.append(cds_pos)
-									elif cds_pos == concecutive_snp[-1] +2:
-											print("here")
-											pass
-									elif cds_pos > concecutive_snp[-1] +2:
-											# this snp is a single bp change
-											hgvs = f"c.{cds_pos}{mut_change[1]}>{mut_change[2]}"
-											# anything stored in the concecutive_snp and combined_snp are separate from this change         
-											mutations.append(hgvs)
-											if len(concecutive_snp) == 1: #snp
-													ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
-													hgvs = f"c.{concecutive_snp[0]}{ref}>{combined_snp}"
-											else: # delins
-													hgvs = f"c.{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
-											mutations.append(hgvs)
-											concecutive_snp = []
-											combined_snp = ""
-			
-									if mut == mut_list[-1]:
-											if len(concecutive_snp) == 1: #snp
-													ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
-													hgvs = f"c.{concecutive_snp[0]}{ref}>{combined_snp}"
-											else: # delins
-													hgvs = f"c.{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
-											mutations.append(hgvs)
+								# if no, output the ins 
+								# because in this case any deletion or ins happens after this pos would not be within the range
+								hgvs = f""
+								# track the deletion
+								deletions.append(del_pos) # keep track of deletions
+								mutation.append(hgvs)
+					else: # some deletions happened before this base
+						if ins == []:
+							# no insertion happened
+							# output the previous del as hgvs
+							hgvs = f"{deletions[0][0]}_{deletions[0][-1]}del"
+							# store this deletion to the list so we can track if ins happened after
+							deletions = del_pos
+							mutations.append(hgvs)
+						else:
+							# means that insertion happened before this base and deletions happened 
+							# means that those ins and del are within the range
+							# check if this is within the range
+							# ifso, add to ins or del
+							# if not, output the previous ins del to delins
+							pass
+				elif "ins" in mut:
+					# similar to deletion 
+					mut = mut.split("|")
+					ref_pos = int(mut[0])
+					ins_bp = str(mut[1])
 
-													
-			print(mutations)
-			return mut_list
-	
+					cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
+
+					ins_len = len(ins_bp)
+					ins_pos = [cds_pos, cds_pos +len(ins_bp)]
+
+					if ins == []: # if insertion list is empty
+						if deletion == []:
+							# if deletion is also empty
+							ins.append(ins_pos)
+						else:
+							# id deletion is not empty
+							# check if ins is within 2bp
+							# if it is within 2bp
+							# record this ins to ins
+							# else
+							# output the deletion to hgvs
+					else: # if insertion list is not empty
+						if deletions == []:
+							# output insertions to hgvs
+							pass
+						else:
+							#
+							pass
+
+				else: # snp
+					mut_change = mut.split("|")
+					tmp_pos = int(mut_change[0])
+					# get cds position from look up table
+					cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+					cds_ref = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds.item()
+
+					## validate: if the reference base matches the ref in seq_lookup
+					if cds_ref != mut_change[1]:
+						raise ValueError(f"Reference base - pos {tmp_pos}, base {mut_change[1]} does not match the reference provided by user - base {cds_ref}")
+					# track concecutive changes
+					if len(concecutive_snp) == 0:
+						concecutive_snp.append(cds_pos)
+						combined_snp+=mut_change[2]
+					else:
+						if cds_pos == concecutive_snp[-1] +1:
+							combined_snp+=mut_change[2]
+							concecutive_snp.append(cds_pos)
+						elif cds_pos == concecutive_snp[-1] +2:
+							print("here")
+							pass
+						elif cds_pos > concecutive_snp[-1] +2:
+							# this snp is a single bp change
+							hgvs = f"c.{cds_pos}{mut_change[1]}>{mut_change[2]}"
+							# anything stored in the concecutive_snp and combined_snp are separate from this change         
+							mutations.append(hgvs)
+							if len(concecutive_snp) == 1: #snp
+								ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
+								hgvs = f"{concecutive_snp[0]}{ref}>{combined_snp}"
+							else: # delins
+								hgvs = f"{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
+							mutations.append(hgvs)
+							concecutive_snp = []
+							combined_snp = ""
+
+						if mut == mut_list[-1]: # if this is the last entry in mut_list
+							if len(concecutive_snp) == 1: #snp
+									ref = self._seq_lookup[self._seq_lookup.cds_pos == concecutive_snp[0]].cds.item()
+									hgvs = f"{concecutive_snp[0]}{ref}>{combined_snp}"
+							else: # delins
+									hgvs = f"{concecutive_snp[0]}_{concecutive_snp[-1]}delins{combined_snp}"
+							mutations.append(hgvs)
+
+			return mutations
+
 
 if __name__ == "__main__":
 	ref_dir = "/home/rothlab/rli/02_dev/11_tileSeq/tileseq_py/MTHFR_3del/bowtieIndex/"
@@ -338,5 +399,3 @@ if __name__ == "__main__":
 
 	parser = MutParser(ref_dir, reads, gene)
 	parser._parse_mdz([(1,"S"),(140,"M")], "T2A1G", "TGAACG", "CGACCT", 1, "")
-
-	
