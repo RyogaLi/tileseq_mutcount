@@ -150,7 +150,6 @@ class readSam(object):
 			mp_update = mut_parser._get_seq()
 			#mp_update = mut_parser._build_lookup()
 
-			print("R1 R2")
 			# get mutation from R1
 			r1_mut = mp_update._parse_mut(mp_update._r1_cigar, mp_update._r1_mdz, mp_update._r1_ref, mp_update._r1_read, mp_update._r1_pos, mp_update._r1_qual)
 
@@ -162,18 +161,18 @@ class readSam(object):
 
 			both_mut.sort() # sort mutations based on the position 
 			if len(both_mut) > 3:
-				mp_update._get_hgvs(['1922|A|del', '1928|T|G', '1930|G|T'])
+				mp_update._get_hgvs(['1922|A|del', '1928|T|G', '1929|G|T'])
 				break
 
 
 if __name__ == "__main__":
 
-		parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)') 
+		parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')
 		parser.add_argument("-r1", "--read_1", help="sam file for R1", required=True)
 		parser.add_argument("-r2", "--read_2", help="sam file for R2", required=True)
 		parser.add_argument("-qual", "--quality", help="sam file mapQ filter", default=20)
 		parser.add_argument("-o", "--output", help="Output folder", required = True)
-		parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug") 
+		parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug")
 		parser.add_argument("-p", "--param", help="json paramter file", required = True)
 		parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="GURU")
 		args = parser.parse_args()

@@ -202,7 +202,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_pa
 		log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.bc2_BOWTIE2, shfile_ds)
 		sub_cmd = f"submitjob {time} {shfile_ds}"
 		os.system(sub_cmd)
-		break
+		#break
 
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
@@ -260,7 +260,7 @@ def ds_process(fastq_map, n, ds_output):
 		r2_ds = r2_ds + ".gz"
 		ds_r1files.append(r1_ds)
 		ds_r2files.append(r2_ds)
-		break
+		#break
 	# gzip everything 
 	os.system(f"gzip {ds_output}/*.fastq")
 	fastq_map[["r1_ds", "r2_ds"]] = pd.DataFrame(list(zip(ds_r1files, ds_r2files)))
