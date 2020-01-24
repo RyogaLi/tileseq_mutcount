@@ -265,91 +265,30 @@ class MutParser(object):
 		# use to track delins 
 		# if del and ins happened within 2bp from each other then we consider it a delins
 		# also record any snp that happened in the range
-		deletions = []
-		ins = []
-		deleted_bases = ""
-		ins_bases = ""
+		delins = []
 		mutations = []
 		for mut in mut_list:
-			if "del" in mut:
+			if ("del" in mut) or ("ins" in mut): # deletion or insertion
 				# check reference 
 				mut = mut.split("|")
-				ref_pos = int(mut[0])
-				ref_bp = str(mut[1]) # bases deleted
-				# get cds position for this mutation 
-				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
-
-				# get deletion len
-				del_len = len(ref_bp)
-				del_pos = [cds_pos, cds_pos+del_len-1]
-
-				if deletions == []:
-					# if nothing is stored, means that no deletion on track
-					if ins == []:
-						# no ins on track 
-						# add this to del
-						deletions.append(del_pos) # keep track of deletions
+				tmp_pos = int(mut_change[0])
+				# get cds position from look up table
+				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+				mut[0] = cds_pos
+				if delins == []: # nothing is on track
+					delins.append(mut)
+				else: # compare bases 
+					# delins = [[19,T,del]]
+					prev_pos = delins[-1][0] # previous deletion or insertion position
+					prev_bases = delins[-1][1]
+					if mut[0] <= prev_pos+2: # within 2bp of previous change
+						# add this to delins
+						delins.append(mut)
 					else:
-						# check if this del is within 2 bp from the ins
-						# if yes, store this del to deletions
-						if del_pos[-1] <= ins[0][0] + 2:
-							# delins happens from the first base of the deletion to the end of the insertion
-							deletions.append(del_pos)
-						else:
-							# if no, output the ins 
-							# because in this case any deletion or ins happens after this pos would not be within the range
-							hgvs = f""
-							# track the deletion
-							deletions.append(del_pos) # keep track of deletions
-							mutation.append(hgvs)
-				else: # some deletions happened before this base
-					if ins == []:
-						# no insertion happened
-						# output the previous del as hgvs
-						if deletions[0][0] != deletions[0][1]:
-							hgvs = f"{deletions[0][0]}_{deletions[0][1]}del"
-						else:
-							hgvs = f"{deletions[0][0]}del"
-						# store this deletion to the list so we can track if ins happened after
-						deletions = del_pos
-						mutations.append(hgvs)
-					else:
-						# means that insertion happened before this base and deletions happened 
-						# means that those ins and del are within the range
-						# check if this is within the range
-						# ifso, add to ins or del
-						# if not, output the previous ins del to delins
-						pass
-			elif "ins" in mut:
-				# similar to deletion 
-				mut = mut.split("|")
-				ref_pos = int(mut[0])
-				ins_bp = str(mut[1])
-
-				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == ref_pos].cds_pos.item()
-
-				ins_len = len(ins_bp)
-				ins_pos = [cds_pos, cds_pos +len(ins_bp)]
-
-				if ins == []: # if insertion list is empty
-					if deletion == []:
-						# if deletion is also empty
-						ins.append(ins_pos)
-					else:
-						# id deletion is not empty
-						# check if ins is within 2bp
-						# if it is within 2bp
-						# record this ins to ins
-						# else
-						# output the deletion to hgvs
-						pass
-				else: # if insertion list is not empty
-					if deletions == []:
-						# output insertions to hgvs
-						pass
-					else:
-						#
-						pass
+						# output hgvs of mutations in delins
+						hgvs = delins_to_hgvs(self._cds, delins)
+						# update delins with current mutation
+						delins = [mut]
 
 			else: # snp
 				mut_change = mut.split("|")
@@ -403,29 +342,63 @@ def snp_to_hgvs(concec_pos, combined_bases, cds):
 	return hgvs
 
 
-def delins_to_hgvs(cds_seq, deletion=None, insertion=None, ins_bases=None):
+def delins_to_hgvs(cds_seq, delins):
 	"""
 	convert a list of deletion and insertions (within 2 bp from eachother) to hgvs
 	output hgvs should be ***_***delins***
 	"""
-	if deletion and not (insertion and ins_bases):
-		# only one deletion
-		if deletions[0][0] != deletions[0][1]:
-			hgvs = f"{deletions[0][0]}_{deletions[0][1]}del"
-		else:
-			hgvs = f"{deletions[0][0]}del"
-	elif (insertion and ins_bases) and not deletion:
-		# only insertion happened
-		pass
-	else:
-		# both ins and del are within 2bp
-		pass
+	# convert delins to df
+	delins_df = pd.DataFrame(delins, columns=["pos", "base", "type"])
+	types = delins_df["type"].unique()
+
+	if len(types) == 1:
+		# only one type of mutations in the list
+		# means the list has len = 1
+		delins = delins[0]
+		if types[0] == "ins": # insertion
+			hgvs = f"{delins[0]-1}_{delins[0]}ins{delins[1]}"
+		else: # deletion 
+			# if it is a one bp deletion
+			if len(delins[1]) == 1:
+				hgvs = f"{delins[0]}del"
+			# it is more than one bp
+			else:
+				hgvs = f"{delins[0]}_{delins[0]+len(delins[1])}del"
+
+	else: # means that the len is >1
+		start_pos = delins[0][0]
+		end_pos = delins[-1][0]
+		prev_pos = 0
+		modified = ""
+		for index, row in delins_df.iterrows():
+			if index == 0:
+				# if the first change is deletion
+				if row["type"] == "del":
+					modified += cds_seq[row["pos"]:row["pos"]+len(row["base"])]
+					prev_pos += row["pos"] + len(row["base"])
+				else:
+					modified += row["base"]
+					prev_pos += row["pos"]-1
+			else:
+				if row["type"] == "del":
+					# first we need to get whatever is between this change and previous change 
+					mid = cds_seq[prev_pos: row["pos"]-len(row["base"])]
+					modified += mid
+					prev_pos += len(mid)
+				else:
+					mid = cds_seq[prev_pos: row["pos"]]
+					modified += mid+row["base"]
+					prev_pos += len(mid)
+
+		hgvs = f"{start_pos}_{end_pos}delins{modified}"
+	print(hgvs)
 	return hgvs
 
 if __name__ == "__main__":
-	ref_dir = "/home/rothlab/rli/02_dev/11_tileSeq/tileseq_py/MTHFR_3del/bowtieIndex/"
-	reads = ""
-	gene = "MTHFR"
 
-	parser = MutParser(ref_dir, reads, gene)
-	parser._parse_mdz([(1,"S"),(140,"M")], "T2A1G", "TGAACG", "CGACCT", 1, "")
+	# test delins_to_hgvs
+	cds_seq = "CATCTT"
+	print(cds_seq[1:3])
+	delins = [[2, "A", "del"], [4, "GG", "ins"], [5, "T", "del"]]
+	#delins = [[2, "G", "ins"], [4, "C", "del"]]
+	delins_to_hgvs(cds_seq, delins)
