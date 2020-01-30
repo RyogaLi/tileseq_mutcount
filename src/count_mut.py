@@ -1,4 +1,4 @@
-#!~/usr/bin/python3
+#~/lib/Python-3.6.4/python
 
 ## Read sam file (R1 and R2)
 # count mutations in sam files 
@@ -60,6 +60,9 @@ class readSam(object):
 		self._sample_info = samples[samples["Sample ID"] == self._sample_id]
 
 		self._sample_tile = self._sample_info["Tile ID"].values[0]
+		self._tile_begins = (self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["Start AA"].values[0] *3)-2# beginning position of this tile (cds position)
+		self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3 # ending position of this tile (cds position)
+
 		self._sample_condition = self._sample_info["Condition"].values[0]
 		self._sample_tp = self._sample_info["Time point"].values[0]
 		self._sample_rep = self._sample_info["Replicate"].values[0]
@@ -80,7 +83,7 @@ class readSam(object):
 
 		output_csv = open(self._sample_counts_f, "w")
 		# write log information to counts output
-		output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n""")
+		output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n""")
 		output_csv.close()
 
 	def _convert_sam(self, input_sam):
@@ -94,6 +97,10 @@ class readSam(object):
 		* mdz indicates mutations in the read
 
 		"""
+		if "_R1_" in input_sam:
+			read = "R1"
+		else:
+			read = "R2"
 		read_counts = 0
 		read_nomut = 0
 		un_map = 0
@@ -102,10 +109,8 @@ class readSam(object):
 		# read sam file
 		with open(input_sam, "r") as sam_file:
 			for line in sam_file:
-
 				if line.startswith("@"): # skip header line
 					continue
-
 				read_counts += 1
 				line = line.split("\t")
 				# create table to save information from sam file
@@ -132,7 +137,10 @@ class readSam(object):
 					mdz = mdz[0].split(":")[-1]
 				else:
 					mdz = ""
-				if (not re.search('[a-zA-Z]', mdz)) and ("I" not in CIGAR): 
+				if (not re.search('[a-zA-Z]', mdz)) and ("I" not in CIGAR):
+					# if MDZ string only contains numbers 
+					# and no insertions shown in CIGAR string
+					# means there is no mutation in this read
 					read_nomut +=1
 					# remove reads that have no mutations in MDZ
 					continue
@@ -140,8 +148,8 @@ class readSam(object):
 
 		trimmed = pd.DataFrame(trimmed, columns=["read_name", "mapped_name", "pos_start", "mapQ", "CIGAR", "mdz","seq", "qual"])
 		output_csv = open(self._sample_counts_f, "a")
-		output_csv.write(f"#Raw read depth for {input_sam}:{read_counts}\n")
-		output_csv.write(f"#Number of reads without mutations:{read_nomut}\n#Number of reads with qual < {self._qual}:{low_qual}\n#Number of reads did not map to gene:{un_map}\n")
+		output_csv.write(f"#Raw read depth for {read}:{read_counts}\n")
+		output_csv.write(f"#Number of {read} reads without mutations:{read_nomut}\n#Number of {read} reads with qual < {self._qual}:{low_qual}\n#Number of {read} reads did not map to gene:{un_map}\n")
 		output_csv.close()
 		logging.info(f"Raw sequencing depth for {input_sam} (before filtering): {read_counts}")
 		logging.info(f"Number of reads without mutations:{read_nomut}")
@@ -162,21 +170,21 @@ class readSam(object):
 		merge = pd.merge(r1_df, r2_df, how="left", on="read_name", suffixes=("_r1", "_r2"))
 		merge = merge.dropna()
 		logging.info(f"After merging & filtering R1 sam file and R2 sam file, {merge.shape[0]} read-pairs remained for analysis")
-		output_csv.write(f"#Final read-depth (pairs):{merge.shape[0]}\n")
+		output_csv.write(f"#Read-depth (pairs) after merging R1 and R2:{merge.shape[0]}\n")
 
 		# facts['pop2050'] = facts.apply(lambda row: final_pop(row['population'],row['population_growth']),axis=1)
-		output_csv.close()
 		mut_reads=0
 		hgvs_output = []
+		off_mut = []
 		for index, row in merge.iterrows():
 			# for each read pair in sam file, identify the mutation
 			# process R1 and R2 together
-			mut_parser = locate_mut.MutParser(row, full_seq, cds_seq, self._seq_lookup)
+			mut_parser = locate_mut.MutParser(row, full_seq, cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, logging)
 			mp_update = mut_parser._get_seq()
 			#mp_update = mut_parser._build_lookup()
 
 			# get mutation from R1
-			r1_mut = mp_update._parse_mut(mp_update._r1_cigar, mp_update._r1_mdz, mp_update._r1_ref, mp_update._r1_read, mp_update._r1_pos, mp_update._r1_qual)
+			r1_mut =  mp_update._parse_mut(mp_update._r1_cigar, mp_update._r1_mdz, mp_update._r1_ref, mp_update._r1_read, mp_update._r1_pos, mp_update._r1_qual)
 
 			# get mutation from R2
 			r2_mut = mp_update._parse_mut(mp_update._r2_cigar, mp_update._r2_mdz, mp_update._r2_ref, mp_update._r2_read, mp_update._r2_pos, mp_update._r2_qual)
@@ -186,17 +194,20 @@ class readSam(object):
 			if len(both_mut) !=0:
 				both_mut.sort() # sort mutations based on the position
 				# test hgvs
-				hgvs = mp_update._get_hgvs(both_mut)
-				hgvs_output.append(hgvs)
-
-			# convert list to df with one col
+				hgvs, off= mp_update._get_hgvs(both_mut)
+				if len(hgvs)!=0: # remove the case where mutations are not within the tile range
+					hgvs_output.append(hgvs)
+			off_mut += off
+		off_mut = list(set(off_mut))
+		output_csv.write(f"#Mutation positions outside of the tile: {off_mut}\n")
+		output_csv.close()
+		# convert list to df with one col
 		hgvs_df = pd.DataFrame({"HGVS":hgvs_output})
 		hgvs_counts = hgvs_df.HGVS.value_counts().reset_index()
 		hgvs_counts.columns = ["HGVS", "count"]
 		hgvs_counts.to_csv(self._sample_counts_f, mode="a", index=False)
 
-
-
+		output_csv.close()
 if __name__ == "__main__":
 
 		parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')

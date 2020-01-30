@@ -18,7 +18,7 @@ from Bio.Seq import MutableSeq
 
 class MutParser(object):
 
-	def __init__(self, row, full_seq, cds_seq, seq_lookup):
+	def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, logging):
 		"""
 		row: input row includes both reads from sam file
 		full_seq: full sequence (including cds and padding sequence)
@@ -30,11 +30,16 @@ class MutParser(object):
 		self._start_pos = full_seq.cds_start.item() # 1 posisiton
 		self._end_pos = full_seq.cds_end.item()
 
+		self._tile_begins = tile_s
+		self._tile_ends = tile_e
 		# Note all the position in this df are 1-based
 		self._seq_lookup = seq_lookup
 
 		# get paired reads and their cigar scores
 		self._reads = row
+
+		# logger
+		self._logging = logging
 
 	def _get_seq(self):
 		"""
@@ -262,39 +267,50 @@ class MutParser(object):
 		concecutive_snp = [] # if the snp changes are concecutive, it will be represent as delins
 		combined_snp = ""
 
+		# track mutation positions that was not within the tiled region
+		outside_mut = []
+
 		# use to track delins 
 		# if del and ins happened within 2bp from each other then we consider it a delins
 		# also record any snp that happened in the range
 		delins = []
 		mutations = []
 		for mut in mut_list:
+			mut_change = mut.split("|")
+			tmp_pos = int(mut_change[0]) # template position 
+
+			# get cds position from lookup table
+			try:
+				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+			except:
+				continue
+
+			if cds_pos < self._tile_begins or cds_pos > self._tile_ends:
+				self._logging.warning(f"mutation at pos {cds_pos} which is not within the tile")
+				outside_mut.append(cds_pos)
+				continue
+
 			if "N" in mut: # do not consider base N
 				continue
 
 			if ("del" in mut) or ("ins" in mut): # deletion or insertion
-				#print(mut)
-				# check reference 
-				mut = mut.split("|")
-				tmp_pos = int(mut[0])
-				# get cds position from look up table
-				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
-				mut[0] = cds_pos
+				mut_change[0] = cds_pos
 				if delins == []: # nothing is on track
-					delins.append(mut)
+					delins.append(mut_change)
 				else: # compare bases 
 					# delins = [[19,T,del]]
 					prev_pos = delins[-1][0] # previous deletion or insertion position
 					prev_bases = delins[-1][1]
 					prev_change = delins[-1][2]
-					if (mut[0] <= prev_pos+2) and (mut[2] != prev_change): # within 2bp of previous change
+					if (mut_change[0] <= prev_pos+2) and (mut_change[2] != prev_change): # within 2bp of previous change
 						# not concecutive del or ins
 						# add this to delins
-						delins.append(mut)
+						delins.append(mut_change)
 					else:
 						# output hgvs of mutations in delins
 						hgvs = delins_to_hgvs(self._cds, delins)
 						# update delins with current mutation
-						delins = [mut]
+						delins = [mut_change]
 						mutations.append(hgvs)
 
 			else: # snp
@@ -338,10 +354,13 @@ class MutParser(object):
 
 		if len(mutations) == 1:
 			mutations = f"c.{mutations[0]}"
+		elif len(mutations) == 0:
+			return [], []
 		else:
 			joined = ";".join(mutations)
 			mutations = f"c.[{joined}]"
-		return mutations
+
+		return mutations, outside_mut
 
 def snp_to_hgvs(concec_pos, combined_bases, cds):
 	"""

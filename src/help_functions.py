@@ -100,7 +100,7 @@ def parse_json(json_file):
 		project = data["project"] # project name
 		seq = pd.DataFrame(data["template"], index=[0])
 		cds_seq = seq.seq[0]
-		cds_seq = cds_seq[int(seq.cds_start)-1: int(seq.cds_end)-1]
+		cds_seq = cds_seq[int(seq.cds_start)-1: int(seq.cds_end)]
 		# create dictionary to map tile/region # to start,end positions
 		tile_map = pd.DataFrame(data["tiles"])
 		region_map = pd.DataFrame(data["regions"])
@@ -125,26 +125,24 @@ def loadingAnimation(process):
 
 
 def build_lookup(cds_start, cds_end, cds_seq):
-    """
-    build a lookup df for a given gene
-    return a df with columns:
-    temp_pos, na, dna_pos, protein, protein_pos
-    """
-    lookup_table = {}
-    # list of template pos 
-    temp = range(cds_start, cds_end)
-    # list of coding DNA bases
-    cDNA = [i for i in cds_seq]
-    cDNA_pos = range(1, len(cDNA)+1)
-
-    # list of protein bases
-    protein = [i for i in Seq(cds_seq).translate()]
-    protein_pos = range(1, len(protein)+1)
-    lookup_table["temp_pos"] = temp
-    lookup_table["cds"] = cDNA
-    lookup_table["cds_pos"] = cDNA_pos
-    lookup_table["protein"] = list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in protein))
-    lookup_table["protein_pos"] = list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in protein_pos))
-
-    df = pd.DataFrame(lookup_table)
-    return df
+	"""
+	build a lookup df for a given gene
+	return a df with columns:
+	temp_pos, na, dna_pos, protein, protein_pos
+	"""
+	lookup_table = {}
+	# list of template pos 
+	temp = list(range(cds_start, cds_end+1))
+	# list of coding DNA bases
+	cDNA = [i for i in cds_seq]
+	cDNA_pos = list(range(1, len(cDNA)+1))
+	# list of protein bases
+	protein = [i for i in Seq(cds_seq).translate()]
+	protein_pos = range(1, len(protein)+1)
+	lookup_table["temp_pos"] = temp
+	lookup_table["cds"] = cDNA
+	lookup_table["cds_pos"] = cDNA_pos
+	lookup_table["protein"] = list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in protein))
+	lookup_table["protein_pos"] = list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in protein_pos))
+	df = pd.DataFrame(lookup_table)
+	return df
