@@ -3,6 +3,8 @@
 # The functions in this script is used to manage submitting jobs to different clusters
 # This script is called by main.py
 import pandas as pd
+import os
+import subprocess
 
 # other modules
 import alignment
@@ -51,8 +53,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_pa
 		sample_name = os.path.basename(row["R1"]).split("_")[0]
 
 		shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-		r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.bc2_BOWTIE2, sh
-														file)
+		r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.bc2_BOWTIE2, shfile)
 		row["r1_sam"] = r1_sam
 		row["r2_sam"] = r2_sam
 		# create log file for alignment
@@ -64,8 +65,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_pa
 		logging.info(f"{ids}")
 		time_ds = 1
 		shfile_ds = os.path.join(sh_output, f"Aln_ds_{sample_name}.sh")
-		r1_sam_ds, r2_sam_ds, log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settin
-		gs.bc2_BOWTIE2, shfile_ds)
+		r1_sam_ds, r2_sam_ds, log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.bc2_BOWTIE2, shfile_ds)
 		row["r1_sam_ds"] = r1_sam_ds
 		row["r2_sam_ds"] = r2_sam_ds
 		# create log file for alignment (ds)
@@ -87,8 +87,8 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 	# go through files df and submit jobs for each pair of sam files
 	py_path = os.path.abspath("count_mut.py")
 	for index, row in files_df.iterrows():
-	sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
-	# counting mutations in raw sam output files
+		sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
+		# counting mutations in raw sam output files
 		time = 5
 		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
 		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -logdir {log_dir}"

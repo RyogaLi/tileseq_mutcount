@@ -34,6 +34,7 @@ import settings
 import alignment
 import help_functions
 import count_mut
+import cluster
 
 
 class MutCount(object):
@@ -163,7 +164,7 @@ class MutCount(object):
 			# it takes the following arguments: R1, R2, ref, Output sam
 			# the output log (bowtie log) would be in the same dir
 			logging.info("Writing sh files for alignment (GURU)")
-			alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
+			cluster.alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitted to GURU..")
 
 			# wait for alignment to finish and call mutations
@@ -179,7 +180,7 @@ class MutCount(object):
 			os.system("mkdir "+sh_output)
 
 			logging.info("Writing sh files for alignment (BC2)")
-			sam_df = alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
+			sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
 			# get number of jobs running
@@ -244,8 +245,8 @@ class MutCount(object):
 		if self._env == "BC2":
 			sh_output = os.path.join(self._output, "BC_sh")
 		logging.info("Submitting mutation counts jobs to BC...")
-		mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
 
+		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
 
 
 def ds_process(fastq_map, n, ds_output):
