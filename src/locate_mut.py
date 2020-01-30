@@ -172,7 +172,7 @@ class MutParser(object):
 			base = m.group(2)
 
 			map_pos += match_len # update how many bp are mapped
-			print(map_pos)
+			#print(map_pos)
 
 			if ins and map_pos >= ins[0]:
 				inserted_pos += ins[1]
@@ -268,10 +268,14 @@ class MutParser(object):
 		delins = []
 		mutations = []
 		for mut in mut_list:
+			if "N" in mut: # do not consider base N
+				continue
+
 			if ("del" in mut) or ("ins" in mut): # deletion or insertion
+				#print(mut)
 				# check reference 
 				mut = mut.split("|")
-				tmp_pos = int(mut_change[0])
+				tmp_pos = int(mut[0])
 				# get cds position from look up table
 				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
 				mut[0] = cds_pos
@@ -281,7 +285,9 @@ class MutParser(object):
 					# delins = [[19,T,del]]
 					prev_pos = delins[-1][0] # previous deletion or insertion position
 					prev_bases = delins[-1][1]
-					if mut[0] <= prev_pos+2: # within 2bp of previous change
+					prev_change = delins[-1][2]
+					if (mut[0] <= prev_pos+2) and (mut[2] != prev_change): # within 2bp of previous change
+						# not concecutive del or ins
 						# add this to delins
 						delins.append(mut)
 					else:
@@ -289,6 +295,7 @@ class MutParser(object):
 						hgvs = delins_to_hgvs(self._cds, delins)
 						# update delins with current mutation
 						delins = [mut]
+						mutations.append(hgvs)
 
 			else: # snp
 				mut_change = mut.split("|")
@@ -312,7 +319,7 @@ class MutParser(object):
 						concecutive_snp.append(cds_pos)
 					elif cds_pos == concecutive_snp[-1] +2:
 						# get middle ref
-						m_ref = self._cds[concecutive_snp[0]+2-1]
+						m_ref = self._cds[concecutive_snp[-1]+1-1]
 						concecutive_snp.append(cds_pos)
 						combined_snp += m_ref+mut_change[2]
 					elif cds_pos > concecutive_snp[-1] +2:
@@ -321,12 +328,19 @@ class MutParser(object):
 						# update combined_snp and hgvs with current mut
 						concecutive_snp = [cds_pos]
 						combined_snp = mut_change[2]
-						mutation.append(hgvs)
+						mutations.append(hgvs)
 		if len(concecutive_snp) !=0:
 			hgvs = snp_to_hgvs(concecutive_snp, combined_snp, self._cds)
 			mutations.append(hgvs)
+		if len(delins) != 0:
+			hgvs = delins_to_hgvs(self._cds, delins)
+			mutations.append(hgvs)
 
-		print(mutations)
+		if len(mutations) == 1:
+			mutations = f"c.{mutations[0]}"
+		else:
+			joined = ";".join(mutations)
+			mutations = f"c.[{joined}]"
 		return mutations
 
 def snp_to_hgvs(concec_pos, combined_bases, cds):
@@ -363,7 +377,7 @@ def delins_to_hgvs(cds_seq, delins):
 				hgvs = f"{delins[0]}del"
 			# it is more than one bp
 			else:
-				hgvs = f"{delins[0]}_{delins[0]+len(delins[1])}del"
+				hgvs = f"{delins[0]}_{delins[0]+len(delins[1])-1}del"
 
 	else: # means that the len is >1
 		start_pos = delins[0][0]
@@ -391,7 +405,6 @@ def delins_to_hgvs(cds_seq, delins):
 					prev_pos += len(mid)
 
 		hgvs = f"{start_pos}_{end_pos}delins{modified}"
-	print(hgvs)
 	return hgvs
 
 if __name__ == "__main__":

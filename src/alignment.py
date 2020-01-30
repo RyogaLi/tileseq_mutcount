@@ -43,4 +43,4 @@ def align_main(ref, r1, r2, sam_path, bowtie, shfile):
 		f.write(r1_cmd + "\n")
 		f.write(r2_cmd + "\n")
 	os.system(f"chmod 755 {shfile}")
-	return log_file
+	return r1_sam_file, r2_sam_file, log_file

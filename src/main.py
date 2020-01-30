@@ -1,4 +1,4 @@
-#~/.pyenv/shims/python3
+#~/lib/Python-3.6.4/python
 
 # Main script for sequencing analysis
 # Input of this script: 
@@ -21,7 +21,7 @@ import numpy as np
 import os
 import glob
 import argparse
-import glob
+import subprocess
 import sys
 import json
 import logging
@@ -38,7 +38,7 @@ import count_mut
 
 class MutCount(object):
 
-	def __init__(self, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, env, n):
+	def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, env, n, skip=False):
 		"""
 		Initialize mutation counts
 		Load input json file and parameters for this run
@@ -46,38 +46,46 @@ class MutCount(object):
 		output_folder: user input folder for storing time stamped output folders
 		From param.json load all the parameters, save them into df
 		"""
+		self._param = param # parameter json file
 		self._fastq_path = fastq_path
 		self._fastq_list = glob.glob(fastq_path+"/*.fastq.gz")
 		self._env = env
 		self._n_reads = n
+
+		# load parameter json file 
+		self._project = project # project name
 
 		# check if output folder exists
 		if not os.path.isdir(output_folder):
 			print(f"Output directory not found: {output_folder}")
 			exit(1)
 
-		# get time stamp for this object
-		time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+		if not skip:
+			# get time stamp for this object
+			time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-		# load parameter json file 
-		self._project = project # project name
+			# make time stamped output folder for this project
+			self._output = self._project.replace(" ", "-")
+			self._output = os.path.join(output_folder, self._output+ "_" +time)
 
-		# make time stamped output folder for this project
-		self._output = self._project.replace(" ", "-")
-		self._output = os.path.join(output_folder, self._output+ "_" +time)
+			os.makedirs(self._output)
+			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			logging.info(f"Analyzing {self._project} on {self._env}")
+			logging.info(f"Fastq files are read from {self._fastq_path}")
 
-		os.makedirs(self._output)
 
-		# create main log file in this output folder
-		logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
-		logging.info(f"Analyzing {self._project} on {self._env}")
-		logging.info(f"Fastq files are read from {self._fastq_path}")
+		else:
+			self._output = out
+			# create main log file in this output folder
+			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			logging.info(f"Analyzing {self._project} on {self._env}")
+			logging.info(f"Sam files are read from {self._output}")
 
 		self._seq = seq
 		self._cds_seq = cds_seq
-		## validation: check if cds region is a multiple of 3
-		if len(self._cds_seq) % 3 != 0:
-			logging.warning("CDS region lenth is not a multiple of 3")
+		# ## validation: check if cds region is a multiple of 3
+		# if len(self._cds_seq) % 3 != 0:
+		#		logging.warning("CDS region lenth is not a multiple of 3")
 
 		self._tile_map = tile_map
 		self._region_map = region_map
@@ -155,88 +163,89 @@ class MutCount(object):
 			# it takes the following arguments: R1, R2, ref, Output sam
 			# the output log (bowtie log) would be in the same dir
 			logging.info("Writing sh files for alignment (GURU)")
-			alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output)
+			alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitted to GURU..")
 
 			# wait for alignment to finish and call mutations
 
 		elif self._env == "BC2":
+			# get current user name 
+			cmd = ["whoami"]
+			process = subprocess.run(cmd, stdout=subprocess.PIPE)
+			userID = process.stdout.decode("utf-8").strip()
+
 			# make sh files to submit to BC
 			sh_output = os.path.join(self._output, "BC_sh")
 			os.system("mkdir "+sh_output)
 
 			logging.info("Writing sh files for alignment (BC2)")
-			alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output)
+			sam_df = alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
-def _mut_count(self):
-	"""
-	Count mutations in input sam files
-	"""
-	# build lookup table
-	pass
+			# get number of jobs running
+			check = ["qstat", "-u", userID]
+			check_process = subprocess.run(check, stdout=subprocess.PIPE)
+			n_jobs = check_process.stdout.decode("utf-8").strip()
+			while n_jobs != '':
+				n = n_jobs.count("\n")
+				logging.info(f"{n-2} jobs running ....")
+				# wait for 10 mins
+				time.sleep(300)
+				check_process = subprocess.run(check, stdout=subprocess.PIPE)
+				n_jobs = check_process.stdout.decode("utf-8").strip()
 
+			return sam_df
 
-def mut_count_sh_guru():
-	"""
+	def _mut_count(self, sam_df=pd.DataFrame()):
 		"""
-	pass
+		Count mutations in input sam files
+		1. Log path to sam files and downsampled sam files
+		2. If sam df not provided, make df for all the sam files
+		3. For each pair of sam files, submit jobs to the cluster
+		4. Log to main log
+		"""
+		# make dir for mut counts
+		time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+		mut_output_dir = os.path.join(self._output, time + "_mut_call")
+		os.makedirs(mut_output_dir)
 
-def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
-	"""
-	"""
-	# build reference
-	ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.bc2_BOWTIE2_BUILD)
+		log_dir = os.path.join(mut_output_dir, "mut_log")
+		os.makedirs(log_dir)
 
-	for index, row in fastq_map.iterrows(): # go through all the fastq pairs
-		sample_name = os.path.basename(row["R1"]).split("_")[0]
+		if sam_df.empty: # skip alignment 
+			logging.info(f"Skipping alignment...")
+			logging.info(f"Analyzing sam files in {self._output}")
+			# make sam_df 
+			# get list of sam files in the ouput folder given by user 
+			# folder that stores alignment sam files 
+			sam_output = os.path.join(self._output, "sam_files/")
+			sam_list = os.listdir(sam_output)
 
-		shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-		log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.bc2_BOWTIE2, shfile)
+			# folder that stores downsampled alignment sam files
+			ds_sam_output = os.path.join(self._output, "ds_sam_files/")
+			ds_sam_list = os.listdir(ds_sam_output)
 
-		time = 8 # schedule this alignment for 8 hours (this is more than what we need)
-		sub_cmd = f"submitjob {time} {shfile}"
-		os.system(sub_cmd)
+			# merge sam files and ds sam files into a df
+			sam_df = []
+			for f in sam_list:
+				sample = os.path.basename(f).split("_")[0]
+				if "_R1_" in f: # take the read one files 
+					sam_r1 = os.path.join(sam_output, f)
+					sam_r2 = os.path.join(sam_output, f.replace("_R1_", "_R2_"))
+					# find the file in ds_sam_files
+					sam_ds_r1 = glob.glob(f"{ds_sam_output}/{sample}*_R1_*.sam")[0]
+					sam_ds_r2 = glob.glob(f"{ds_sam_output}/{sample}*_R2_*.sam")[0]
 
-		shfile_ds = os.path.join(sh_output, f"Aln_ds_{sample_name}.sh")
-		log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.bc2_BOWTIE2, shfile_ds)
-		sub_cmd = f"submitjob {time} {shfile_ds}"
-		os.system(sub_cmd)
-		#break
+					sam_df.append([sam_r1, sam_r2, sam_ds_r1, sam_ds_r2])
+			# convert sam_df to dataframe 
+			# col names = r1_sam, r2_sam, r1_sam_ds, r2_sam_ds
+			sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam", "r1_sam_ds", "r2_sam_ds"])
 
+		if self._env == "BC2":
+			sh_output = os.path.join(self._output, "BC_sh")
+		logging.info("Submitting mutation counts jobs to BC...")
+		mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
 
-def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
-	"""
-	fastq_map: df contains paths to fastq files and downsamled fastq files
-	ref_name: name for the reference sequence (same as project name)
-	ref_seq: reference sequence to put in fasta file
-	ref_path: build fasta in this path
-	sam_path: path to sam files
-	ds_sam_path: path to downsampled sam files
-	sh_output: make sh files to submit to the cluster
-	make referencez
-	make SGE sh files
-	submit sh files to SGE
-	monitor jobs
-	"""
-	## build reference 
-	ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.guru_BOWTIE2_BUILD)
-
-	for index, row in fastq_map.iterrows():
-		sample_name = os.path.basename(row["R1"]).split("_")[0]
-
-		shfile = os.path.join(sh_output, sample_name+"_aln.sh") # for each sample, the alignment is for both R1 and R2 (they are aligning separately)
-		log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.guru_BOWTIE2, shfile)
-
-		sub_cmd = f"qsub -cwd -N {'aln_'+sample_name} -e {log_file} {shfile}"
-		os.system(sub_cmd)
-
-		shfile_ds = os.path.join(sh_output, sample_name+"_aln_ds.sh")
-		log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.guru_BOWTIE2, shfile_ds)
-
-		sub_cmd = f"qsub -cwd -N {'aln_ds_'+sample_name} -e {log_file_ds} {shfile_ds}"
-		os.system(sub_cmd)
-		break
 
 
 def ds_process(fastq_map, n, ds_output):
@@ -260,6 +269,7 @@ def ds_process(fastq_map, n, ds_output):
 		r2_ds = r2_ds + ".gz"
 		ds_r1files.append(r1_ds)
 		ds_r2files.append(r2_ds)
+		#print(row["R1"])
 		#break
 	# gzip everything 
 	os.system(f"gzip {ds_output}/*.fastq")
@@ -273,9 +283,10 @@ if __name__ == "__main__":
 	parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", required= True)
 	parser.add_argument("-o", "--output", help="Output folder", required = True)
 	parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug")
-	parser.add_argument("-p", "--param", help="json paramter file", required = True)
+	parser.add_argument("-p", "--param", help="csv paramter file", required = True)
 	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="BC2")
 	parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
+	parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
 	args = parser.parse_args()
 
 	f = args.fastq
@@ -291,9 +302,17 @@ if __name__ == "__main__":
 	# read json file 
 	project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param)
 
-	# Initialize MutCount main 
-	mc = MutCount(project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, n)
-	# alignment
-	# return job ID list (for checking if the jobs are running still)
-	job_list = mc._align_sh_()
-
+	# check flag
+	# if --skip-alignment, only submit jobs for mutation counts
+	if args.skip_alignment:
+		# Initialize MutCount main 
+		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, n, skip=True)
+		print("skipping alignment ..")
+		print(f"Analyzing sam files in {out}")
+		mc._mut_count()
+	else:
+		# alignment
+		# return job ID list (for checking if the jobs are running still)
+		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, n, skip=False)
+		sam_df = mc._align_sh_()
+		mc._mut_count(sam_df)
