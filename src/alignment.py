@@ -1,4 +1,4 @@
-#!/usr/bin/python3.6
+#!~/lib/Python-3.6.4/python
 
 # THis script is used to align fatq files to reference sequence
 # Input: list of fastq files 

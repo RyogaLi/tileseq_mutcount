@@ -210,6 +210,8 @@ class readSam(object):
 		hgvs_counts.to_csv(self._sample_counts_f, mode="a", index=False)
 
 		output_csv.close()
+
+
 if __name__ == "__main__":
 
 		parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')

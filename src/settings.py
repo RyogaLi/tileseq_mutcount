@@ -1,3 +1,4 @@
+#!~/lib/Python-3.6.4/python
 # input files and parameters
 
 # FIXED PARAMETERS #

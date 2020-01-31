@@ -1,4 +1,4 @@
-#!~/lib/bin/bin/python3.6
+#!~/lib/Python-3.6.4/python
 
 # Helper functions
 # 1. downsample fastq files into n reads

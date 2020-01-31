@@ -74,11 +74,11 @@ class MutCount(object):
 			logging.info(f"Analyzing {self._project} on {self._env}")
 			logging.info(f"Fastq files are read from {self._fastq_path}")
 
-
 		else:
 			self._output = out
 			# create main log file in this output folder
-			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			# or append to the existing log file 
+			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 			logging.info(f"Analyzing {self._project} on {self._env}")
 			logging.info(f"Sam files are read from {self._output}")
 
@@ -247,6 +247,41 @@ class MutCount(object):
 		logging.info("Submitting mutation counts jobs to BC...")
 
 		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
+
+		# get number of jobs running
+		cmd = ["whoami"]
+		process = subprocess.run(cmd, stdout=subprocess.PIPE)
+		userID = process.stdout.decode("utf-8").strip()
+
+		check = ["qstat", "-u", userID]
+		check_process = subprocess.run(check, stdout=subprocess.PIPE)
+		n_jobs = check_process.stdout.decode("utf-8").strip()
+		while n_jobs != '':
+			n = n_jobs.count("\n")
+			logging.info(f"{n-2} jobs running ....")
+			# wait for 10 mins
+			time.sleep(300)
+			check_process = subprocess.run(check, stdout=subprocess.PIPE)
+			n_jobs = check_process.stdout.decode("utf-8").strip()
+
+		# job complete if nothing is running 
+		# go through mutation call files generated and log files without any mutations
+		logging.info("Check mutation counts file ...")
+		mutcount_list = glob.glob(os.path.join(mut_output_dir, "counts_sample*.csv"))
+		logging.info(f"{len(mutcount_list)} mutation counts file generated")
+		for f in mutcount_list:
+			mut_n = 0
+			# double check if each output file has mutations 
+			with open(f, "r") as mut_output:
+				for line in mut_output:
+					# skip header
+					if "c." in line:
+						mut_n += 1
+			if mut_n == 0:
+				logging.error(f"{f} has 0 variants! Check mut log for this sample.")
+			else:
+				logging.info(f"{f} has {mut_n} variants")
+		logging.info("Job complete")
 
 
 def ds_process(fastq_map, n, ds_output):
