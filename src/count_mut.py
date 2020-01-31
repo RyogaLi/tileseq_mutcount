@@ -69,11 +69,11 @@ class readSam(object):
 
 		if "_ds" in sam_r1:
 			#log_f = "sample_"+ str(self._sample_id)+"_ds_mut_count.log"
-			logging.basicConfig(filename=logf, filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			logging.basicConfig(filename=logf, filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}_ds.csv")
 		else:
 			#log_f = "sample_"+ str(self._sample_id)+"_mut_count.log"
-			logging.basicConfig(filename=logf, filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			logging.basicConfig(filename=logf, filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 
 			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}.csv")
 
@@ -191,13 +191,15 @@ class readSam(object):
 
 			# get overlap of mutations in R1 and mutations in R2
 			both_mut = list(set(r1_mut) & set(r2_mut))
+			off = ""
 			if len(both_mut) !=0:
 				both_mut.sort() # sort mutations based on the position
 				# test hgvs
 				hgvs, off= mp_update._get_hgvs(both_mut)
 				if len(hgvs)!=0: # remove the case where mutations are not within the tile range
 					hgvs_output.append(hgvs)
-			off_mut += off
+			if off != "":
+				off_mut += off
 		off_mut = list(set(off_mut))
 		output_csv.write(f"#Mutation positions outside of the tile: {off_mut}\n")
 		output_csv.close()
