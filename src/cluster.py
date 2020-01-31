@@ -81,34 +81,48 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_pa
 
 def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, logging):
 	"""
-	sam_dir: folder contains all the alignment output files
-	output
+	Submit mutation count jobs to BC
+	files_df: dataframe contains full path to all the sam files
+	output_dir: path to save the mutation count output
+	param_json: json parameter file
+	sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
+	log_dir: directory to save the mutation count log file
+	logging: main logging object
 	"""
 	# go through files df and submit jobs for each pair of sam files
 	py_path = os.path.abspath("count_mut.py")
 	for index, row in files_df.iterrows():
 		sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
+		# create log files
+		log_f = os.path.join(log_dir, "sample_"+str(sample_name)+"_mut.log")
+		log_f_ds = os.path.join(log_dir, "sample_"+str(sample_name)+"_ds_mut.log")
+
 		# counting mutations in raw sam output files
 		time = 5
 		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -logdir {log_dir}"
+		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -logf {log_f}"
 		with open(shfile, "w") as sh:
 			sh.write(cmd+"\n")
 		os.system(f"chmod 755 {shfile}")
-		sub_cmd = ["submitjob", str(time), shfile]
+
+		# submit this to the cluster
+		sub_cmd = ["submitjob", str(time), shfile, "2>>", log_f]
 		job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 		ids = job.stdout.decode("utf-8").strip()
-		logging.info(f"{ids}")
+		# log sample name and job id
+		logging.info(f"{sample_name}: {ids}")
 
 		# counting mutations in downsampled sam output files
 		time = 1
 		shfile_ds = os.path.join(sh_output, f"Mut_count_{sample_name}_ds.sh")
-		cmd = f"python {py_path} -r1 {row['r1_sam_ds']} -r2 {row['r2_sam_ds']} -o {output_dir} -p {param_json} -logdir {log_dir}"
+		cmd = f"python {py_path} -r1 {row['r1_sam_ds']} -r2 {row['r2_sam_ds']} -o {output_dir} -p {param_json} -logf {log_f_ds}"
 		with open(shfile_ds, "w") as sh_ds:
 			sh_ds.write(cmd+"\n")
 		os.system(f"chmod 750 {shfile_ds}")
-		sub_cmd_ds = ["submitjob", str(time), shfile_ds]
+
+		sub_cmd_ds = ["submitjob", str(time), shfile_ds, "2>>", log_f]
 		jobs_ds = subprocess.run(sub_cmd_ds, stdout=subprocess.PIPE)
 		id_ds = jobs_ds.stdout.decode("utf-8").strip()
+		# log sample name and job ID
 		logging.info(f"{id_ds}")
 

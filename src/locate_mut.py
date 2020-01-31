@@ -314,10 +314,10 @@ class MutParser(object):
 						mutations.append(hgvs)
 
 			else: # snp
-				mut_change = mut.split("|")
-				tmp_pos = int(mut_change[0])
+				#mut_change = mut.split("|")
+				#tmp_pos = int(mut_change[0])
 				# get cds position from look up table
-				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+				#cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
 				cds_ref = self._cds[cds_pos-1]
 
 				## validate: if the reference base matches the ref in seq_lookup

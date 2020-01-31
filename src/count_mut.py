@@ -23,7 +23,7 @@ import locate_mut
 
 class readSam(object):
 
-	def __init__(self, sam_r1, sam_r2, seq_lookup, tile_map, region_map, samples, output_dir, qual_filter, log_dir, log_level):
+	def __init__(self, sam_r1, sam_r2, seq_lookup, tile_map, region_map, samples, output_dir, qual_filter, logf, log_level):
 		"""
 		sam_R1: read one of the sample
 		sam_R2: read two of the sample
@@ -52,8 +52,8 @@ class readSam(object):
 
 		self._output_counts_dir = output_dir
 
-		# create logging file (time stamped)
-		self._log_dir = log_dir
+		# create logging file
+		#self._log_dir = log_dir
 
 		# sample information
 		self._sample_id = os.path.basename(sam_r1).split("_")[0]
@@ -68,12 +68,12 @@ class readSam(object):
 		self._sample_rep = self._sample_info["Replicate"].values[0]
 
 		if "_ds" in sam_r1:
-			log_f = "sample_"+ str(self._sample_id)+"_ds_mut_count.log"
-			logging.basicConfig(filename=os.path.join(self._log_dir, log_f), filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			#log_f = "sample_"+ str(self._sample_id)+"_ds_mut_count.log"
+			logging.basicConfig(filename=logf, filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}_ds.csv")
 		else:
-			log_f = "sample_"+ str(self._sample_id)+"_mut_count.log"
-			logging.basicConfig(filename=os.path.join(log_dir, log_f), filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+			#log_f = "sample_"+ str(self._sample_id)+"_mut_count.log"
+			logging.basicConfig(filename=logf, filemode="w", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 
 			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}.csv")
 
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 		parser.add_argument("-r2", "--read_2", help="sam file for R2", required=True)
 		parser.add_argument("-qual", "--quality", help="sam file mapQ filter", default=20)
 		parser.add_argument("-o", "--output", help="Output folder", required = True)
-		parser.add_argument("-logdir", "--logdir", help="Directory to save log files", required=True)
+		parser.add_argument("-logf", "--logf", help="Log file for this run", required=True)
 		parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
 		parser.add_argument("-p", "--param", help="Json paramter file", required = True)
 		args = parser.parse_args()
@@ -233,7 +233,7 @@ if __name__ == "__main__":
 		lookup_df = help_functions.build_lookup(seq.cds_start.item(), seq.cds_end.item(), cds_seq)
 
 		# initialize the object
-		MutCounts = readSam(sam_r1, sam_r2, lookup_df, tile_map, region_map, samples, out, qual_filter, args.logdir, args.log_level)
+		MutCounts = readSam(sam_r1, sam_r2, lookup_df, tile_map, region_map, samples, out, qual_filter, args.logf, args.log_level)
 
 		MutCounts._main(seq, cds_seq)
 
