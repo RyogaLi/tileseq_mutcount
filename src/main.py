@@ -6,8 +6,9 @@
 #   - Fastq files (gzipped)
 
 # what does this script do?
-#
-# 1. Read input JSON file, read paramters 
+#	
+# 1. Read input csv file and convert to json (using csv2Json.R (you need to install required packages in R)
+# 1. Read paramters from json file
 # 2. Read input fastq file
 #   2.a. Ramdonly select 30k reads and save a copy of downsampled fastq files 
 
@@ -206,12 +207,20 @@ class MutCount(object):
 		4. Log to main log
 		"""
 		# make dir for mut counts
-		time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-		mut_output_dir = os.path.join(self._output, time + "_mut_call")
+		time_stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+		mut_output_dir = os.path.join(self._output, time_stamp + "_mut_call")
 		os.makedirs(mut_output_dir)
 
 		log_dir = os.path.join(mut_output_dir, "mut_log")
 		os.makedirs(log_dir)
+
+		#log parameters for this run
+		param_logf = os.path.join(mut_output_dir, "param.log")
+		with open(param_logf, "w") as p:
+			p.write("Input parameters for this run ...")
+			p.write(f"Project name:")
+			p.write(f"")
+
 
 		if sam_df.empty: # skip alignment 
 			logging.info(f"Skipping alignment...")
@@ -244,6 +253,7 @@ class MutCount(object):
 
 		if self._env == "BC2":
 			sh_output = os.path.join(self._output, "BC_sh")
+
 		logging.info("Submitting mutation counts jobs to BC...")
 
 		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
@@ -259,7 +269,7 @@ class MutCount(object):
 		while n_jobs != '':
 			n = n_jobs.count("\n")
 			logging.info(f"{n-2} jobs running ....")
-			# wait for 10 mins
+			# wait for 5 mins
 			time.sleep(300)
 			check_process = subprocess.run(check, stdout=subprocess.PIPE)
 			n_jobs = check_process.stdout.decode("utf-8").strip()
@@ -323,6 +333,9 @@ if __name__ == "__main__":
 	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="BC2")
 	parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
 	parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
+	parser.add_argument("--skip_ds", action="store_true", help="skip downsampling of the fastq files")
+	parser.add_argument("-thresh", "--threshold", help="Posterior threshold for filtering mutations")
+
 	args = parser.parse_args()
 
 	f = args.fastq
@@ -334,9 +347,17 @@ if __name__ == "__main__":
 	log_level = args.log_level
 
 	print(f"Log level: {log_level}")
+	print(f"Convert {param} to json format")
+	print("Output json file will be saved in the same dir as input parameter.csv file")
+
+	cds2json = os.path.abspath("csv2json.R")
+	param_json = param.replace(".csv", ".json")
+
+	convert = f"Rscript {cds2json} {param} -o {param_json} -l stdout"
+	os.system(convert)
 
 	# read json file 
-	project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param)
+	project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
 
 	# check flag
 	# if --skip-alignment, only submit jobs for mutation counts

@@ -41,7 +41,7 @@ def downsample(n, r1, r2, output_path):
 	if n > total_records_r1 or n > total_records_r2:
 		os.system("cp "+r1+ " "+output_r1)
 		os.system("cp "+r2+ " "+output_r2)
-		return None
+		return output_r1, output_r2
 	else:
 		if total_records_r1 <= total_records_r2:
 			records_to_keep = set(random.sample(range(total_records_r1 + 1), n))
@@ -79,17 +79,6 @@ def downsample(n, r1, r2, output_path):
 
 	return output_r1, output_r2
 
-def parse_csv(param_file, output_json, log):
-	"""
-	Convert user input cds file into json file
-	Using	csv2json.R
-	param_file
-	output_json
-	log
-	"""
-	pass
-
-
 def parse_json(json_file):
 	"""
 	parse input json file
@@ -98,14 +87,23 @@ def parse_json(json_file):
 	with open(json_file, "r") as jsonf:
 		data = json.load(jsonf)
 		project = data["project"] # project name
-		seq = pd.DataFrame(data["template"], index=[0])
+		seq = pd.DataFrame(data["template"], index=[0]) # sequence 
 		cds_seq = seq.seq[0]
 		cds_seq = cds_seq[int(seq.cds_start)-1: int(seq.cds_end)]
 		# create dictionary to map tile/region # to start,end positions
-		tile_map = pd.DataFrame(data["tiles"])
-		region_map = pd.DataFrame(data["regions"])
+		try:
+			tile_map = pd.DataFrame(data["tiles"])
+		except:
+			tile_map = pd.DataFrame(data["tiles"], index=[0])
 
-		samples = pd.DataFrame(data["samples"])
+		try:
+			region_map = pd.DataFrame(data["regions"])
+		except:
+			region_map = pd.DataFrame(data["regions"], index=[0])
+		try:
+			samples = pd.DataFrame.from_dict(data["samples"])
+		except:
+			samples = pd.DataFrame.from_dict(data["samples"], index=[0])
 
 	return project, seq, cds_seq, tile_map, region_map, samples
 

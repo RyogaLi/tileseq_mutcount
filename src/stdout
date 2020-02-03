@@ -1,0 +1,48 @@
+2020-02-03_13:43:15 FATAL: Error in csvParam2Json(args$infile, outfile, logger) : 
+  Input file must be CSV file!
+ 
+ 
+2020-02-03_13:45:26 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_param_MTHFR.json 
+
+2020-02-03_13:45:26 INFO: Conversion successful!
+
+2020-02-03_14:16:11 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:16:12 INFO: Conversion successful!
+
+2020-02-03_14:18:44 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:18:44 INFO: Conversion successful!
+
+2020-02-03_14:20:01 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:20:01 INFO: Conversion successful!
+
+2020-02-03_14:20:17 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:20:17 INFO: Conversion successful!
+
+2020-02-03_14:22:37 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:22:38 INFO: Conversion successful!
+
+2020-02-03_14:23:37 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:23:38 INFO: Conversion successful!
+
+2020-02-03_14:25:49 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:25:50 INFO: Conversion successful!
+
+2020-02-03_14:39:24 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_14:39:24 INFO: Conversion successful!
+
+2020-02-03_15:02:42 FATAL: Error in csvParam2Json(args$infile, outfile, logger) : 
+  Input file must be CSV file!
+ 
+ 
+2020-02-03_15:03:01 INFO: Writing output to /home/rothlab1/rli/dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-03_15:03:01 INFO: Conversion successful!
+
