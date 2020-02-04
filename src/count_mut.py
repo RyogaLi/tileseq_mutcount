@@ -192,6 +192,17 @@ class readSam(object):
 
 			# get overlap of mutations in R1 and mutations in R2
 			both_mut = list(set(r1_mut) & set(r2_mut))
+			diff = list(set(r1_mut) ^ set(r2_mut))
+			all_mut = r1_mut + r2_mut # merge r1 and r2 mutations
+			# convert list of lists to pandas df
+			mut_df = pd.DataFrame(all_mut, columns=["pos", "ref", "alt"])
+			print(mut_df)
+			# sort the mutations based on positions
+			# 
+			# use the posterior threshold to select mutations
+			# for snps: take mutations that pass the threshold
+			# for ind/del: take 
+
 			off = ""
 			if len(both_mut) !=0:
 				both_mut.sort() # sort mutations based on the position
@@ -200,7 +211,8 @@ class readSam(object):
 				if len(hgvs)!=0: # remove the case where mutations are not within the tile range
 					hgvs_output.append(hgvs)
 			if off != "":
-				off_mut += off
+				off_mut += off # mutations that are outside of the targeted tile
+
 		off_mut = list(set(off_mut))
 		output_csv.write(f"#Mutation positions outside of the tile: {off_mut}\n")
 		output_csv.close()

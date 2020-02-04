@@ -154,7 +154,7 @@ class MutParser(object):
 				# keep the insertion position and inserted lenth in a list
 				ins_pos.append([ins_pos_ref, int(i[0])])
 				# add the insertion to mut_list
-				mut_list.append(str(pos+mapped+deleted)+"|"+ins_base+"|ins")
+				mut_list.append([str(pos+mapped+deleted),ins_base,"ins"])
 		total_len += int(i[0])
 
 		# parse snp and deletion from mdz string
@@ -185,13 +185,13 @@ class MutParser(object):
 
 			if "^" not in base:
 				# this means a single nt change
-				read_pos += match_len 
-				mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos+inserted_pos-deleted_len])
+				read_pos += match_len
+				mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len]])
 				map_pos += len(base)
 				read_pos += 1
 			else: # deletion
 				read_pos += match_len
-				mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
+				mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
 				deleted_len += len(base[1:])
 				read_pos += len(base[1:])
 				map_pos -= len(base[1:])
@@ -239,14 +239,14 @@ class MutParser(object):
 				# read_pos-deleted_len = # of bases mapped since the beginnig of this read - number of bases deleted
 				read_pos += match_len # update read position as we are moving to the right
 				# this means a single nt change
-				mut_list.append(str(pos+read_pos-clip)+"|"+base+"|"+read[read_pos-deleted_len])
+				mut_list.append([str(pos+read_pos-clip), base, read[read_pos-deleted_len]])
 				read_pos += 1 # update read position
 
 			else: # deletion
 				read_pos += match_len# update read position as we are moving to the right
 				# pos+read_pos-clip = read starting point + # of bp mapped since that point - clipped base (because they are not on reference sequence)
 				# base[1:] = bases that were deleted
-				mut_list.append(str(pos+read_pos-clip)+"|"+base[1:]+"|del")
+				mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
 				deleted_len += len(base[1:])
 				read_pos += len(base[1:])
 		return mut_list
