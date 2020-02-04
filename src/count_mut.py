@@ -170,7 +170,8 @@ class readSam(object):
 		merge = pd.merge(r1_df, r2_df, how="left", on="read_name", suffixes=("_r1", "_r2"))
 		merge = merge.dropna()
 		logging.info(f"After merging & filtering R1 sam file and R2 sam file, {merge.shape[0]} read-pairs remained for analysis")
-		output_csv.write(f"#Read-depth (pairs) after merging R1 and R2:{merge.shape[0]}\n")
+		output_csv.write(f"#Final read-depth:{merge.shape[0]}\n")
+		output_csv.write(f"#Comment: Final read-depth = Read pairs that passed the posterior threshold {x} with the same mutations\n")
 
 		# facts['pop2050'] = facts.apply(lambda row: final_pop(row['population'],row['population_growth']),axis=1)
 		mut_reads=0
@@ -222,6 +223,7 @@ if __name__ == "__main__":
 		parser.add_argument("-logf", "--logf", help="Log file for this run", required=True)
 		parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
 		parser.add_argument("-p", "--param", help="Json paramter file", required = True)
+		parser.add_argument("-t", "--thresh", help="posterior probability threshold")
 		args = parser.parse_args()
 
 		sam_r1 = args.read_1
