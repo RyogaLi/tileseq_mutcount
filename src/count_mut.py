@@ -14,12 +14,13 @@ import pysam
 import logging
 import argparse
 import datetime
-
+#from itertools import izip
 from pathlib import Path
 
 # modules in package 
 import help_functions
 import locate_mut
+import posterior
 
 class readSam(object):
 
@@ -155,6 +156,89 @@ class readSam(object):
 		logging.info(f"Number of reads without mutations:{read_nomut}")
 		return trimmed
 
+	def _apply_thresh(self, mut_df):
+		"""
+		mut_df: dataframe contains mutation calls from R1 and R2
+		return a list of mutations that passed user-defined threshold
+		"""
+		# group the mutations by position
+		mut_group = mut_df.groupby("pos")
+		for p in mut_group.groups.keys():
+			n_mut = mut_group.get_group(p).shape[0]
+			muts = mut_group.get_group(p)
+			print(muts)
+			if n_mut == 1:
+				# in this case, only one read has the mutation
+				basecall = muts.alt.tolist()
+				phred = muts.qual.tolist()
+				wt = muts.ref.tolist()[0]
+				print(wt)
+				post_prob = posterior.bayesian_variant_call(basecall, phred, wt, mut_rate=0.0025)
+				print(post_prob)
+
+	def _merged_main():
+		"""
+		Read sam files at the same time, store mutations that passed filter
+		"""
+		total_read_pair = 0 # total pairs 
+		un_map = 0
+		with open(self._r1, "r") as r1_f, open(self._r2, "r") as r2_f:
+			for line_r1, line_r2 in izip(r1_f, r2_f): # this assumes both files have the same line #
+				if line_r1.startswith("@") or line_r2.startswith("@"): # skip header lines
+					continue
+				read_pair += 1
+
+				line_r1 = line_r1.split("\t")
+				line_r2 = line_r2.split("\t")
+
+				mapped_name_r1 = line_r1[2]
+				mapped_name_r2 = line_r2[2]
+				if mapped_name_r1 == "*" or mapped_name_r2 == "*": # if one of the read didn't map to ref
+					un_map +=1
+					continue
+
+				# check if read ID mapped 
+				read_name_r1 = line_r1[0]
+				read_name_r2 = line_r2[0]
+				if read_name_r1 != read_name_r2: # reads are not in pairs
+					logging.warning(f"Read ID did not map: {read_name_r1}, {read_name_r2}")
+
+				# get starting position for r1 and r2
+				pos_start_r1 = line_r1[3]
+				pos_start_r2 = line_r2[3]
+
+
+				#mapQ = int(line[4])
+				#if mapQ < self._qual: # remove reads with mapQ < quality score filter
+				#	low_qual +=1
+				#	continue
+
+				# get CIGAR string
+				CIGAR_r1 = line_r1[5]
+				seq_r1 = line_r1[9]
+				quality_r1 = line_r1[10]
+
+				CIGAR_r2 = line_r2[5]
+				seq_r2 = line_r2[9]
+				quality_r2 = line_r2[10]
+
+				mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
+				mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
+
+				if len(mdz) != 0:
+					mdz = mdz[0].split(":")[-1]
+				else:
+					mdz = ""
+				if (not re.search('[a-zA-Z]', mdz)) and ("I" not in CIGAR):
+					# if MDZ string only contains numbers 
+					# and no insertions shown in CIGAR string
+					# means there is no mutation in this read
+					read_nomut +=1
+					# remove reads that have no mutations in MDZ
+					continue
+
+
+
 	def _main(self, full_seq, cds_seq):
 		"""
 		"""
@@ -171,7 +255,7 @@ class readSam(object):
 		merge = merge.dropna()
 		logging.info(f"After merging & filtering R1 sam file and R2 sam file, {merge.shape[0]} read-pairs remained for analysis")
 		output_csv.write(f"#Final read-depth:{merge.shape[0]}\n")
-		output_csv.write(f"#Comment: Final read-depth = Read pairs that passed the posterior threshold {x} with the same mutations\n")
+		output_csv.write(f"#Comment: Final read-depth = Read pairs that passed the posterior threshold  with the same mutations\n")
 
 		# facts['pop2050'] = facts.apply(lambda row: final_pop(row['population'],row['population_growth']),axis=1)
 		mut_reads=0
@@ -186,23 +270,16 @@ class readSam(object):
 
 			# get mutation from R1
 			r1_mut =  mp_update._parse_mut(mp_update._r1_cigar, mp_update._r1_mdz, mp_update._r1_ref, mp_update._r1_read, mp_update._r1_pos, mp_update._r1_qual)
+			#r1_mut["read"] = "R1"
 
 			# get mutation from R2
 			r2_mut = mp_update._parse_mut(mp_update._r2_cigar, mp_update._r2_mdz, mp_update._r2_ref, mp_update._r2_read, mp_update._r2_pos, mp_update._r2_qual)
-
+			#r2_mut["read"]= "R2"
 			# get overlap of mutations in R1 and mutations in R2
+			#all_mut = pd.concat([r1_mut, r2_mut])
+			# group the mutations by position
+			#exit(0)
 			both_mut = list(set(r1_mut) & set(r2_mut))
-			diff = list(set(r1_mut) ^ set(r2_mut))
-			all_mut = r1_mut + r2_mut # merge r1 and r2 mutations
-			# convert list of lists to pandas df
-			mut_df = pd.DataFrame(all_mut, columns=["pos", "ref", "alt"])
-			print(mut_df)
-			# sort the mutations based on positions
-			# 
-			# use the posterior threshold to select mutations
-			# for snps: take mutations that pass the threshold
-			# for ind/del: take 
-
 			off = ""
 			if len(both_mut) !=0:
 				both_mut.sort() # sort mutations based on the position
@@ -234,7 +311,7 @@ if __name__ == "__main__":
 		parser.add_argument("-o", "--output", help="Output folder", required = True)
 		parser.add_argument("-logf", "--logf", help="Log file for this run", required=True)
 		parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
-		parser.add_argument("-p", "--param", help="Json paramter file", required = True)
+		parser.add_argument("-p", "--param", help="csv paramter file", required = True)
 		parser.add_argument("-t", "--thresh", help="posterior probability threshold")
 		args = parser.parse_args()
 
@@ -245,8 +322,15 @@ if __name__ == "__main__":
 		out = args.output
 		param = args.param
 
+		# conver the csv file to json 
+		# csv2json = os.path.abspath("src/csv2json.R")
+		param_json = param.replace(".csv", ".json")
+
+		#convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
+		#os.system(convert)
+
 		# process the json file 
-		project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param)
+		project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
 		# build lookup table
 		lookup_df = help_functions.build_lookup(seq.cds_start.item(), seq.cds_end.item(), cds_seq)
 

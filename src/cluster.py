@@ -95,7 +95,7 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 		sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
 		# create log files
 		log_f = os.path.join(log_dir, "sample_"+str(sample_name)+"_mut.log")
-		log_f_ds = os.path.join(log_dir, "sample_"+str(sample_name)+"_ds_mut.log")
+		#log_f_ds = os.path.join(log_dir, "sample_"+str(sample_name)+"_ds_mut.log")
 
 		# counting mutations in raw sam output files
 		time = 5
@@ -113,16 +113,16 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 		logging.info(f"{sample_name}: {ids}")
 
 		# counting mutations in downsampled sam output files
-		time = 1
-		shfile_ds = os.path.join(sh_output, f"Mut_count_{sample_name}_ds.sh")
-		cmd = f"python {py_path} -r1 {row['r1_sam_ds']} -r2 {row['r2_sam_ds']} -o {output_dir} -p {param_json} -logf {log_f_ds}"
-		with open(shfile_ds, "w") as sh_ds:
-			sh_ds.write(cmd+"\n")
-		os.system(f"chmod 750 {shfile_ds}")
+		#time = 1
+		#shfile_ds = os.path.join(sh_output, f"Mut_count_{sample_name}_ds.sh")
+		#cmd = f"python {py_path} -r1 {row['r1_sam_ds']} -r2 {row['r2_sam_ds']} -o {output_dir} -p {param_json} -logf {log_f_ds}"
+		#with open(shfile_ds, "w") as sh_ds:
+		#	sh_ds.write(cmd+"\n")
+		#os.system(f"chmod 750 {shfile_ds}")
 
-		sub_cmd_ds = ["submitjob", str(time), shfile_ds, "2>>", log_f]
-		jobs_ds = subprocess.run(sub_cmd_ds, stdout=subprocess.PIPE)
-		id_ds = jobs_ds.stdout.decode("utf-8").strip()
+		#sub_cmd_ds = ["submitjob", str(time), shfile_ds, "2>>", log_f]
+		#jobs_ds = subprocess.run(sub_cmd_ds, stdout=subprocess.PIPE)
+		#id_ds = jobs_ds.stdout.decode("utf-8").strip()
 		# log sample name and job ID
-		logging.info(f"{id_ds}")
+		#logging.info(f"{id_ds}")
 

@@ -113,6 +113,8 @@ class MutCount(object):
 		# check if input fastq files contains all the samples in paramter file
 		if set(sample_names).issubset(fastq_sample_id):
 			logging.info("All samples found")
+			logging.info(f"In total there are {len(list(set(sample_names)))} in the csv file")
+			logging.info(f"In total there are {len(fastq_sample_id)} fastq files")
 		else:
 			logging.error("fastq files do not match input samples.")
 			logging.error("Program terminated due to error")
@@ -221,7 +223,6 @@ class MutCount(object):
 			p.write(f"Project name:")
 			p.write(f"")
 
-
 		if sam_df.empty: # skip alignment 
 			logging.info(f"Skipping alignment...")
 			logging.info(f"Analyzing sam files in {self._output}")
@@ -232,8 +233,8 @@ class MutCount(object):
 			sam_list = os.listdir(sam_output)
 
 			# folder that stores downsampled alignment sam files
-			ds_sam_output = os.path.join(self._output, "ds_sam_files/")
-			ds_sam_list = os.listdir(ds_sam_output)
+			#ds_sam_output = os.path.join(self._output, "ds_sam_files/")
+			#ds_sam_list = os.listdir(ds_sam_output)
 
 			# merge sam files and ds sam files into a df
 			sam_df = []
@@ -243,13 +244,16 @@ class MutCount(object):
 					sam_r1 = os.path.join(sam_output, f)
 					sam_r2 = os.path.join(sam_output, f.replace("_R1_", "_R2_"))
 					# find the file in ds_sam_files
-					sam_ds_r1 = glob.glob(f"{ds_sam_output}/{sample}*_R1_*.sam")[0]
-					sam_ds_r2 = glob.glob(f"{ds_sam_output}/{sample}*_R2_*.sam")[0]
+					#sam_ds_r1 = glob.glob(f"{ds_sam_output}/{sample}*_R1_*.sam")[0]
+					#sam_ds_r2 = glob.glob(f"{ds_sam_output}/{sample}*_R2_*.sam")[0]
 
-					sam_df.append([sam_r1, sam_r2, sam_ds_r1, sam_ds_r2])
+					#sam_df.append([sam_r1, sam_r2, sam_ds_r1, sam_ds_r2])
+					sam_df.append([sam_r1, sam_r2])
+
 			# convert sam_df to dataframe 
 			# col names = r1_sam, r2_sam, r1_sam_ds, r2_sam_ds
-			sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam", "r1_sam_ds", "r2_sam_ds"])
+			#sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam", "r1_sam_ds", "r2_sam_ds"])
+			sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam"])
 
 		if self._env == "BC2":
 			sh_output = os.path.join(self._output, "BC_sh")
@@ -257,7 +261,7 @@ class MutCount(object):
 		logging.info("Submitting mutation counts jobs to BC...")
 
 		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
-
+		print("All jobs submitted")
 		# get number of jobs running
 		cmd = ["whoami"]
 		process = subprocess.run(cmd, stdout=subprocess.PIPE)
@@ -350,10 +354,10 @@ if __name__ == "__main__":
 	print(f"Convert {param} to json format")
 	print("Output json file will be saved in the same dir as input parameter.csv file")
 
-	cds2json = os.path.abspath("csv2json.R")
+	csv2json = os.path.abspath("csv2json.R")
 	param_json = param.replace(".csv", ".json")
 
-	convert = f"Rscript {cds2json} {param} -o {param_json} -l stdout"
+	convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
 	os.system(convert)
 
 	# read json file 
