@@ -98,7 +98,7 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 		#log_f_ds = os.path.join(log_dir, "sample_"+str(sample_name)+"_ds_mut.log")
 
 		# counting mutations in raw sam output files
-		time = 5
+		time = 20
 		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
 		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -logf {log_f}"
 		with open(shfile, "w") as sh:
@@ -106,12 +106,12 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 		os.system(f"chmod 755 {shfile}")
 
 		# submit this to the cluster
-		sub_cmd = ["submitjob", str(time), shfile, "2>>", log_f]
+		sub_cmd = ["submitjob", str(time), "-m", "10", shfile, "2>>", log_f]
 		job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 		ids = job.stdout.decode("utf-8").strip()
 		# log sample name and job id
 		logging.info(f"{sample_name}: {ids}")
-
+		print(f"{sample_name}: {ids}")
 		# counting mutations in downsampled sam output files
 		#time = 1
 		#shfile_ds = os.path.join(sh_output, f"Mut_count_{sample_name}_ds.sh")
