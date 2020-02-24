@@ -82,3 +82,7 @@
 
 2020-02-20_11:15:48 INFO: Conversion successful!
 
+2020-02-24_17:02:53 FATAL: Error in csvParam2Json(args$infile, outfile, logger) : 
+  Input file must be CSV file!
+ 
+ 

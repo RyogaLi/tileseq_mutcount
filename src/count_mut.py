@@ -175,17 +175,22 @@ class readSam(object):
 				post_prob = posterior.bayesian_variant_call(basecall, phred, wt, mut_rate=0.0025)
 				print(post_prob)
 
-	def _merged_main():
+	def _merged_main(self, full_seq, cds_seq):
 		"""
 		Read sam files at the same time, store mutations that passed filter
 		"""
 		read_pair = 0 # total pairs 
 		un_map = 0 # total number of unmapped reads
 		read_nomut = 0 # read pairs that have no mutations
+
+		hgvs_output = [] # save all the hgvs in this pair of sam files
+		off_mut = [] # save all the positions that were mapped but outside of the tile
+		row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
 		with open(self._r1, "r") as r1_f, open(self._r2, "r") as r2_f:
-			for line_r1, line_r2 in izip(r1_f, r2_f): # this assumes both files have the same line #
+			for line_r1, line_r2 in zip(r1_f, r2_f): # this assumes both files have the same line #
 				if line_r1.startswith("@") or line_r2.startswith("@"): # skip header lines
 					continue
+				#print(line_r1, line_r2)
 				read_pair += 1
 
 				line_r1 = line_r1.split("\t")
@@ -206,12 +211,6 @@ class readSam(object):
 				# get starting position for r1 and r2
 				pos_start_r1 = line_r1[3]
 				pos_start_r2 = line_r2[3]
-
-
-				#mapQ = int(line[4])
-				#if mapQ < self._qual: # remove reads with mapQ < quality score filter
-				#	low_qual +=1
-				#	continue
 
 				# get CIGAR string
 				CIGAR_r1 = line_r1[5]
@@ -239,9 +238,53 @@ class readSam(object):
 					# if MDZ string only contains numbers 
 					# and no insertions shown in CIGAR string
 					# means there is no mutation in this read
+					# if both reads have no mutations in them, skip this pair
 					read_nomut +=1
 					# remove reads that have no mutations in MDZ
 					continue
+
+				# make the reads in the format of a dictionary
+				# columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
+
+				#row["mapped_name_r1"] = mapped_name_r1
+				row["pos_start_r1"] = pos_start_r1
+				row["qual_r1"] = quality_r1
+				row["cigar_r1"] = CIGAR_r1
+				row["mdz_r1"] = mdz_r1
+				row["seq_r1"] = seq_r1
+
+				#row["mapped_name_r2"] = mapped_name_r2
+				row["pos_start_r2"] = pos_start_r2
+				row["qual_r2"] = quality_r2
+				row["cigar_r2"] = CIGAR_r2
+				row["mdz_r2"] = mdz_r2
+				row["seq_r2"] = seq_r2
+
+				#print(row)
+				# pass this dictionary to locate mut
+				# mut = locate_mut_main()
+				# add mutation to mut list
+				mut_parser = locate_mut.MutParser(row, full_seq, cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, logging)
+				hgvs, outside_mut= mut_parser._main()
+				if len(hgvs) !=0:
+					hgvs_output.append(hgvs)
+				if outside_mut != []:
+					off_mut += outside_mut
+		off_mut = list(set(off_mut))
+
+		output_csv = open(self._sample_counts_f, "a")
+		output_csv.write(f"#Raw read depth:{read_pair}\n")
+		output_csv.write(f"#Number of read pairs without mutations:{read_nomut}\n#Number of reads did not map to gene:{un_map}\n#Mutation positions outside of the tile {off_mut}\n")
+		output_csv.close()
+		logging.info(f"Raw sequencing depth: {read_pair}")
+		logging.info(f"Number of reads without mutations:{read_nomut}")
+		print(f"{read_nomut}, {read_pair}, {un_map}")
+
+		# convert list to df with one col
+		hgvs_df = pd.DataFrame({"HGVS":hgvs_output})
+		hgvs_counts = hgvs_df.HGVS.value_counts().reset_index()
+		hgvs_counts.columns = ["HGVS", "count"]
+		hgvs_counts.to_csv(self._sample_counts_f, mode="a", index=False)
 
 	def _main(self, full_seq, cds_seq):
 		"""
@@ -311,13 +354,12 @@ if __name__ == "__main__":
 		parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')
 		parser.add_argument("-r1", "--read_1", help="sam file for R1", required=True)
 		parser.add_argument("-r2", "--read_2", help="sam file for R2", required=True)
-		parser.add_argument("-qual", "--quality", help="sam file mapQ filter", default=20)
+		parser.add_argument("-qual", "--quality", help="quality filter using posterior prob", default=0.98)
 		parser.add_argument("-o", "--output", help="Output folder", required = True)
 		parser.add_argument("-logf", "--logf", help="Log file for this run", required=True)
 		parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
 		parser.add_argument("-p", "--param", help="csv paramter file", required = True)
 		parser.add_argument("-t", "--thresh", help="posterior probability threshold")
-		parser.add_argument("--test", action="store_true", help="", default=False)
 
 		args = parser.parse_args()
 
@@ -328,39 +370,20 @@ if __name__ == "__main__":
 		out = args.output
 		param = args.param
 
-		if args.test:
-			print("testing")
-			# conver the csv file to json 
-			# csv2json = os.path.abspath("src/csv2json.R")
-			param_json = param.replace(".csv", ".json")
-			#convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
-			#os.system(convert)
+		# conver the csv file to json 
+		# csv2json = os.path.abspath("src/csv2json.R")
+		param_json = param.replace(".csv", ".json")
+		#convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
+		#os.system(convert)
 
-			# process the json file 
-			project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
-			# build lookup table
-			lookup_df = help_functions.build_lookup(seq.cds_start.item(), seq.cds_end.item(), cds_seq)
+		# process the json file 
+		project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
+		# build lookup table
+		lookup_df = help_functions.build_lookup(seq.cds_start.item(), seq.cds_end.item(), cds_seq)
 
-			# initialize the object
-			MutCounts = readSam(sam_r1, sam_r2, lookup_df, tile_map, region_map, samples, out, qual_filter, args.logf, args.log_level)
+		# initialize the object
+		MutCounts = readSam(sam_r1, sam_r2, lookup_df, tile_map, region_map, samples, out, qual_filter, args.logf, args.log_level)
 
-			MutCounts._merge_main()
+		MutCounts._merged_main(seq, cds_seq)
 
-		else:
-			# conver the csv file to json 
-			# csv2json = os.path.abspath("src/csv2json.R")
-			param_json = param.replace(".csv", ".json")
-
-			#convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
-			#os.system(convert)
-
-			# process the json file 
-			project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
-			# build lookup table
-			lookup_df = help_functions.build_lookup(seq.cds_start.item(), seq.cds_end.item(), cds_seq)
-
-			# initialize the object
-			MutCounts = readSam(sam_r1, sam_r2, lookup_df, tile_map, region_map, samples, out, qual_filter, args.logf, args.log_level)
-
-			MutCounts._main(seq, cds_seq)
 
