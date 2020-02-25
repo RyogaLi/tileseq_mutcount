@@ -40,7 +40,7 @@ import cluster
 
 class MutCount(object):
 
-	def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, env, n, skip=False):
+	def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, env, qual, skip=False):
 		"""
 		Initialize mutation counts
 		Load input json file and parameters for this run
@@ -52,14 +52,17 @@ class MutCount(object):
 		self._fastq_path = fastq_path
 		self._fastq_list = glob.glob(fastq_path+"/*.fastq.gz")
 		self._env = env
-		self._n_reads = n
-
+		self._cutoff = qual
 		# load parameter json file 
 		self._project = project # project name
 
 		# check if output folder exists
 		if not os.path.isdir(output_folder):
 			print(f"Output directory not found: {output_folder}")
+			exit(1)
+
+		if not os.path.isdir(self._fastq_path):
+			print(f"Fastq file path not found: {fastq_path}")
 			exit(1)
 
 		if not skip:
@@ -70,18 +73,78 @@ class MutCount(object):
 			self._output = self._project.replace(" ", "-")
 			self._output = os.path.join(output_folder, self._output+ "_" +time)
 
-			os.makedirs(self._output)
-			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
-			logging.info(f"Analyzing {self._project} on {self._env}")
-			logging.info(f"Fastq files are read from {self._fastq_path}")
+			os.makedirs(self._output) # make directory to save this run 
+			logging.basicConfig(filename=os.path.join(self._output, "main.log"),
+					filemode="w",
+					format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+					datefmt="%m/%d/%Y %I:%M:%S %p",
+					level = log_level.upper())
+			# define a Handler which writes INFO messages or higher to the sys.stderr
+			console = logging.StreamHandler()
+			console.setLevel(logging.INFO)
+			# set a format which is simpler for console use
+			formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
+			# tell the handler to use this format
+			console.setFormatter(formatter)
+			# add the handler to the root logger
+			logging.getLogger('').addHandler(console)
 
-		else:
+			logging.info(f"Analyzing {self._project} on {self._env}")
+			logging.info(f"Output folder: {self._output}")
+			logging.info(f"Fastq files are read from {self._fastq_path}")
+			# create log file to save all the parameters used in this run
+			# this parameter file will be saved in the main output dir 
+			param_f = open(os.path.join(self._output, "param.log"), "a")
+			# log - time for this run (same as the output folder name)
+			param_f.write(f"Run started: {time}\n")
+			param_f.write(f"Run name: {self._project}\n")
+			param_f.write(f"This run is for alignment and mutation counts\n")
+			param_f.write(f"Input parameter file used: {param}\n")
+			param_f.write(f"Input fastq files are read from: {self._fastq_path}\n")
+			param_f.write(f"Posterior probability cutoff for mutation counts: {self._cutoff}\n")
+			# log - how many fastq files as input (how many samples)
+			# log - project name of this run
+			# log - posterior cutoff for this run 
+			# log - 
+			param_f.close()
+
+		else: # only run mutation counts on the aligned samples
 			self._output = out
 			# create main log file in this output folder
 			# or append to the existing log file 
-			logging.basicConfig(filename=os.path.join(self._output, "main.log"), filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
-			logging.info(f"Analyzing {self._project} on {self._env}")
+			logging.basicConfig(filename=os.path.join(self._output, "main.log"),
+					filemode="a",
+					format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+					datefmt="%m/%d/%Y %I:%M:%S %p",
+					level = log_level.upper())
+			# define a Handler which writes INFO messages or higher to the sys.stderr
+			console = logging.StreamHandler()
+			console.setLevel(logging.INFO)
+			# set a format which is simpler for console use
+			formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
+			# tell the handler to use this format
+			console.setFormatter(formatter)
+			# add the handler to the root logger
+			logging.getLogger('').addHandler(console)
+
+			logging.info(f"Analyzing {self._project} on {self._env} -- alignment skipped")
 			logging.info(f"Sam files are read from {self._output}")
+
+			# create log file to save all the parameters used in this run
+			# this parameter file will be saved in the main output dir 
+			param_f = open(os.path.join(self._output, "param.log"), "a")
+			# log - time for this run (same as the output folder name)
+			param_f.write(f"Run started: {datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}\n")
+			param_f.write(f"Run name: {self._project}\n")
+			param_f.write(f"This run is for mutation counts\n")
+			param_f.write(f"Input parameter file used: {param}\n")
+			param_f.write(f"Input sam files are read from: {self._output}\n")
+			param_f.write(f"Posterior probability cutoff for mutation counts: {self._cutoff}\n")
+			# log - how many fastq files as input (how many samples)
+			# log - project name of this run
+			# log - posterior cutoff for this run 
+			# log - 
+			param_f.close()
 
 		self._seq = seq
 		self._cds_seq = cds_seq
@@ -92,6 +155,16 @@ class MutCount(object):
 		self._tile_map = tile_map
 		self._region_map = region_map
 		self._samples = samples
+
+		# create log file to save all the parameters used in this run
+		# this parameter file will be saved in the main output dir 
+		param_f = open(os.path.join(self._output, "param.log"), "w")
+		# log - time for this run (same as the output folder name)
+		param_f.write(f"Run started: {self._}")
+		# log - how many fastq files as input (how many samples)
+		# log - project name of this run
+		# log - posterior cutoff for this run 
+		# log - 
 
 	def _align_sh_(self):
 		"""
@@ -113,12 +186,12 @@ class MutCount(object):
 		# check if input fastq files contains all the samples in paramter file
 		if set(sample_names).issubset(fastq_sample_id):
 			logging.info("All samples found")
-			logging.info(f"In total there are {len(list(set(sample_names)))} in the csv file")
+			logging.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
 			logging.info(f"In total there are {len(fastq_sample_id)} fastq files")
 		else:
 			logging.error("fastq files do not match input samples.")
 			logging.error("Program terminated due to error")
-			exit()
+			exit(1)
 
 		# create mapping for R1 and R2 for each sample
 		# ONLY samples provided in the parameter files will be analyzed
@@ -132,24 +205,13 @@ class MutCount(object):
 		# convert to df
 		fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
 
-		### make folder to store all downsampled fastq files
-		ds_output = os.path.join(self._output, "ds_files")
-		os.system("mkdir "+ds_output)
-		## downsample all the files into dir
-		logging.info(f"Downsampling fastq files to {self._n_reads} reads. ")
-		loading_process = threading.Thread(name = "process", target=ds_process, args = (fastq_map, self._n_reads, ds_output))
-		loading_process.start()
-		help_functions.loadingAnimation(loading_process)
-		loading_process.join()
-		logging.info("Downsampling finished!")
-
 		# make folder to store alignment sam files 
 		sam_output = os.path.join(self._output, "sam_files/")
 		os.system("mkdir "+sam_output)
 
 		# make folder to sotre downsampled alignment sam files
-		ds_sam_output = os.path.join(self._output, "ds_sam_files/")
-		os.system("mkdir "+ds_sam_output)
+		#ds_sam_output = os.path.join(self._output, "ds_sam_files/")
+		#os.system("mkdir "+ds_sam_output)
 
 		# make folder to store ref
 		ref_path = os.path.join(self._output, "ref/")
@@ -162,12 +224,10 @@ class MutCount(object):
 			os.system("mkdir "+sh_output)
 
 			# for each pair of fastq files, submit jobs to run alignment 
-			# submit alignments for both full run and downsampled run 
-			# for the alignment module
 			# it takes the following arguments: R1, R2, ref, Output sam
 			# the output log (bowtie log) would be in the same dir
 			logging.info("Writing sh files for alignment (GURU)")
-			cluster.alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
+			cluster.alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitted to GURU..")
 
 			# wait for alignment to finish and call mutations
@@ -183,13 +243,15 @@ class MutCount(object):
 			os.system("mkdir "+sh_output)
 
 			logging.info("Writing sh files for alignment (BC2)")
-			sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, ds_sam_output, sh_output, logging)
+			sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
 			logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
 			# get number of jobs running
 			check = ["qstat", "-u", userID]
 			check_process = subprocess.run(check, stdout=subprocess.PIPE)
 			n_jobs = check_process.stdout.decode("utf-8").strip()
+			n = n_jobs.count("\n")
+			logging.info(f"{n-2} jobs running ....")
 			while n_jobs != '':
 				n = n_jobs.count("\n")
 				logging.info(f"{n-2} jobs running ....")
@@ -197,7 +259,10 @@ class MutCount(object):
 				time.sleep(300)
 				check_process = subprocess.run(check, stdout=subprocess.PIPE)
 				n_jobs = check_process.stdout.decode("utf-8").strip()
-
+			logging.info(f"All alignment finished")
+			# check how many sam files generated in the sam_files
+			n_sam = len(os.listdir(sam_output))
+			logging.info(f"{n_sam} sam files generated in {sam_output}")
 			return sam_df
 
 	def _mut_count(self, sam_df=pd.DataFrame()):
@@ -232,10 +297,6 @@ class MutCount(object):
 			sam_output = os.path.join(self._output, "sam_files/")
 			sam_list = os.listdir(sam_output)
 
-			# folder that stores downsampled alignment sam files
-			#ds_sam_output = os.path.join(self._output, "ds_sam_files/")
-			#ds_sam_list = os.listdir(ds_sam_output)
-
 			# merge sam files and ds sam files into a df
 			sam_df = []
 			for f in sam_list:
@@ -243,16 +304,9 @@ class MutCount(object):
 				if "_R1_" in f: # take the read one files 
 					sam_r1 = os.path.join(sam_output, f)
 					sam_r2 = os.path.join(sam_output, f.replace("_R1_", "_R2_"))
-					# find the file in ds_sam_files
-					#sam_ds_r1 = glob.glob(f"{ds_sam_output}/{sample}*_R1_*.sam")[0]
-					#sam_ds_r2 = glob.glob(f"{ds_sam_output}/{sample}*_R2_*.sam")[0]
-
-					#sam_df.append([sam_r1, sam_r2, sam_ds_r1, sam_ds_r2])
 					sam_df.append([sam_r1, sam_r2])
 
 			# convert sam_df to dataframe 
-			# col names = r1_sam, r2_sam, r1_sam_ds, r2_sam_ds
-			#sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam", "r1_sam_ds", "r2_sam_ds"])
 			sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam"])
 
 		if self._env == "BC2":
@@ -261,7 +315,7 @@ class MutCount(object):
 		logging.info("Submitting mutation counts jobs to BC...")
 
 		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
-		print("All jobs submitted")
+		logging.info("All jobs submitted")
 		# get number of jobs running
 		cmd = ["whoami"]
 		process = subprocess.run(cmd, stdout=subprocess.PIPE)
@@ -335,10 +389,9 @@ if __name__ == "__main__":
 	parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug")
 	parser.add_argument("-p", "--param", help="csv paramter file", required = True)
 	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="BC2")
-	parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
+	#parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
 	parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
-	parser.add_argument("--skip_ds", action="store_true", help="skip downsampling of the fastq files")
-	parser.add_argument("-thresh", "--threshold", help="Posterior threshold for filtering mutations")
+	parser.add_argument("-qual", "--quality", help="Posterior threshold for filtering mutations", default = 0.99)
 
 	args = parser.parse_args()
 
@@ -346,16 +399,17 @@ if __name__ == "__main__":
 	out = args.output
 	param = args.param
 	env = args.environment
-	n = args.n_reads
+	qual = args.quality
 
 	log_level = args.log_level
 
 	print(f"Log level: {log_level}")
-	print(f"Convert {param} to json format")
-	print("Output json file will be saved in the same dir as input parameter.csv file")
+	print(f"Converting {param} to json format")
+	print("Output json file will be saved in the output dir")
 
 	csv2json = os.path.abspath("csv2json.R")
 	param_json = param.replace(".csv", ".json")
+	param_json = os.path.join(out, param_json)
 
 	convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
 	os.system(convert)
@@ -367,13 +421,14 @@ if __name__ == "__main__":
 	# if --skip-alignment, only submit jobs for mutation counts
 	if args.skip_alignment:
 		# Initialize MutCount main 
-		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, n, skip=True)
+		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=True)
 		print("skipping alignment ..")
 		print(f"Analyzing sam files in {out}")
 		mc._mut_count()
 	else:
+		print("starting alignment")
 		# alignment
 		# return job ID list (for checking if the jobs are running still)
-		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, n, skip=False)
+		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=False)
 		sam_df = mc._align_sh_()
 		mc._mut_count(sam_df)

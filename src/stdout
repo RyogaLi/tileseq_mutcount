@@ -86,3 +86,83 @@
   Input file must be CSV file!
  
  
+2020-02-24_17:38:55 FATAL: Error in csvParam2Json(args$infile, outfile, logger) : 
+  Input file must be CSV file!
+ 
+ 
+2020-02-24_17:39:06 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_param_MTHFR.json 
+
+2020-02-24_17:39:06 INFO: Conversion successful!
+
+2020-02-24_17:40:27 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_param_MTHFR.json 
+
+2020-02-24_17:40:27 INFO: Conversion successful!
+
+2020-02-24_17:43:06 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_param_MTHFR.json 
+
+2020-02-24_17:43:06 INFO: Conversion successful!
+
+2020-02-24_17:44:02 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_param_MTHFR.json 
+
+2020-02-24_17:44:02 INFO: Conversion successful!
+
+2020-02-25_10:47:59 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:47:59 INFO: Conversion successful!
+
+2020-02-25_10:49:59 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:49:59 INFO: Conversion successful!
+
+2020-02-25_10:50:36 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:50:36 INFO: Conversion successful!
+
+2020-02-25_10:52:11 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:52:12 INFO: Conversion successful!
+
+2020-02-25_10:52:41 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:52:42 INFO: Conversion successful!
+
+2020-02-25_10:55:11 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:55:11 INFO: Conversion successful!
+
+2020-02-25_10:56:52 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:56:53 INFO: Conversion successful!
+
+2020-02-25_10:59:22 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_10:59:23 INFO: Conversion successful!
+
+2020-02-25_11:01:13 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:01:14 INFO: Conversion successful!
+
+2020-02-25_11:01:29 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:01:29 INFO: Conversion successful!
+
+2020-02-25_11:02:11 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:02:11 INFO: Conversion successful!
+
+2020-02-25_11:37:30 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:37:30 INFO: Conversion successful!
+
+2020-02-25_11:38:29 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:38:29 INFO: Conversion successful!
+
+2020-02-25_11:39:32 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:39:33 INFO: Conversion successful!
+
+2020-02-25_11:40:35 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-25_11:40:35 INFO: Conversion successful!
+

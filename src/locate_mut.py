@@ -121,9 +121,11 @@ class MutParser(object):
 				r2_qual = self._r2_qual[r2_map_pos[pos]]
 				r1_basecall = self._r1_read[r1_map_pos[pos]]
 				r2_basecall = self._r2_read[r2_map_pos[pos]]
+				if r1_basecall == "N" or r2_basecall == "N": continue
 				wt = row["ref"]
 				pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt)
-				# if two mut are different, it will return a dictionary with two keys and their probs
+				#print(pos_prob)
+				# if two mut are different, it will return a dictionary with two keys and their posterior probabilities
 				# pick the one with higher probability
 				# if it is the wt then do nothing
 				# if not, add this mutation to the final list

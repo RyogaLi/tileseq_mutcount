@@ -67,15 +67,11 @@ class readSam(object):
 		self._sample_tp = self._sample_info["Time point"].values[0]
 		self._sample_rep = self._sample_info["Replicate"].values[0]
 
-		if "_ds" in sam_r1:
-			#log_f = "sample_"+ str(self._sample_id)+"_ds_mut_count.log"
-			logging.basicConfig(filename=logf, filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
-			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}_ds.csv")
-		else:
-			#log_f = "sample_"+ str(self._sample_id)+"_mut_count.log"
-			logging.basicConfig(filename=logf, filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
+		log_f = "sample_{str(self._sample_id)}_mut_count.log"
+		logging.basicConfig(filename=logf, filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p", level = log_level.upper())
 
-			self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}.csv")
+		
+		self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample{self._sample_id}.csv")
 
 		logging.info(f"Counting mutations in sample-{self._sample_id}")
 		logging.info(f"Sam file input R1:{sam_r1}")
@@ -83,7 +79,7 @@ class readSam(object):
 
 		output_csv = open(self._sample_counts_f, "w")
 		# write log information to counts output
-		output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n""")
+		output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n")
 		output_csv.close()
 
 	def _convert_sam(self, input_sam):
