@@ -68,7 +68,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
 	return fastq_map
 
 
-def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, logging):
+def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, logging, qual):
 	"""
 	Submit mutation count jobs to BC
 	files_df: dataframe contains full path to all the sam files
@@ -77,6 +77,7 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 	sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
 	log_dir: directory to save the mutation count log file
 	logging: main logging object
+	qual: quality filter (posterior prob cut off)
 	"""
 	# go through files df and submit jobs for each pair of sam files
 	py_path = os.path.abspath("count_mut.py")
@@ -85,15 +86,15 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, loggin
 		# counting mutations in raw sam output files
 		time = 20
 		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json}"
+		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir}"
 		with open(shfile, "w") as sh:
 			sh.write(cmd+"\n")
 		os.system(f"chmod 755 {shfile}")
-
+		#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
 		# submit this to the cluster
-		sub_cmd = ["submitjob", str(time), "-m", "10", shfile, "2>>", log_f]
+		sub_cmd = ["submitjob", str(time), "-m", "10", shfile]
 		job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 		ids = job.stdout.decode("utf-8").strip()
 		# log sample name and job id
-		logging.info(f"{sample_name}: job id - {ids}")
+		logging.info(f"Sample {sample_name}: job id - {ids}")
 

@@ -16,7 +16,4 @@ bc2_BOWTIE2_BUILD = "/home/rothlab1/rli/lib/bowtie2-2.3.5.1/bowtie2-build "
 bc2_SAMTOOLS = "/home/rothlab1/rli/lib/samtools-1.9/samtools "
 bc2_BCFTOOLS = "/home/rothlab1/rli/lib/bcftools-1.10.2/bcftools "
 
-# Parameters 
-mapping_qual = 20 # this is used to filter reads from sam files
-
 

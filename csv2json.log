@@ -1,0 +1,92 @@
+2020-02-26_13:36:40 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_13:36:41 INFO: Conversion successful!
+
+2020-02-26_13:36:51 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_13:36:51 INFO: Conversion successful!
+
+2020-02-26_13:38:09 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_13:38:09 INFO: Conversion successful!
+
+2020-02-26_13:39:10 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_13:39:10 INFO: Conversion successful!
+
+2020-02-26_15:47:54 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_15:47:54 INFO: Conversion successful!
+
+2020-02-26_15:48:09 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_15:48:09 INFO: Conversion successful!
+
+2020-02-26_15:49:38 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_15:49:39 INFO: Conversion successful!
+
+2020-02-26_15:53:44 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_15:53:45 INFO: Conversion successful!
+
+2020-02-26_17:06:11 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_17:06:11 INFO: Conversion successful!
+
+2020-02-26_17:06:22 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_17:06:22 INFO: Conversion successful!
+
+2020-02-26_17:06:43 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_17:06:43 INFO: Conversion successful!
+
+2020-02-26_19:30:38 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_19:30:38 INFO: Conversion successful!
+
+2020-02-26_19:31:29 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_19:31:29 INFO: Conversion successful!
+
+2020-02-26_19:32:03 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_19:32:04 INFO: Conversion successful!
+
+2020-02-26_19:32:10 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_19:32:10 INFO: Conversion successful!
+
+2020-02-26_21:25:38 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_21:25:38 INFO: Conversion successful!
+
+2020-02-26_21:26:01 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_21:26:01 INFO: Conversion successful!
+
+2020-02-26_21:26:17 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/190506_MTHFR_WT.json 
+
+2020-02-26_21:26:18 INFO: Conversion successful!
+
+2020-02-26_21:27:53 FATAL: Error in validateParameters(output) : Must define at least 4 conditions!
+Calls: csvParam2Json -> validateParameters
+ 
+ 
+2020-02-26_21:28:47 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/CHEK2_200225.json 
+
+2020-02-26_21:28:47 INFO: Conversion successful!
+
+2020-02-26_21:29:17 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/CHEK2_200225.json 
+
+2020-02-26_21:29:17 INFO: Conversion successful!
+
+2020-02-26_21:33:23 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/CHEK2_200225.json 
+
+2020-02-26_21:33:24 INFO: Conversion successful!
+
+2020-02-26_21:45:02 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/test_cbs_170818.json 
+
+2020-02-26_21:45:03 INFO: Conversion successful!
+

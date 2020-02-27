@@ -367,7 +367,6 @@ class MutParser(object):
 		else:
 			joined = ";".join(mutations)
 			mutations = f"c.[{joined}]"
-		#print(mutations)
 		return mutations, outside_mut
 
 def snp_to_hgvs(concec_pos, combined_bases, cds):

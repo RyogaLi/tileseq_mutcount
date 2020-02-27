@@ -54,7 +54,7 @@ class MutCount(object):
 		self._env = env
 		self._cutoff = qual
 		# load parameter json file 
-		self._project = project # project name
+		self._project = project.replace(" ", "_") # project name
 
 		# check if output folder exists
 		if not os.path.isdir(output_folder):
@@ -148,23 +148,10 @@ class MutCount(object):
 
 		self._seq = seq
 		self._cds_seq = cds_seq
-		# ## validation: check if cds region is a multiple of 3
-		# if len(self._cds_seq) % 3 != 0:
-		#		logging.warning("CDS region lenth is not a multiple of 3")
 
 		self._tile_map = tile_map
 		self._region_map = region_map
 		self._samples = samples
-
-		# create log file to save all the parameters used in this run
-		# this parameter file will be saved in the main output dir 
-		param_f = open(os.path.join(self._output, "param.log"), "w")
-		# log - time for this run (same as the output folder name)
-		param_f.write(f"Run started: {self._}")
-		# log - how many fastq files as input (how many samples)
-		# log - project name of this run
-		# log - posterior cutoff for this run 
-		# log - 
 
 	def _align_sh_(self):
 		"""
@@ -239,7 +226,7 @@ class MutCount(object):
 			userID = process.stdout.decode("utf-8").strip()
 
 			# make sh files to submit to BC
-			sh_output = os.path.join(self._output, "BC_sh")
+			sh_output = os.path.join(self._output, "BC_aln_sh")
 			os.system("mkdir "+sh_output)
 
 			logging.info("Writing sh files for alignment (BC2)")
@@ -281,40 +268,36 @@ class MutCount(object):
 		log_dir = os.path.join(mut_output_dir, "mut_log")
 		os.makedirs(log_dir)
 
-		#log parameters for this run
-		param_logf = os.path.join(mut_output_dir, "param.log")
-		with open(param_logf, "w") as p:
-			p.write("Input parameters for this run ...")
-			p.write(f"Project name:")
-			p.write(f"")
-
 		if sam_df.empty: # skip alignment 
 			logging.info(f"Skipping alignment...")
 			logging.info(f"Analyzing sam files in {self._output}")
 			# make sam_df 
-			# get list of sam files in the ouput folder given by user 
-			# folder that stores alignment sam files 
-			sam_output = os.path.join(self._output, "sam_files/")
-			sam_list = os.listdir(sam_output)
-
-			# merge sam files and ds sam files into a df
-			sam_df = []
-			for f in sam_list:
-				sample = os.path.basename(f).split("_")[0]
-				if "_R1_" in f: # take the read one files 
-					sam_r1 = os.path.join(sam_output, f)
-					sam_r2 = os.path.join(sam_output, f.replace("_R1_", "_R2_"))
-					sam_df.append([sam_r1, sam_r2])
+			# sam df is built by reading the input csv file
+			sample_names = self._samples["Sample ID"].tolist()
+			sam_dir = os.path.join(self._output, "sam_files/")
+			sam_list = []
+			for i in sample_names:
+				sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
+				if len(sam_f) < 2:
+					logging.error(f"SAM file for sample {i} not found")
+					exit(1)
+				elif len(sam_f) == 2:
+					for sam in sam_f:
+						if "_R1_" in sam: # for read one
+							sam_r1 = sam
+						else:
+							sam_r2 = sam
+				sam_list.append([sam_r1, sam_r2])
 
 			# convert sam_df to dataframe 
-			sam_df = pd.DataFrame.from_records(sam_df, columns = ["r1_sam", "r2_sam"])
+			sam_df = pd.DataFrame.from_records(sam_list, columns = ["r1_sam", "r2_sam"])
 
 		if self._env == "BC2":
-			sh_output = os.path.join(self._output, "BC_sh")
-
+			sh_output = os.path.join(mut_output_dir, "BC_mut_sh")
+			os.mkdir(sh_output)
 		logging.info("Submitting mutation counts jobs to BC...")
 
-		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging)
+		cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging, self._cutoff)
 		logging.info("All jobs submitted")
 		# get number of jobs running
 		cmd = ["whoami"]
@@ -324,6 +307,8 @@ class MutCount(object):
 		check = ["qstat", "-u", userID]
 		check_process = subprocess.run(check, stdout=subprocess.PIPE)
 		n_jobs = check_process.stdout.decode("utf-8").strip()
+		n = n_jobs.count("\n")
+		logging.info(f"{n-2} jobs running ....")
 		while n_jobs != '':
 			n = n_jobs.count("\n")
 			logging.info(f"{n-2} jobs running ....")
@@ -349,6 +334,11 @@ class MutCount(object):
 				logging.error(f"{f} has 0 variants! Check mut log for this sample.")
 			else:
 				logging.info(f"{f} has {mut_n} variants")
+		all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
+		merged = os.path.join(mut_output_dir, "info.csv")
+		cmd = f"cat {all_tmp} > {merged}"
+		os.system(cmd)
+		#os.system(f"rm {all_tmp}")
 		logging.info("Job complete")
 
 
@@ -399,7 +389,7 @@ if __name__ == "__main__":
 	out = args.output
 	param = args.param
 	env = args.environment
-	qual = args.quality
+	qual = float(args.quality)
 
 	log_level = args.log_level
 
@@ -409,9 +399,9 @@ if __name__ == "__main__":
 
 	csv2json = os.path.abspath("csv2json.R")
 	param_json = param.replace(".csv", ".json")
-	param_json = os.path.join(out, param_json)
+	#param_json = os.path.join(out, param_json)
 
-	convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
+	convert = f"Rscript {csv2json} {param} -o {param_json}"
 	os.system(convert)
 
 	# read json file 
@@ -422,11 +412,8 @@ if __name__ == "__main__":
 	if args.skip_alignment:
 		# Initialize MutCount main 
 		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=True)
-		print("skipping alignment ..")
-		print(f"Analyzing sam files in {out}")
 		mc._mut_count()
 	else:
-		print("starting alignment")
 		# alignment
 		# return job ID list (for checking if the jobs are running still)
 		mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=False)
