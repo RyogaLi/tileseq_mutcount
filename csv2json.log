@@ -90,3 +90,7 @@ Calls: csvParam2Json -> validateParameters
 
 2020-02-26_21:45:03 INFO: Conversion successful!
 
+2020-02-27_15:39:23 INFO: Writing output to /home/rothlab1/rli//dev/tilseq_mutcount/CHEK2_200225.json 
+
+2020-02-27_15:39:30 INFO: Conversion successful!
+
