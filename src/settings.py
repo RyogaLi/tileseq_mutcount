@@ -11,9 +11,7 @@ guru_vcfutils = "/home/rothlab/rli/lib/bcftools-1.4.1/misc/vcfutils.pl "
 
 
 # Programs used (BC2 - DC)
-bc2_BOWTIE2 = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2 "
-bc2_BOWTIE2_BUILD = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2-build "
-bc2_SAMTOOLS = "/home/home7/rothlab/rli/lib/samtools-1.9/samtools "
-bc2_BCFTOOLS = "/home/home7/rothlab/rli/lib/bcftools-1.10.2/bcftools "
+dc_BOWTIE2 = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2 "
+dc_BOWTIE2_BUILD = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2-build "
 
 
