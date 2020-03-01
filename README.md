@@ -107,4 +107,4 @@ From each pair of sam files we count mutations for each sample.
 
 We first filter out reads that did not map to reference or reads that are outside of the tile. Then pass the rest of the reads to `count_mut.py`. Please read the wiki page about how to call mutations using CIGAR string and MD:Z tag.
 
-In order to eliminate sequencing errors. We apply a posterior 
+In order to eliminate sequencing errors. We apply a posterior probability cut-off. The posterior probability of a mutation was calculated using the Phred scores provided in SAM files. 
