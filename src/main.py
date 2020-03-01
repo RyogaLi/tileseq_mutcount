@@ -252,6 +252,7 @@ class MutCount(object):
 			logging.info(f"{n_sam} sam files generated in {sam_output}")
 			return sam_df
 
+
 	def _mut_count(self, sam_df=pd.DataFrame()):
 		"""
 		Count mutations in input sam files
@@ -376,12 +377,12 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='TileSeq mutation counts')
 	parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", required= True)
 	parser.add_argument("-o", "--output", help="Output folder", required = True)
-	parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical.", default = "debug")
+	parser.add_argument("-log", "--log_level", help="set log level: debug, info, warning, error, critical. (default = debug)", default = "debug")
 	parser.add_argument("-p", "--param", help="csv paramter file", required = True)
-	parser.add_argument("-env", "--environment", help= "The cluster used to run this script", default="BC2")
-	#parser.add_argument("-n", "--n_reads", help="Used for downsampling the files. n_reads will remain", default = 30000)
+	parser.add_argument("-env", "--environment", help= "The cluster used to run this script (default = DC)", default="BC2")
 	parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
-	parser.add_argument("-qual", "--quality", help="Posterior threshold for filtering mutations", default = 0.99)
+	parser.add_argument("-qual", "--quality", help="Posterior threshold for filtering mutations (default = 0.99)", default = 0.99)
+    parser.add_argument("-min", "--min_cover", help="Minimal % required to cover the tile (default = 0.4)", default = 0.4)
 
 	args = parser.parse_args()
 
@@ -390,6 +391,7 @@ if __name__ == "__main__":
 	param = args.param
 	env = args.environment
 	qual = float(args.quality)
+    min_cover = args.min_cover
 
 	log_level = args.log_level
 

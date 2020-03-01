@@ -252,7 +252,7 @@ if __name__ == "__main__":
 		parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
 		parser.add_argument("-mutlog", "--log_dir", help="Directory to save all the log files for each sample")
 		parser.add_argument("-p", "--param", help="csv paramter file", required = True)
-		parser.add_argument("-min", "--min_cover", help="Minimum percentage required to be covered by reads", default = 0.7)
+		parser.add_argument("-min", "--min_cover", help="Minimum percentage required to be covered by reads", default = 0.4)
 
 		args = parser.parse_args()
 
