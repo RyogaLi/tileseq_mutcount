@@ -378,7 +378,6 @@ if __name__ == "__main__":
 
     print(f"Log level: {log_level}")
     print(f"Converting {param} to json format")
-    print("Output json file will be saved in the output dir")
 
     csv2json = os.path.abspath("csv2json.R")
     param_json = param.replace(".csv", ".json")

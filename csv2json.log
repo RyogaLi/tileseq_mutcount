@@ -94,3 +94,17 @@ Calls: csvParam2Json -> validateParameters
 
 2020-02-27_15:39:30 INFO: Conversion successful!
 
+2020-03-03_14:30:31 FATAL: Error in csv[[getRow("Assay Type:")]] : 
+  attempt to select less than one element in get1index
+Calls: csvParam2Json
+ 
+ 
+2020-03-03_14:30:48 FATAL: Error in validateParameters(output) : 
+  Conditions not in relationships: wt_nonselect
+Calls: csvParam2Json -> validateParameters
+ 
+ 
+2020-03-03_14:31:33 INFO: Writing output to test.csv 
+
+2020-03-03_14:31:33 INFO: Conversion successful!
+
