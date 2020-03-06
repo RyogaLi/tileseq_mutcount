@@ -363,7 +363,10 @@ if __name__ == "__main__":
     parser.add_argument("-env", "--environment", help= "The cluster used to run this script (default = DC)", default="DC")
     parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
     parser.add_argument("-qual", "--quality", help="Posterior threshold for filtering mutations (default = 0.99)", default = 0.99)
+    
     parser.add_argument("-min", "--min_cover", help="Minimal % required to cover the tile (default = 0.4)", default = 0.6)
+    parser.add_argument("-at", type = int, help="Alignment time (default = 8h)", default = 8)
+    parser.add_argument("-mt", type = int, help="Mutation call time (default = 36h)", default = 36)
 
     args = parser.parse_args()
 
@@ -372,6 +375,7 @@ if __name__ == "__main__":
     param = args.param
     env = args.environment
     qual = float(args.quality)
+
     min_cover = args.min_cover
 
     log_level = args.log_level
@@ -385,9 +389,14 @@ if __name__ == "__main__":
 
     convert = f"Rscript {csv2json} {param} -o {param_json}"
     os.system(convert)
-
-    # read json file 
-    project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
+    
+    # check if json file exist
+    if os.path.isfile(param_json):
+        # read json file 
+        project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
+    else:
+        print("Json file does not exist, check conversion!")
+        exit(1)
 
     # check flag
     # if --skip-alignment, only submit jobs for mutation counts
