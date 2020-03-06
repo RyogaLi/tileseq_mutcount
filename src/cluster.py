@@ -42,7 +42,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
         os.system(sub_cmd)
         #break
 
-def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, logging):
+def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
     """
     """
 
@@ -50,6 +50,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
     ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.bc2_BOWTIE2_BUILD)
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
+		time = at
     for index, row in fastq_map.iterrows(): # go through all the fastq pairs
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
@@ -59,7 +60,6 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        time = 10 # schedule this alignment for 10 hours (this is more than what we need)
         sub_cmd = ["submitjob","-w", str(time), str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         ids = jobs.stdout.decode("utf-8").strip()
@@ -67,7 +67,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
 
     return fastq_map
 
-def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, logging):
+def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
     """
     """
 
@@ -75,6 +75,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
     ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.dc_BOWTIE2_BUILD)
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
+		time = at
     for index, row in fastq_map.iterrows(): # go through all the fastq pairs
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
@@ -84,7 +85,6 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        time = 10 # schedule this alignment for 10 hours (this is more than what we need)
         sub_cmd = ["submitjob","-w", str(time), str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         ids = jobs.stdout.decode("utf-8").strip()
@@ -93,61 +93,65 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
     return fastq_map
 
 
-def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, log_dir, logging, qual):
+def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, min_cover, mt, log_dir, logging, qual):
     """
     Submit mutation count jobs to BC
     files_df: dataframe contains full path to all the sam files
     output_dir: path to save the mutation count output
     param_json: json parameter file
     sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
+		min_cover: minimum % coverage of the tile
+		mt: time needed for this run
     log_dir: directory to save the mutation count log file
     logging: main logging object
     qual: quality filter (posterior prob cut off)
     """
     # go through files df and submit jobs for each pair of sam files
     py_path = os.path.abspath("count_mut.py")
+		time = mt
     for index, row in files_df.iterrows():
         sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
         # counting mutations in raw sam output files
-        time = 30
         shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-        cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir}"
+        cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {in_cover}"
         with open(shfile, "w") as sh:
             sh.write(cmd+"\n")
             os.system(f"chmod 755 {shfile}")
         #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
         # submit this to the cluster
-        sub_cmd = ["submitjob", str(time), "-m", "15", shfile]
+        sub_cmd = ["submitjob", str(time), shfile]
         job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         ids = job.stdout.decode("utf-8").strip()
         # log sample name and job id
         logging.info(f"Sample {sample_name}: job id - {ids}")
 
-def mut_count_sh_dc(files_df, output_dir, param_json, sh_output, log_dir, logging, qual):
+def mut_count_sh_dc(files_df, output_dir, param_json, sh_output, min_cover, mt, log_dir, logging, qual):
     """
     Submit mutation count jobs to BC
     files_df: dataframe contains full path to all the sam files
     output_dir: path to save the mutation count output
     param_json: json parameter file
     sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
+		min_cover: minimum % coverage of the tile
+		mt: time needed for this run
     log_dir: directory to save the mutation count log file
     logging: main logging object
     qual: quality filter (posterior prob cut off)
     """
     # go through files df and submit jobs for each pair of sam files
     py_path = os.path.abspath("count_mut.py")
-    for index, row in files_df.iterrows():
+    time = mt
+		for index, row in files_df.iterrows():
         sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
         # counting mutations in raw sam output files
-        time = 36
         shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-        cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir}"
+        cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
         with open(shfile, "w") as sh:
             sh.write(cmd+"\n")
             os.system(f"chmod 755 {shfile}")
             #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
             # submit this to the cluster
-            sub_cmd = ["submitjob", "-w", str(time), "-m", "15", shfile]
+            sub_cmd = ["submitjob", "-w", str(time), "-m", "2", shfile]
             job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
             ids = job.stdout.decode("utf-8").strip()
             # log sample name and job id

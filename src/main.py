@@ -40,7 +40,7 @@ import cluster
 
 class MutCount(object):
 
-    def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, env, qual, skip=False):
+    def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, min_cover, mt, at, env, qual, skip=False):
 
         """
         Initialize mutation counts
@@ -56,6 +56,9 @@ class MutCount(object):
         self._cutoff = qual
         # load parameter json file 
         self._project = project.replace(" ", "_") # project name
+				self._min_cover = min_cover
+				self._mt = mt
+				self._at = at
         # check if output folder exists
         if not os.path.isdir(output_folder):
             print(f"Output directory not found: {output_folder}")
@@ -227,11 +230,11 @@ class MutCount(object):
 
             if self._env == "BC2":
                 logging.info("Submitting alignment jobs to BC2...")
-                sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
+                sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, self._at, logging)
                 logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
             else:
                 logging.info("Submitting alignment jobs to DC...")
-                sam_df = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
+                sam_df = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, self._at, logging)
                 logging.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
             # get number of jobs running
@@ -251,7 +254,6 @@ class MutCount(object):
             # check how many sam files generated in the sam_files
             n_sam = len(os.listdir(sam_output))
             logging.info(f"{n_sam} sam files generated in {sam_output}")
-            
         return sam_df
 
 
@@ -301,12 +303,12 @@ class MutCount(object):
             if self._env == "BC2":
                 logging.info("Submitting mutation counts jobs to BC2...")
 
-                cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging, self._cutoff)
+                cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
                 logging.info("All jobs submitted")
             else:
                 logging.info("Submitting mutation counts jobs to DC...")
 
-                cluster.mut_count_sh_dc(sam_df, mut_output_dir, self._param, sh_output, log_dir, logging, self._cutoff)
+                cluster.mut_count_sh_dc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
                 logging.info("All jobs submitted")
 
             
@@ -402,11 +404,11 @@ if __name__ == "__main__":
     # if --skip-alignment, only submit jobs for mutation counts
     if args.skip_alignment:
         # Initialize MutCount main 
-        mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=True)
+        mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, args.min_cover, args.mt, args.at, env, qual, skip=True)
         mc._mut_count()
     else:
         # alignment
         # return job ID list (for checking if the jobs are running still)
-        mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, env, qual, skip=False)
+        mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, args._min_cover, args.mt, args.at, env, qual, skip=False)
         sam_df = mc._align_sh_()
         mc._mut_count(sam_df)

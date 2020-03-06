@@ -19,6 +19,7 @@ import re
 import math
 import difflib
 import itertools
+import datetime
 from operator import itemgetter
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -36,10 +37,10 @@ class MutParser(object):
 		cds_seq: coding sequence (includes stop codon)
 		seq: read from json file - seq, cds_start, cds_end 
 		"""
-		self._seq = Seq(full_seq["seq"].item())
+		self._seq = Seq(full_seq["seq"].values.item())
 		self._cds = Seq(cds_seq)
-		self._start_pos = full_seq.cds_start.item() # 1 posisiton
-		self._end_pos = full_seq.cds_end.item()
+		self._start_pos = full_seq.cds_start.values.item() # 1 posisiton
+		self._end_pos = full_seq.cds_end.values.item()
 
 		self._tile_begins = tile_s
 		self._tile_ends = tile_e
@@ -87,7 +88,7 @@ class MutParser(object):
 		"""
 		# assign names to items in the dictionary
 		self._get_seq()
-
+	
 		# parse mutations in R1
 		r1_snp, r1_delins, r1_map_pos = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read, self._r1_pos, self._r1_qual)
 		# parse mutations in R2
@@ -284,7 +285,7 @@ class MutParser(object):
 
 			# get cds position from lookup table
 			try:
-				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.item()
+				cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.values.item()
 			except:
 				continue
 
