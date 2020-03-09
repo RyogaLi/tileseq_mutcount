@@ -8,14 +8,14 @@ def test(file1, file2):
         while chunk1 and chunk2:
             line_f1 = chunk1.popleft()
             if not chunk1:
-                line_f1,*more = (line_f1+file1.read(chunkSize)).split("\n")
+                line_f1,*more = (line_f1+f1.read(chunkSize)).split("\n")
                 chunk1.extend(more)
-                line_f2 = chunk2.popleft()
+						line_f2 = chunk2.popleft()
             if not chunk2:
-                line_f2,*more = (line_f2+file2.read(chunkSize)).split("\n")
+                line_f2,*more = (line_f2+f2.read(chunkSize)).split("\n")
                 chunk2.extend(more)
-            print(line_f1)
-            print(line_f2)
+            print(line_f1[-1])
+            print(line_f2[-1])
 
 if __name__ == "__main__":
 
