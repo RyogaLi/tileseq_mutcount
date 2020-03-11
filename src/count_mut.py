@@ -291,7 +291,7 @@ if __name__ == "__main__":
 		sam_r2 = args.read_2
 		qual_filter = float(args.quality)
 		log_dir = args.log_dir
-		min_map = args.min_cover
+		min_map = float(args.min_cover)
 
 		out = args.output
 		param = args.param
