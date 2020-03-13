@@ -28,6 +28,7 @@ import json
 import logging
 import datetime
 import random
+import shutil
 import sys, time, threading
 
 # pakage modules
@@ -40,117 +41,54 @@ import cluster
 
 class MutCount(object):
 
-	def __init__(self, param, project, seq, cds_seq, tile_map, region_map, samples, fastq_path, output_folder, log_level, min_cover, mt, at, env, qual, skip=False):
-
+	def __init__(self, param, fastq_path, output_folder, log_level, min_cover, mt, at, env, qual, logging):
 		"""
 		Initialize mutation counts
 		Load input json file and parameters for this run
 		project, seq, cds_seq, tile_map, region_map, samples
 		output_folder: user input folder for storing time stamped output folders
 		From param.json load all the parameters, save them into df
+		param: JSON file
+		fastq_path: path to fastq files
+		output_folder: Path to output dir
+		log_level: log level for the logging object
+		min_cover: min cover percentage
+		mt: mutation call time
+		at: alignement time
+		env: which cluster
+		qual: posterior quality cutoff
+		main_log: logging object
 		"""
 		self._param = param # parameter json file
 		self._fastq_path = fastq_path
 		self._fastq_list = glob.glob(fastq_path+"/*.fastq.gz")
 		self._env = env
 		self._cutoff = qual
-		# load parameter json file 
-		self._project = project.replace(" ", "_") # project name
 		self._min_cover = min_cover
 		self._mt = mt
 		self._at = at
-		# check if output folder exists
-		if not os.path.isdir(output_folder):
-				print(f"Output directory not found: {output_folder}")
-				exit(1)
+		self._output = output_folder
+		# parse parameter json file
+		self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param)
+		self._project = project.replace(" ", "_") # project name
+		self._log = logging.getLogger("main.log")
 
-		if not os.path.isdir(self._fastq_path):
-				print(f"Fastq file path not found: {fastq_path}")
-				exit(1)
-
-		if not skip:
-				# get time stamp for this object
-				time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-				# make time stamped output folder for this project
-				self._output = self._project.replace(" ", "-")
-				self._output = os.path.join(output_folder, self._output+ "_" +time)
-
-				os.makedirs(self._output) # make directory to save this run 
-				logging.basicConfig(filename=os.path.join(self._output, "main.log"),
-								filemode="w",
-								format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-								datefmt="%m/%d/%Y %I:%M:%S %p",
-								level = log_level.upper())
-				# define a Handler which writes INFO messages or higher to the sys.stderr
-				console = logging.StreamHandler()
-				console.setLevel(logging.INFO)
-				# set a format which is simpler for console use
-				formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
-				# tell the handler to use this format
-				console.setFormatter(formatter)
-				# add the handler to the root logger
-				logging.getLogger('').addHandler(console)
-
-				logging.info(f"Analyzing {self._project} on {self._env}")
-				logging.info(f"Output folder: {self._output}")
-				logging.info(f"Fastq files are read from {self._fastq_path}")
-				# create log file to save all the parameters used in this run
-				# this parameter file will be saved in the main output dir 
-				param_f = open(os.path.join(self._output, "param.log"), "a")
-				# log - time for this run (same as the output folder name)
-				param_f.write(f"Run started: {time}\n")
-				param_f.write(f"Run name: {self._project}\n")
-				param_f.write(f"This run is for alignment and mutation counts\n")
-				param_f.write(f"Input parameter file used: {param}\n")
-				param_f.write(f"Input fastq files are read from: {self._fastq_path}\n")
-				param_f.write(f"Posterior probability cutoff for mutation counts: {self._cutoff}\n")
-				param_f.close()
-
-		else: # only run mutation counts on the aligned samples
-				self._output = out
-				# create main log file in this output folder
-				# or append to the existing log file 
-				logging.basicConfig(filename=os.path.join(self._output, "main.log"),
-								filemode="a",
-								format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-								datefmt="%m/%d/%Y %I:%M:%S %p",
-								level = log_level.upper())
-				# define a Handler which writes INFO messages or higher to the sys.stderr
-				console = logging.StreamHandler()
-				console.setLevel(logging.INFO)
-				# set a format which is simpler for console use
-				formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
-				# tell the handler to use this format
-				console.setFormatter(formatter)
-				# add the handler to the root logger
-				logging.getLogger('').addHandler(console)
-
-				logging.info(f"Analyzing {self._project} on {self._env} -- alignment skipped")
-				logging.info(f"Sam files are read from {self._output}")
-
-				# create log file to save all the parameters used in this run
-				# this parameter file will be saved in the main output dir 
-				param_f = open(os.path.join(self._output, "param.log"), "a")
-				# log - time for this run (same as the output folder name)
-				param_f.write(f"Run started: {datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}\n")
-				param_f.write(f"Run name: {self._project}\n")
-				param_f.write(f"This run is for mutation counts\n")
-				param_f.write(f"Input parameter file used: {param}\n")
-				param_f.write(f"Input sam files are read from: {self._output}\n")
-				param_f.write(f"Posterior probability cutoff for mutation counts: {self._cutoff}\n")
-				# log - how many fastq files as input (how many samples)
-				# log - project name of this run
-				# log - posterior cutoff for this run 
-				# log - 
-				param_f.close()
-
-		self._seq = seq
-		self._cds_seq = cds_seq
-
-		self._tile_map = tile_map
-		self._region_map = region_map
-		self._samples = samples
+	def _init_skip(self, skip, r1=None, r2=None):
+		"""
+		if skip == T: skip alignment
+			make suboutput dir with time stamp
+		else: not skip alignment
+			make main output dir with time stamp
+		"""
+		if skip: # only run mutation counts on the aligned samples
+				if r1 and r2:
+					self._r1 = r1
+					self._r2 = r2
+					self._log.info("A pair of SAM files are provided:")
+					self._log.info(f"SAM R1: {r1}")
+					self._log.info(f"SAM R2: {r2}")
+				else:
+					self._log.info(f"Sam files are read from {self._output}")
 
 	def _align_sh_(self):
 		"""
@@ -171,12 +109,12 @@ class MutCount(object):
 		## validation
 		# check if input fastq files contains all the samples in paramter file
 		if set(sample_names).issubset(fastq_sample_id):
-				logging.info("All samples found")
-				logging.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
-				logging.info(f"In total there are {len(fastq_sample_id)} fastq files")
+				self._log.info("All samples found")
+				self._log.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
+				self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
 		else:
-				logging.error("fastq files do not match input samples.")
-				logging.error("Program terminated due to error")
+				self._log.error("fastq files do not match input samples.")
+				self._log.error("Program terminated due to error")
 				exit(1)
 
 		# create mapping for R1 and R2 for each sample
@@ -194,10 +132,6 @@ class MutCount(object):
 		# make folder to store alignment sam files 
 		sam_output = os.path.join(self._output, "sam_files/")
 		os.system("mkdir "+sam_output)
-
-		# make folder to sotre downsampled alignment sam files
-		#ds_sam_output = os.path.join(self._output, "ds_sam_files/")
-		#os.system("mkdir "+ds_sam_output)
 
 		# make folder to store ref
 		ref_path = os.path.join(self._output, "ref/")
@@ -229,13 +163,21 @@ class MutCount(object):
 				os.system("mkdir "+sh_output)
 
 				if self._env == "BC2" or self._env == "BC":
-						logging.info("Submitting alignment jobs to BC2...")
-						sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, self._at, logging)
-						logging.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
+						# make sh files to submit to BC
+						sh_output = os.path.join(self._output, "BC_aln_sh")
+						os.system("mkdir "+sh_output)
+
+						self._log.info("Submitting alignment jobs to BC/BC2...")
+						sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+						self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 				else:
-						logging.info("Submitting alignment jobs to DC...")
-						sam_df = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, self._at, logging)
-						logging.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
+						# make sh files to submit to DC
+						sh_output = os.path.join(self._output, "DC_aln_sh")
+						os.system("mkdir "+sh_output)
+
+						self._log.info("Submitting alignment jobs to DC...")
+						sam_df = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+						self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
 				# get number of jobs running
 				check = ["qstat", "-u", userID]
@@ -344,10 +286,10 @@ class MutCount(object):
 										# skip header
 										if "c." in line:
 												mut_n += 1
-										if mut_n == 0:
-												logging.error(f"{f} has 0 variants! Check mut log for this sample.")
-										else:
-												logging.info(f"{f} has {mut_n} variants")
+						if mut_n == 0:
+								logging.error(f"{f} has 0 variants! Check mut log for this sample.")
+						else:
+								logging.info(f"{f} has {mut_n} variants")
 				all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
 				merged = os.path.join(mut_output_dir, "info.csv")
 				cmd = f"cat {all_tmp} > {merged}"
@@ -355,6 +297,140 @@ class MutCount(object):
 				#os.system(f"rm {all_tmp}")
 				logging.info("Job complete")
 
+	def _main(self):
+		"""
+		"""
+		# submit jobs for alignment if self._align is true
+		# obtain a list of running job id and check if the job finished 
+		# if all the jobs submitted are finished, proceed to mutation counting
+		# otherwise wait for 30min
+		# return is sam_df
+
+
+		# submit jobs for mutation counting 
+		# 
+
+def main(f, out, param, env, qual, min_cover, log_level, r1sam, r2sam, mt, at, run_name):
+	"""
+	Main for fastq2counts
+
+	"""
+	# get time stamp for this object
+	time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+	# check if output dir exists
+	if not os.path.isdir(out):
+			print(f"Output directory not found: {output_folder}")
+			exit(1)
+
+	if not os.path.isdir(f):
+			print(f"Fastq file path not found: {fastq_path}")
+			exit(1)
+
+	# try convert csv to json in the same dir as the csv file
+	# convert csv file to json
+	#param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+	if param.endswith(".csv"):
+			param_json = param.replace(".csv", ".json")
+			convert = f"Rscript {settings.CSV2JSON} {param} -o {param_json} --srOverride"
+			os.system(convert)
+			# check if json file exist
+			if not os.path.isfile(param_json):
+					print("Json file does not exist, check conversion!")
+					exit(1)
+	elif param.endswith(".json"):
+			param_json = param
+	else:
+			print("Please provide valid paramter file format (csv or json)")
+			exit(1)
+
+	if not os.path.isfile(param_json):
+			print("Json file does not exist, check conversion!")
+			exit(1)
+	# get basename for the param file
+	param_base = os.path.basename(param_json)
+	output_dir = ""
+	if skip_alignment:
+			# if we want to skip the alignment part
+			# CASE 1: user provided a json file and R1sam + R2sam
+			if r1sam and r2sam:
+					# analyze one pair of r1 and r2 file
+					if not r1sam.endswith(".sam") or not r2sam.endswith(".sam"):
+							print("Please provide SAM files")
+							exit(1)
+					# load json file 
+					param_path = os.path.join(out, param_base)
+					if not os.path.isfile(param_path):
+							param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+					#project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param)
+					# set up logging
+					main_log = log(output_dir, log_level.upper(), "main")
+					mc = mutcount(param_path, f, out, log_level, min_cover, mt, at, env, qual, main_log)
+					mc._init_skip(skip=True, r1=r1sam, r2=r2sam)
+
+			else:
+					# user provided a csv file and path to sam files
+					# for each pair of sam file we would submit one job to the cluster for mutation counting
+					# make time stamped output folder for this project
+					output_dir = os.path.join(out, run_name+ "_" +time+"_mut_count")
+					os.makedirs(output_dir)
+					# load json file 
+					param_path = os.path.join(output_dir, param_base)
+					if not os.path.isfile(param_path):
+							param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+					mc = mutcount(param_json, f, output_dir, log_level, min_cover, mt, at, env, qual, main_log)
+					mc._init_skip(skip=True)
+					main_log = log(output_dir, log_level.upper(), "main")
+
+	else:
+			# alignment
+			# make time stamped output folder for this project
+			output_dir = os.path.join(output_folder, run_name+ "_" +time)
+			os.makedirs(output_dir) # make directory to save this run 
+			param_path = os.path.join(out, param_base)
+			if not os.path.isfile(param_path):
+					param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+			main_log = log(output_dir, log_level.upper(), "main")
+			mc = mutcount(param_json, f, output_dir, log_level, min_cover, mt, at, env, qual, main_log)
+			mc._init_skip(skip=False)
+
+
+	if output_dir != "":
+			# this parameter file will be saved in the main output dir 
+			param_f = open(os.path.join(output_dir, "param.log"), "a")
+			# log - time for this run (same as the output folder name)
+			param_f.write(f"Run started: {time}\n")
+			param_f.write(f"Run name: {run_name}\n")
+			param_f.write(f"This run was on the cluster: {enc}\n")
+			param_f.write(f"Input parameter file used: {param}\n")
+			param_f.write(f"Posterior probability cutoff for mutation counts: {qual}\n")
+			param_f.write(f"Min_ cover percentage: {min_cover}\n")
+			param_f.close()
+
+	# start the run 
+	mc._main()
+
+def log(output_dir, log_level.upper(), log_name):
+	"""
+	Make a logging object which writes to the main.log in output_dir
+	"""
+	# init main log
+	logging.basicConfig(filename=os.path.join(output_dir, "main.log"),
+					filemode="a",
+					format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+					datefmt="%m/%d/%Y %I:%M:%S %p",
+					level = log_level)
+	# define a Handler which writes INFO messages or higher to the sys.stderr
+	console = logging.StreamHandler()
+	console.setLevel(logging.log_level)
+	# set a format which is simpler for console use
+	formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
+	# tell the handler to use this format
+	console.setFormatter(formatter)
+	# add the handler to the root logger
+	logging.getLogger('').addHandler(console)
+
+	return logging
 
 if __name__ == "__main__":
 
@@ -366,51 +442,28 @@ if __name__ == "__main__":
 		parser.add_argument("-env", "--environment", help= "The cluster used to run this script (default = DC)", default="DC")
 		parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
 		parser.add_argument("-qual", "--quality", help="Posterior threshold for filtering mutations (default = 0.99)", default = 0.99)
-
+		parser.add_argument("-name", help="Name for this run", required = True)
 		parser.add_argument("-min", "--min_cover", help="Minimal % required to cover the tile (default = 0.4)", default = 0.6)
 		parser.add_argument("-at", type = int, help="Alignment time (default = 8h)", default = 8)
 		parser.add_argument("-mt", type = int, help="Mutation call time (default = 36h)", default = 36)
 
+		parser.add_argument("-r1", help="r1 SAM file")
+		parser.add_argument("-r2", help="r2 SAM file")
+
 		args = parser.parse_args()
 
-		f = args.fastq
-		out = args.output
-		param = args.param
-		env = args.environment
-		qual = float(args.quality)
-
-		min_cover = float(args.min_cover)
-
-		log_level = args.log_level
-
-		print(f"Log level: {log_level}")
-		print(f"Converting {param} to json format")
-
-		csv2json = os.path.abspath("csv2json.R")
-		param_json = param.replace(".csv", ".json")
-		#param_json = os.path.join(out, param_json)
-
-		convert = f"Rscript {settings.CSV2JSON} {param} -o {param_json}"
-		print(convert)
-		os.system(convert)
-
-		# check if json file exist
-		if os.path.isfile(param_json):
-				# read json file 
-				project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
-		else:
-				print("Json file does not exist, check conversion!")
-				exit(1)
-
-		# check flag
-		# if --skip-alignment, only submit jobs for mutation counts
-		if args.skip_alignment:
-				# Initialize MutCount main 
-				mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, min_cover, args.mt, args.at, env, qual, skip=True)
-				mc._mut_count()
-		else:
-				# alignment
-				# return job ID list (for checking if the jobs are running still)
-				mc = MutCount(param, project, seq, cds_seq, tile_map, region_map, samples, f, out, log_level, min_cover, args.mt, args.at, env, qual, skip=False)
-				sam_df = mc._align_sh_()
-				mc._mut_count(sam_df)
+		# convert all the args to variables
+		f = args.fastq # path to fastq files
+		out = args.output # path to ouptut dir
+		param = args.param # path to parameter.csv
+		env = args.environment # environment settings (DC, BC, BC2)
+		qual = float(args.quality) # posterior quality cutoff
+		min_cover = float(args.min_cover) # min coverage
+		log_level = args.log_level # log level defaultl
+		r1sam = args.r1 # sam file r1
+		r2sam = args.r2 # sam file r2
+		mt = args.mt # mutation count time required 
+		at = args.at # alignment time required
+		name = args.name
+		print(" **** NOTE: Before you run this pipeline, please check settings.py to update program paths **** ")
+		main(f, out, param, env, qual, min_cover, log_level, r1sam, r2sam, mt, at, name)

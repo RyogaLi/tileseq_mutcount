@@ -251,7 +251,7 @@ class readSam(object):
 		off_mut.sort()
 		join_off = "-".join([str(i) for i in off_mut])
 		f = open(tmp_f, "w")
-		f.write(f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read}\n")
+		f.write(f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read/read_pair}\n")
 		f.close()
 
 		output_csv = open(self._sample_counts_f, "a")
@@ -272,6 +272,10 @@ class readSam(object):
 		hgvs_df.columns = ["HGVS", "count"]
 		hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
+
+def main(sam_r1, sam_r2, seq, seq_lookup, tile_map, region_map, samples, output_dir, qual_filter, min_map, log_level, log_dir):
+
+	pass
 
 if __name__ == "__main__":
 
