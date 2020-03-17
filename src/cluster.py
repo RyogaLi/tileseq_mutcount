@@ -4,7 +4,9 @@
 # This script is called by main.py
 import pandas as pd
 import os
+import re
 import subprocess
+import time
 
 # other modules
 import alignment
@@ -44,6 +46,9 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
 
 def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
 	"""
+	submit jobs to BC/BC2
+	return a df with columns: [R1, R2, r1_sam, r2_sam]
+	return a list of job id that we just submited
 	"""
 
 	# build reference
@@ -51,6 +56,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
 	# store sam paths
 	fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
 	time = at
+	all_job_id = []
 	for index, row in fastq_map.iterrows(): # go through all the fastq pairs
 		sample_name = os.path.basename(row["R1"]).split("_")[0]
 
@@ -62,20 +68,26 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
 		sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
 		sub_cmd = ["submitjob", str(time), "-c", "4", str(shfile), "2>", sam_log_f]
 		jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-		ids = jobs.stdout.decode("utf-8").strip()
-		logging.info(f"{sample_name}: job id - {ids}")
 
-	return fastq_map
+		job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
+		all_job_id.append(job_id)
+		logging.info(f"{sample_name}: job id - {job_id}")
+
+	return fastq_map, all_job_id
 
 def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
 	"""
-		"""
+	submit jobs to BC/BC2
+	return a df with columns: [R1, R2, r1_sam, r2_sam]
+	return a list of job id that we just submited
+	"""
 
 	# build reference
 	ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.dc_BOWTIE2_BUILD)
 	# store sam paths
 	fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
 	time = at
+	all_job_id = []
 	for index, row in fastq_map.iterrows(): # go through all the fastq pairs
 		sample_name = os.path.basename(row["R1"]).split("_")[0]
 
@@ -87,13 +99,14 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
 		sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
 		sub_cmd = ["submitjob","-w", str(time),"-c", "4", str(shfile), "2>", sam_log_f]
 		jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-		ids = jobs.stdout.decode("utf-8").strip()
+		job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
+		all_job_id.append(job_id)
 		logging.info(f"Sample {sample_name}: job id - {ids}")
 
-	return fastq_map
+	return fastq_map, all_job_id
 
 
-def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, min_cover, mt, log_dir, logging, qual):
+def mut_count_sh_bc(sample_name, cmd, mt, logger):
 	"""
 	Submit mutation count jobs to BC
 	files_df: dataframe contains full path to all the sam files
@@ -107,23 +120,20 @@ def mut_count_sh_bc(files_df, output_dir, param_json, sh_output, min_cover, mt, 
 	qual: quality filter (posterior prob cut off)
 	"""
 	# go through files df and submit jobs for each pair of sam files
-	py_path = os.path.abspath("count_mut.py")
-	time = mt
-	for index, row in files_df.iterrows():
-			sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
-			# counting mutations in raw sam output files
-			shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-			cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
-			with open(shfile, "w") as sh:
-					sh.write(cmd+"\n")
-					os.system(f"chmod 755 {shfile}")
-			#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
-			# submit this to the cluster
-			sub_cmd = ["submitjob", str(time), "-c", "8", "-m", "4", shfile]
-			job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-			ids = job.stdout.decode("utf-8").strip()
-			# log sample name and job id
-			logging.info(f"Sample {sample_name}: job id - {ids}")
+	# counting mutations in raw sam output files
+	shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
+	#cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
+	with open(shfile, "w") as sh:
+		sh.write(cmd+"\n")
+		os.system(f"chmod 755 {shfile}")
+	#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
+	# submit this to the cluster
+	sub_cmd = ["submitjob", str(mt), "-c", "8", "-m", "4", shfile]
+	job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+	job_id = job.stdout.decode("utf-8").strip()
+	# log sample name and job id
+	logging.info(f"Sample {sample_name}: job id - {job_id}")
+	return job_id
 
 def mut_count_sh_dc(files_df, output_dir, param_json, sh_output, min_cover, mt, log_dir, logging, qual):
 	"""
@@ -142,18 +152,83 @@ def mut_count_sh_dc(files_df, output_dir, param_json, sh_output, min_cover, mt, 
 	py_path = os.path.abspath("count_mut.py")
 	time = mt
 	for index, row in files_df.iterrows():
-			sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
-			# counting mutations in raw sam output files
-			shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-			cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
-			with open(shfile, "w") as sh:
-					sh.write(cmd+"\n")
-					os.system(f"chmod 755 {shfile}")
-					#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
-					# submit this to the cluster
-					sub_cmd = ["submitjob", "-w", str(time),"-c", "8", "-m", "4", shfile]
-					job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-					ids = job.stdout.decode("utf-8").strip()
-					# log sample name and job id
-					logging.info(f"Sample {sample_name}: job id - {ids}")
+		sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
+		# counting mutations in raw sam output files
+		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
+		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
+		with open(shfile, "w") as sh:
+			sh.write(cmd+"\n")
+			os.system(f"chmod 755 {shfile}")
+		#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
+		# submit this to the cluster
+		sub_cmd = ["submitjob", "-w", str(time),"-c", "8", "-m", "4", shfile]
+		job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+		ids = job.stdout.decode("utf-8").strip()
+		# log sample name and job id
+		logging.info(f"Sample {sample_name}: job id - {ids}")
 
+
+def parse_jobs(job_list, logger):
+	"""
+	return true if all the jobs in job list finished
+	else wait for 10 mins and return how man jobs are running
+	job_list: list of job ids
+	logger: logging object
+	"""
+	qstat_cmd = ["qstat"] + job_list
+	job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	qstat_out = job.stdout.decode("utf-8")
+	qstat_err = job.stderr.decode("utf-8")
+
+	f_id = []
+	updated_list = []
+	while True:
+		if qstat_err != "":
+			# jobs might be finished and no longer in queue
+			# extract job id from std err
+			err = qstat_err.split("\n")[:-1]
+			id_regex = re.compile(r"(\d+).bc")
+			f_id = [] # finished jobs
+			for i in err:
+				match = id_regex.search(i)
+				job_id = match.group(1)
+				f_id.append(job_id)
+			err_id = set(f_id)
+			updated_list = [x for x in job_list if x not in err_id]
+
+		if qstat_out != "":
+			qstat_out = qstat_out.split("\n")[:-1]
+			id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
+			completed = []
+			running = []
+			queued = []
+			for line in qstat_out:
+				if ("---" in line) or ("Job ID" in line): continue
+				match = id_regex.search(line)
+				job_id = match.group(1)
+				job_s = match.group(2)
+				if job_s == "E" or job_s == "C":
+					completed.append(job_id)
+				elif job_s == "R":
+					running.append(job_id)
+				elif job_s == "Q":
+					queued.append(job_id)
+		logger.info(f"{len(queued)} jobs queued")
+		logger.info(f"{len(running)} jobs running")
+		final_list = list(set(updated_list+running+queued))
+		if final_list == []:
+			return True
+		else:
+			# check in 10min
+			time.sleep(600)
+			job_list = final_list
+			qstat_cmd = ["qstat"] + job_list
+			job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+			qstat_out = job.stdout.decode("utf-8")
+			qstat_err = job.stderr.decode("utf-8")
+
+		#break
+if __name__ == "__main__":
+	# test job list 
+	job_list = ["291879", "29171333", "29171340", "29171466"]
+	parse_jobs(job_list)

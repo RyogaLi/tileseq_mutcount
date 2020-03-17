@@ -25,7 +25,7 @@ import posterior
 
 class readSam(object):
 
-	def __init__(self, sam_r1, sam_r2, seq, seq_lookup, tile_map, region_map, samples, output_dir, qual_filter, min_map, log_level, log_dir):
+	def __init__(self, sam_r1, sam_r2, param, ouptut_dir, logger):
 		"""
 		sam_R1: read one of the sample
 		sam_R2: read two of the sample
@@ -46,12 +46,10 @@ class readSam(object):
 		"""
 		self._r1 = sam_r1
 		self._r2 = sam_r2
-
 		self._seq_lookup = seq_lookup
-
-		self._tile_map = tile_map
-		self._region_map = region_map
-
+		
+		self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_function.parse_json(param)
+		
 		self._qual = qual_filter
 
 		self._output_counts_dir = output_dir

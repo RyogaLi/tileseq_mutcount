@@ -59,6 +59,8 @@ class MutCount(object):
 		qual: posterior quality cutoff
 		main_log: logging object
 		"""
+		self._main_path = os.path.abspath(__file__)# path to this python file
+
 		self._param = param # parameter json file
 		self._fastq_path = fastq_path
 		self._fastq_list = glob.glob(fastq_path+"/*.fastq.gz")
@@ -81,14 +83,20 @@ class MutCount(object):
 			make main output dir with time stamp
 		"""
 		if skip: # only run mutation counts on the aligned samples
-				if r1 and r2:
-					self._r1 = r1
-					self._r2 = r2
-					self._log.info("A pair of SAM files are provided:")
-					self._log.info(f"SAM R1: {r1}")
-					self._log.info(f"SAM R2: {r2}")
-				else:
-					self._log.info(f"Sam files are read from {self._output}")
+			self._skip = True
+			if r1 and r2:
+				self._r1 = r1
+				self._r2 = r2
+				#self._log.info("A pair of SAM files are provided:")
+				self._log.info(f"SAM R1: {r1}")
+				self._log.info(f"SAM R2: {r2}")
+			else:
+				self._r1 = ""
+				self._r2 = ""
+				self._log.info(f"Sam files are read from {self._output}")
+		else:
+			self._skip = False
+
 
 	def _align_sh_(self):
 		"""
@@ -109,22 +117,22 @@ class MutCount(object):
 		## validation
 		# check if input fastq files contains all the samples in paramter file
 		if set(sample_names).issubset(fastq_sample_id):
-				self._log.info("All samples found")
-				self._log.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
-				self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
+			self._log.info("All samples found")
+			self._log.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
+			self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
 		else:
-				self._log.error("fastq files do not match input samples.")
-				self._log.error("Program terminated due to error")
-				exit(1)
+			self._log.error("fastq files do not match input samples.")
+			self._log.error("Program terminated due to error")
+			exit(1)
 
-		# create mapping for R1 and R2 for each sample
+		# create mappving for R1 and R2 for each sample
 		# ONLY samples provided in the parameter files will be analyzed
 		fastq_map = []
 		for r1 in self._fastq_list:
-				ID = os.path.basename(r1).split("_")[0]
-				if ("_R1_" in r1) and (ID in sample_names):
-						r2 = r1.replace("_R1_", "_R2_")
-						fastq_map.append([r1,r2])
+			ID = os.path.basename(r1).split("_")[0]
+			if ("_R1_" in r1) and (ID in sample_names):
+					r2 = r1.replace("_R1_", "_R2_")
+					fastq_map.append([r1,r2])
 
 		# convert to df
 		fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
@@ -139,68 +147,55 @@ class MutCount(object):
 
 		# GURU
 		if self._env == "GURU":
-				# make sh files to submit to GURU
-				sh_output = os.path.join(self._output, "GURU_sh")
-				os.system("mkdir "+sh_output)
+			# make sh files to submit to GURU
+			sh_output = os.path.join(self._output, "GURU_sh")
+			os.system("mkdir "+sh_output)
 
-				# for each pair of fastq files, submit jobs to run alignment 
-				# it takes the following arguments: R1, R2, ref, Output sam
-				# the output log (bowtie log) would be in the same dir
-				logging.info("Writing sh files for alignment (GURU)")
-				cluster.alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
-				logging.info("Alignment jobs are submitted to GURU..")
+			# for each pair of fastq files, submit jobs to run alignment 
+			# it takes the following arguments: R1, R2, ref, Output sam
+			# the output log (bowtie log) would be in the same dir
+			logging.info("Writing sh files for alignment (GURU)")
+			cluster.alignment_sh_guru(fastq_map, self._project, self._seq.seq.item(), ref_path, sam_output, sh_output, logging)
+			logging.info("Alignment jobs are submitted to GURU..")
 
-				# wait for alignment to finish and call mutations
+			# wait for alignment to finish and call mutations
 
 		elif self._env == "BC2" or self._env == "DC" or self._env == "BC":
-				# get current user name 
-				cmd = ["whoami"]
-				process = subprocess.run(cmd, stdout=subprocess.PIPE)
-				userID = process.stdout.decode("utf-8").strip()
+			# get current user name 
+			cmd = ["whoami"]
+			process = subprocess.run(cmd, stdout=subprocess.PIPE)
+			userID = process.stdout.decode("utf-8").strip()
 
+			# make sh files to submit to BC
+			sh_output = os.path.join(self._output, "BC_aln_sh")
+			os.system("mkdir "+sh_output)
+
+			if self._env == "BC2" or self._env == "BC":
 				# make sh files to submit to BC
 				sh_output = os.path.join(self._output, "BC_aln_sh")
 				os.system("mkdir "+sh_output)
 
-				if self._env == "BC2" or self._env == "BC":
-						# make sh files to submit to BC
-						sh_output = os.path.join(self._output, "BC_aln_sh")
-						os.system("mkdir "+sh_output)
+				self._log.info("Submitting alignment jobs to BC/BC2...")
+				sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+				self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
+			else:
+				# make sh files to submit to DC
+				sh_output = os.path.join(self._output, "DC_aln_sh")
+				os.system("mkdir "+sh_output)
 
-						self._log.info("Submitting alignment jobs to BC/BC2...")
-						sam_df = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
-						self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
-				else:
-						# make sh files to submit to DC
-						sh_output = os.path.join(self._output, "DC_aln_sh")
-						os.system("mkdir "+sh_output)
+				self._log.info("Submitting alignment jobs to DC...")
+				sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+				self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
-						self._log.info("Submitting alignment jobs to DC...")
-						sam_df = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
-						self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
+			self._log.info(f"Total jobs running: {len(job_list)}")
+			finished = cluster.parse_jobs(job_list, logger) # track list of jobs 
 
-				# get number of jobs running
-				check = ["qstat", "-u", userID]
-				check_process = subprocess.run(check, stdout=subprocess.PIPE)
-				n_jobs = check_process.stdout.decode("utf-8").strip()
-				n = n_jobs.count("\n")
-				logging.info(f"{n-2} jobs running ....")
-				while n_jobs != '':
-						n = n_jobs.count("\n")
-						logging.info(f"{n-2} jobs running ....")
-						# wait for 10 mins
-						time.sleep(300)
-						check_process = subprocess.run(check, stdout=subprocess.PIPE)
-						n_jobs = check_process.stdout.decode("utf-8").strip()
-				logging.info(f"All alignment finished")
-				# check how many sam files generated in the sam_files
-				n_sam = len(os.listdir(sam_output))
-				logging.info(f"{n_sam} sam files generated in {sam_output}")
+			if finished:
+				self._log.info(f"Alignment jobs are finished!")
 
 		return sam_df
 
-
-	def _mut_count(self, sam_df=pd.DataFrame()):
+	def _mut_count(self):
 		"""
 		Count mutations in input sam files
 		1. Log path to sam files and downsampled sam files
@@ -217,28 +212,31 @@ class MutCount(object):
 		os.makedirs(log_dir)
 
 		if sam_df.empty: # skip alignment 
-				logging.info(f"Skipping alignment...")
-				logging.info(f"Analyzing sam files in {self._output}")
-				# make sam_df 
-				# sam df is built by reading the input csv file
-				sample_names = self._samples["Sample ID"].tolist()
-				sam_dir = os.path.join(self._output, "sam_files/")
-				sam_list = []
-				for i in sample_names:
-						sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
-						if len(sam_f) < 2:
-								logging.error(f"SAM file for sample {i} not found")
-								exit(1)
-						elif len(sam_f) == 2:
-								for sam in sam_f:
-										if "_R1_" in sam: # for read one
-												sam_r1 = sam
-										else:
-												sam_r2 = sam
-						sam_list.append([sam_r1, sam_r2])
+			if self._r1 != "" and self._r2 != "":
+				# submit mutation count job for this one pair of r1 and r2 file
+				job_list = cluster.mut_count_sh_bc()
+			#logging.info(f"Skipping alignment...")
+			#logging.info(f"Analyzing sam files in {self._output}")
+			# make sam_df 
+			# sam df is built by reading the input csv file
+			sample_names = self._samples["Sample ID"].tolist()
+			sam_dir = os.path.join(self._output, "sam_files/")
+			sam_list = []
+			for i in sample_names:
+				sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
+				if len(sam_f) < 2:
+						logging.error(f"SAM file for sample {i} not found")
+						exit(1)
+				elif len(sam_f) == 2:
+						for sam in sam_f:
+								if "_R1_" in sam: # for read one
+										sam_r1 = sam
+								else:
+										sam_r2 = sam
+					sam_list.append([sam_r1, sam_r2])
 
-				# convert sam_df to dataframe 
-				sam_df = pd.DataFrame.from_records(sam_list, columns = ["r1_sam", "r2_sam"])
+			# convert sam_df to dataframe 
+			sam_df = pd.DataFrame.from_records(sam_list, columns = ["r1_sam", "r2_sam"])
 
 		if self._env == "BC2" or self._env == "DC" or self._env == "BC":
 				sh_output = os.path.join(mut_output_dir, "BC_mut_sh")
@@ -256,7 +254,7 @@ class MutCount(object):
 
 
 				# get number of jobs running
-				cmd = ["whoami"]
+				cmd = ["whodami"]
 				process = subprocess.run(cmd, stdout=subprocess.PIPE)
 				userID = process.stdout.decode("utf-8").strip()
 
@@ -300,20 +298,51 @@ class MutCount(object):
 	def _main(self):
 		"""
 		"""
-		# submit jobs for alignment if self._align is true
-		# obtain a list of running job id and check if the job finished 
-		# if all the jobs submitted are finished, proceed to mutation counting
-		# otherwise wait for 30min
-		# return is sam_df
+		sam_df = []
+		if self._skip == False: # submit jobs for alignment 
+			sam_df, job_list = self._align_sh()
+		else:
+			# submit jobs for mutation counting 
+			if self._r1 == "" and self._r2 == "":
+				# make directory
+				## make dir for mut counts
+				time_stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+				mut_output_dir = os.path.join(self._output, time_stamp + "_mut_call")
+				os.makedirs(mut_output_dir)
 
+				log_dir = os.path.join(mut_output_dir, "mut_log")
+				os.makedirs(log_dir)
+				# if user did not provide r1 and r2 SAM file
+				# get r1 and r2 sam files from output dir provided by user
+				sample_names = self._samples["Sample ID"].tolist()
+				sam_dir = os.path.join(self._output, "sam_files/")
+				sam_list = []
+				for i in sample_names:
+					sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
+					if len(sam_f) < 2:
+						logging.error(f"SAM file for sample {i} not found")
+						exit(1)
+					elif len(sam_f) == 2:
+						for sam in sam_f:
+							if "_R1_" in sam: # for read one
+								self._r1 = sam
+							else:
+								self._r2 = sam
 
-		# submit jobs for mutation counting 
-		# 
+					# submit job with main.py -r1 and -r2
+					# run main.py with -r1 and -r2
+					cmd = f"python {self._main_path} -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param}"
+					job_id = cluster.mut_count_bc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
+			else:
+				# call functions in count_mut.py
+				logger = logging.getLogger("mut_count")
+				mut_counts = count_mut.readSam(self._r1, self._r2, self._param, output_dir, logger)
+				mut_counts._merged_main()
 
 def main(f, out, param, env, qual, min_cover, log_level, r1sam, r2sam, mt, at, run_name):
 	"""
 	Main for fastq2counts
-
+	Validate user inputs
 	"""
 	# get time stamp for this object
 	time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -458,7 +487,7 @@ if __name__ == "__main__":
 		param = args.param # path to parameter.csv
 		env = args.environment # environment settings (DC, BC, BC2)
 		qual = float(args.quality) # posterior quality cutoff
-		min_cover = float(args.min_cover) # min coverage
+		min_cover = float(ais.min_cover) # min coverage
 		log_level = args.log_level # log level defaultl
 		r1sam = args.r1 # sam file r1
 		r2sam = args.r2 # sam file r2
