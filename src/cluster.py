@@ -27,7 +27,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
 	make SGE sh files
 	submit sh files to SGE
 	"""
-	## build reference 
+	## build reference
 	ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.guru_BOWTIE2_BUILD)
 
 	for index, row in fastq_map.iterrows():
@@ -109,63 +109,41 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
 def mut_count_sh_bc(sample_name, cmd, mt, logger):
 	"""
 	Submit mutation count jobs to BC
-	files_df: dataframe contains full path to all the sam files
-	output_dir: path to save the mutation count output
-	param_json: json parameter file
-	sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
-	min_cover: minimum % coverage of the tile
-	mt: time needed for this run
-	log_dir: directory to save the mutation count log file
-	logging: main logging object
-	qual: quality filter (posterior prob cut off)
+
 	"""
 	# go through files df and submit jobs for each pair of sam files
 	# counting mutations in raw sam output files
 	shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-	#cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
+	with open(shfile, "w") as sh:
+		sh.write(cmd+"\n")
+		os.system(f"chmod 755 {shfile}")
+	# submit this to the cluster
+	sub_cmd = ["submitjob", str(mt), "-c", "8", "-m", "4", shfile]
+	job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+	job_id = job.stdout.decode("utf-8").strip().split(".")[0]
+	# log sample name and job id
+	logging.info(f"Sample {sample_name}: job id - {job_id}")
+	return job_id
+
+def mut_count_sh_dc(sample_name, cmd, mt, logger):
+	"""
+	Submit mutation count jobs to DC
+
+	"""
+	# go through files df and submit jobs for each pair of sam files
+	# counting mutations in raw sam output files
+	shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
 	with open(shfile, "w") as sh:
 		sh.write(cmd+"\n")
 		os.system(f"chmod 755 {shfile}")
 	#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
 	# submit this to the cluster
-	sub_cmd = ["submitjob", str(mt), "-c", "8", "-m", "4", shfile]
+	sub_cmd = ["submitjob", "-w", str(mt), "-c", "8", "-m", "4", shfile]
 	job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 	job_id = job.stdout.decode("utf-8").strip()
 	# log sample name and job id
 	logging.info(f"Sample {sample_name}: job id - {job_id}")
 	return job_id
-
-def mut_count_sh_dc(files_df, output_dir, param_json, sh_output, min_cover, mt, log_dir, logging, qual):
-	"""
-	Submit mutation count jobs to BC
-	files_df: dataframe contains full path to all the sam files
-	output_dir: path to save the mutation count output
-	param_json: json parameter file
-	sh_output: path to save sh files (you can find all the executable bash scripts for all the samples)
-	min_cover: minimum % coverage of the tile
-	mt: time needed for this run
-	log_dir: directory to save the mutation count log file
-	logging: main logging object
-	qual: quality filter (posterior prob cut off)
-	"""
-	# go through files df and submit jobs for each pair of sam files
-	py_path = os.path.abspath("count_mut.py")
-	time = mt
-	for index, row in files_df.iterrows():
-		sample_name = os.path.basename(row["r1_sam"]).split("_")[0]
-		# counting mutations in raw sam output files
-		shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
-		cmd = f"python {py_path} -r1 {row['r1_sam']} -r2 {row['r2_sam']} -o {output_dir} -p {param_json} -qual {qual} -mutlog {log_dir} -min {min_cover}"
-		with open(shfile, "w") as sh:
-			sh.write(cmd+"\n")
-			os.system(f"chmod 755 {shfile}")
-		#sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
-		# submit this to the cluster
-		sub_cmd = ["submitjob", "-w", str(time),"-c", "8", "-m", "4", shfile]
-		job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-		ids = job.stdout.decode("utf-8").strip()
-		# log sample name and job id
-		logging.info(f"Sample {sample_name}: job id - {ids}")
 
 
 def parse_jobs(job_list, logger):
@@ -229,6 +207,6 @@ def parse_jobs(job_list, logger):
 
 		#break
 if __name__ == "__main__":
-	# test job list 
+	# test job list
 	job_list = ["291879", "29171333", "29171340", "29171466"]
 	parse_jobs(job_list)

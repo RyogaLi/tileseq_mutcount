@@ -1,7 +1,7 @@
 #~/lib/Python-3.6.4/python
 
 ## Read sam file (R1 and R2)
-# count mutations in sam files 
+# count mutations in sam files
 # output mutation counts
 
 import pandas as pd
@@ -18,7 +18,7 @@ import datetime
 from pathlib import Path
 from collections import deque
 
-# modules in package 
+# modules in package
 import help_functions
 import locate_mut
 import posterior
@@ -47,9 +47,9 @@ class readSam(object):
 		self._r1 = sam_r1
 		self._r2 = sam_r2
 		self._seq_lookup = seq_lookup
-		
+
 		self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_function.parse_json(param)
-		
+
 		self._qual = qual_filter
 
 		self._output_counts_dir = output_dir
@@ -107,7 +107,7 @@ class readSam(object):
 		"""
 		Read sam files at the same time, store mutations that passed filter
 		"""
-		read_pair = 0 # total pairs 
+		read_pair = 0 # total pairs
 		un_map = 0 # total number of unmapped reads
 		read_nomut = 0 # read pairs that have no mutations
 
@@ -154,7 +154,7 @@ class readSam(object):
 					un_map +=1
 					continue
 
-				# check if read ID mapped 
+				# check if read ID mapped
 				read_name_r1 = line_r1[0]
 				read_name_r2 = line_r2[0]
 
@@ -162,11 +162,11 @@ class readSam(object):
 				pos_start_r1 = line_r1[3]
 				pos_start_r2 = line_r2[3]
 				# record reads that are not mapped to this tile
-				# this is defined as if the read covers at least min_map percent of the tile 
+				# this is defined as if the read covers at least min_map percent of the tile
 				# the default min_map is 70%
 				# we also assume that the read len is ALWAYS 150
 				r1_end = int(pos_start_r1) + 150
-				# r1_end must cover from start of the tile to 70% of the tile 
+				# r1_end must cover from start of the tile to 70% of the tile
 				if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
 						off_read += 1
 						continue
@@ -196,7 +196,7 @@ class readSam(object):
 						mdz_r2 = ""
 
 				if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and ((not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
-						# if MDZ string only contains numbers 
+						# if MDZ string only contains numbers
 						# and no insertions shown in CIGAR string
 						# means there is no mutation in this read
 						# if both reads have no mutations in them, skip this pair
@@ -298,13 +298,13 @@ if __name__ == "__main__":
 		out = args.output
 		param = args.param
 
-		# conver the csv file to json 
+		# conver the csv file to json
 		# csv2json = os.path.abspath("src/csv2json.R")
 		param_json = param.replace(".csv", ".json")
 		#convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
 		#os.system(convert)
 
-		# process the json file 
+		# process the json file
 		project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
 		# build lookup table
 		lookup_df = help_functions.build_lookup(seq.cds_start.values.item(), seq.cds_end.values.item(), cds_seq)
@@ -313,5 +313,3 @@ if __name__ == "__main__":
 		MutCounts = readSam(sam_r1, sam_r2, seq, lookup_df, tile_map, region_map, samples, out, qual_filter, min_map, args.log_level, log_dir)
 
 		MutCounts._merged_main(seq, cds_seq)
-
-
