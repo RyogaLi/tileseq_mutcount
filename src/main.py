@@ -469,7 +469,7 @@ def log(output_dir, log_level):
                     level = log_level)
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
-    console.setLevel(logging.log_level)
+    console.setLevel(log_level)
     # set a format which is simpler for console use
     formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
     # tell the handler to use this format
