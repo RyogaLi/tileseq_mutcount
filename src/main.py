@@ -281,8 +281,7 @@ class fastq2counts(object):
         """
         sam_df = []
         if self._skip == False: # submit jobs for alignment
-            sam_df, job_list = self._align_sh()
-
+            sam_df, job_list = self._align_sh_()
         else:
             # submit jobs for mutation counting
             # if user did not provide r1 and r2 SAM file
