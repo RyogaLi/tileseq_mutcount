@@ -421,6 +421,7 @@ def main(args):
             os.makedirs(updated_out)
             # load json file
             param_path = os.path.join(updated_out, param_base)
+            print(param_path)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
             main_log = log(updated_out, args.log_level)
