@@ -163,7 +163,7 @@ class fastq2counts(object):
 				self._log.info("Submitting alignment jobs to BC/BC2...")
 				sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
 				self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
-			else if self._env == "DC":
+			elif self._env == "DC":
 				# make sh files to submit to DC
 				sh_output = os.path.join(self._output, "DC_aln_sh")
 				os.system("mkdir "+sh_output)
@@ -285,7 +285,7 @@ class fastq2counts(object):
 		sam_df = []
 		if self._skip == False: # submit jobs for alignment
 			sam_df, job_list = self._align_sh()
-			
+
 		else:
 			# submit jobs for mutation counting
 			# if user did not provide r1 and r2 SAM file
@@ -326,7 +326,7 @@ class fastq2counts(object):
 					if self._env == "BC2" or self._env == "BC":
 						logging.info("Submitting mutation counts jobs to BC2...")
 						job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
-					else if self._env == "DC"
+					elif self._env == "DC"
 						logging.info("Submitting mutation counts jobs to DC...")
 						job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
 					job_list.append(job_id)
