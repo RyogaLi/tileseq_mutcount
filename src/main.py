@@ -407,7 +407,7 @@ def main(args):
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_json, args.output, follow_symlinks=True)
             # set up loggingthis creates main.log in the mut_count output dir
-            main_log = log(args.output, args.log)
+            main_log = log(args.output, args.log_level)
 
             # initialize mutcount object
             mc = fastq2counts(param_path, args.output, main_log, args)
@@ -423,7 +423,7 @@ def main(args):
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
-            main_log = log(updated_out, args.log)
+            main_log = log(updated_out, args.log_level)
             # initialize mutcount object
             mc = fastq2counts(param_path, updated_out, main_log, args)
             mc._init_skip(skip=True)
@@ -435,7 +435,7 @@ def main(args):
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
             param_path = shutil.copy(args.param, updated_out, follow_symlinks=True)
-        main_log = log(updated_out, args.log)
+        main_log = log(updated_out, args.log_level)
 
         # initialize mutcount object
         mc = fastq2counts(param_path, updated_out, main_log, args)
