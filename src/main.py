@@ -462,10 +462,11 @@ def main(args):
 	# start the run
 	mc._main()
 
-def log(output_dir, log_level.upper()):
+def log(output_dir, log_level):
 	"""
 	Make a logging object which writes to the main.log in output_dir
 	"""
+	log_level = log_level.upper()
 	# init main log
 	logging.basicConfig(filename=os.path.join(output_dir, "main.log"),
 					filemode="a",
