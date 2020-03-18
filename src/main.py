@@ -127,7 +127,7 @@ class fastq2counts(object):
         os.system("mkdir "+ ref_path)
 
         # GURU
-        if args.env == "GURU":
+        if args.environment == "GURU":
             # make sh files to submit to GURU
             sh_output = os.path.join(self._output, "GURU_sh")
             os.system("mkdir "+sh_output)
@@ -141,17 +141,17 @@ class fastq2counts(object):
 
             # wait for alignment to finish and call mutations
 
-        elif args.env == "BC2" or args.env == "DC" or args.env == "BC":
+        elif args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
             # make sh files to submit to BC
             sh_output = os.path.join(self._output, "BC_aln_sh")
             os.system("mkdir "+sh_output)
 
-            if self._env == "BC2" or self._env == "BC":
+            if args.environment == "BC2" or args.environment == "BC":
                 # make sh files to submit to BC
                 self._log.info("Submitting alignment jobs to BC/BC2...")
                 sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
-            elif self._env == "DC":
+            elif args.environment == "DC":
                 # make sh files to submit to DC
                 sh_output = os.path.join(self._output, "DC_aln_sh")
                 os.system("mkdir "+sh_output)
