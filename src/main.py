@@ -39,40 +39,28 @@ import count_mut
 import cluster
 
 
-class MutCount(object):
+class fastq2counts(object):
 
-	def __init__(self, param, fastq_path, output_folder, log_level, min_cover, mt, at, env, qual, logging):
+	def __init__(self, param_path, output_dir, main_log, args):
 		"""
 		Initialize mutation counts
-		Load input json file and parameters for this run
-		project, seq, cds_seq, tile_map, region_map, samples
-		output_folder: user input folder for storing time stamped output folders
-		From param.json load all the parameters, save them into df
-		param: JSON file
-		fastq_path: path to fastq files
-		output_folder: Path to output dir
-		log_level: log level for the logging object
-		min_cover: min cover percentage
-		mt: mutation call time
-		at: alignement time
-		env: which cluster
-		qual: posterior quality cutoff
+		param_path: Full path to param.json file
+		output_dir: Directory to save all the output files
 		main_log: logging object
+		args: user inpu arguments
 		"""
-		self._main_path = os.path.abspath(__file__)# path to this python file
-		self._logging = logging
-		self._param = param # parameter json file
-		self._fastq_path = fastq_path
-		self._fastq_list = glob.glob(fastq_path+"/*.fastq.gz")
-		self._env = env
-		self._cutoff = qual
-		self._min_cover = min_cover
-		self._mt = mt
-		self._at = at
-		self._output = output_folder
+		self._main_path = os.path.abspath(__file__) # path to this python file
+		self._logging = main_log
+		self._param_json = param_path # parameter json file
+		self._args = args # user input arguments
+
+		self._fastq_list = glob.glob(args.fastq+"/*.fastq.gz")
+		self._output = output_dir
+
 		# parse parameter json file
-		self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param)
+		self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param_path)
 		self._project = project.replace(" ", "_") # project name
+		# make main log
 		self._log = self._logging.getLogger("main.log")
 
 	def _init_skip(self, skip, r1=None, r2=None):
@@ -84,10 +72,9 @@ class MutCount(object):
 		"""
 		if skip: # only run mutation counts on the aligned samples
 			self._skip = True
-			if r1 and r2:
-				self._r1 = r1
-				self._r2 = r2
-				#self._log.info("A pair of SAM files are provided:")
+			if args.r1 and args.r2:
+				self._r1 = args.r1
+				self._r2 = args.r2
 				self._log.info(f"SAM R1: {r1}")
 				self._log.info(f"SAM R2: {r2}")
 			else:
@@ -97,12 +84,10 @@ class MutCount(object):
 		else:
 			self._skip = False
 
-
 	def _align_sh_(self):
 		"""
-		1. downsample fastq files into n reads (specified by user, default 30,000)
-		2. Align each fastq file to reference (submit one job for each alignment)
-		3. Align each downsampled fastq file to reference (submit one job for each alignment)
+		1. Align each fastq file to reference (submit one job for each alignment)
+		2. Align each downsampled fastq file to reference (submit one job for each alignment)
 
 		Output sam files into output folders (sam_files, ds_sam_files)
 
@@ -161,10 +146,10 @@ class MutCount(object):
 			# wait for alignment to finish and call mutations
 
 		elif self._env == "BC2" or self._env == "DC" or self._env == "BC":
-			# get current user name
-			cmd = ["whoami"]
-			process = subprocess.run(cmd, stdout=subprocess.PIPE)
-			userID = process.stdout.decode("utf-8").strip()
+			# # get current user name
+			# cmd = ["whoami"]
+			# process = subprocess.run(cmd, stdout=subprocess.PIPE)
+			# userID = process.stdout.decode("utf-8").strip()
 
 			# make sh files to submit to BC
 			sh_output = os.path.join(self._output, "BC_aln_sh")
@@ -176,23 +161,22 @@ class MutCount(object):
 				os.system("mkdir "+sh_output)
 
 				self._log.info("Submitting alignment jobs to BC/BC2...")
-				sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+				sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
 				self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
-			else:
+			else if self._env == "DC":
 				# make sh files to submit to DC
 				sh_output = os.path.join(self._output, "DC_aln_sh")
 				os.system("mkdir "+sh_output)
 
 				self._log.info("Submitting alignment jobs to DC...")
-				sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._at, logging)
+				sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
 				self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
-			self._log.info(f"Total jobs running: {len(job_list)}")
+			self._log.info(f"Total jobs submitted: {len(job_list)}")
 			finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
 
 			if finished:
 				self._log.info(f"Alignment jobs are finished!")
-
 		return sam_df
 
 	def _mut_count(self):
@@ -301,6 +285,7 @@ class MutCount(object):
 		sam_df = []
 		if self._skip == False: # submit jobs for alignment
 			sam_df, job_list = self._align_sh()
+			
 		else:
 			# submit jobs for mutation counting
 			# if user did not provide r1 and r2 SAM file
@@ -406,16 +391,16 @@ def main(args):
 	else:
 		print("Please provide valid paramter file format (csv or json)")
 		exit(1)
-
 	if not os.path.isfile(param_json):
 		print("Json file does not exist, check conversion!")
 		exit(1)
+
 	# get basename for the param file
 	param_base = os.path.basename(param_json)
 	output_dir = ""
-	if skip_alignment:
+	if args.skip_alignment:
 		# if we want to skip the alignment part
-		# CASE 1: user provided a parameter file and R1sam + R2sam
+		# if user provided a parameter file and R1sam + R2sam
 		if args.r1 and args.r2:
 			# analyze one pair of r1 and r2 file
 			# VALIDATE if both files are sam files
@@ -430,8 +415,8 @@ def main(args):
 			main_log = log(output_folder, log_level.upper())
 
 			# initialize mutcount object
-			mc = mutcount(param_path, output_dir, main_log, args)
-			mc._init_skip(skip=True, r1=r1sam, r2=r2sam)
+			mc = fastq2counts(param_path, output_dir, main_log, args)
+			mc._init_skip(skip=True, r1=args.r1, r2=args.r2)
 
 		else:
 			# user provided a csv file and path to sam files
@@ -444,11 +429,10 @@ def main(args):
 			if not os.path.isfile(param_path):
 				param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
 
-			# initialize mutcount object
-			mc = mutcount(param_json, f, output_dir, log_level, min_cover, mt, at, env, qual, main_log)
-			mc._init_skip(skip=True)
 			main_log = log(output_dir, log_level.upper())
-
+			# initialize mutcount object
+			mc = fastq2counts(param_path, output_dir, main_log, args)
+			mc._init_skip(skip=True)
 	else:
 		# alignment
 		# make time stamped output folder for this project
@@ -460,7 +444,7 @@ def main(args):
 		main_log = log(output_dir, log_level.upper())
 
 		# initialize mutcount object
-		mc = mutcount(param_json, f, output_dir, log_level, min_cover, mt, at, env, qual, main_log)
+		mc = fastq2counts(param_json, f, output_dir, log_level, min_cover, mt, at, env, qual, main_log)
 		mc._init_skip(skip=False)
 
 	if output_dir != "":
