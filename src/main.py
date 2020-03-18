@@ -440,7 +440,7 @@ def main(args):
 		os.makedirs(output_dir) # make directory to save this run
 		param_path = os.path.join(out, param_base)
 		if not os.path.isfile(param_path):
-			param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+			param_path = shutil.copy(param, output_dir, follow_symlinks=True)
 		main_log = log(output_dir, log_level.upper())
 
 		# initialize mutcount object
