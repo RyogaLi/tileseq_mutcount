@@ -48,6 +48,7 @@ class fastq2counts(object):
         self._main_path = os.path.abspath(__file__)  # path to this python file
         self._logging = main_log
         self._param_json = param_path  # parameter json file
+
         self._args = args  # user input arguments
 
         self._fastq_list = glob.glob(args.fastq+"/*.fastq.gz")
@@ -421,7 +422,6 @@ def main(args):
             os.makedirs(updated_out)
             # load json file
             param_path = os.path.join(updated_out, param_base)
-            print(param_path)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
             main_log = log(updated_out, args.log_level)
@@ -435,7 +435,7 @@ def main(args):
         os.makedirs(updated_out)  # make directory to save this run
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
-            param_path = shutil.copy(args.param, updated_out, follow_symlinks=True)
+            param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
         main_log = log(updated_out, args.log_level)
 
         # initialize mutcount object
