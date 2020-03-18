@@ -1,16 +1,12 @@
 import parameters
 import pandas as pd
-import numpy as np
 import os
-import sys
 import math
 import glob
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio import pairwise2
 
 class SeqParser(object):
-    
+
     def __init__(self, ref_dir, mut2_func, gene):
         # read from mut2func file
         self._gene = gene
@@ -21,13 +17,13 @@ class SeqParser(object):
         self._seq = list(SeqIO.parse(fasta, "fasta"))[0].seq
         self._seq_coding = list(SeqIO.parse(fasta_coding, "fasta"))[0].seq
         self._start_pos = self._seq.find(self._seq_coding)
-        
+
     def _map_loc(self):
         """
         read mut2func file, from the file map sample names and tile info
         """
         pass
-    
+
     def _get_samples(self):
         """
         from the tile doc, get samples and corresponding tiles
@@ -47,17 +43,17 @@ class SeqParser(object):
     def _create_fasta(self):
         """
         based on the tile information, get ref sequence and make fasta file
-        self._tiles: file contains all the file information of that gene 
+        self._tiles: file contains all the file information of that gene
             region, start, stop, len
         """
-        
+
         # convert start and stop pos to nt pos
         # include 30bp from upstream and 30bp from downstream
         self._tiles["nt_start"] = self._tiles.start *3 -3 +self._start_pos-30 # inclusive
         self._tiles["nt_end"] = self._tiles.end * 3+self._start_pos+30
-        
 
-        # select corresponding sequence and write to fasta 
+
+        # select corresponding sequence and write to fasta
         for index, row in self._tiles.iterrows():
             f_name = "tile_"+str(row.tile)+".fasta"
             print(f_name)
@@ -69,14 +65,14 @@ class SeqParser(object):
             cmd = parameters.BOWTIE2_BUILD+ref_dir+f_name+" --quiet "+os.path.join(ref_dir,"tile_"+str(row.tile))
             os.system(cmd)
 
-                
+
     def _make_sh_files(self, fastq_dir, sh_dir, sam_dir):
         """
         in the tiles file, user can add as many columns as they want for all the fastq files
-        for each fastq file, use corresponding tile fasta reference and map them 
+        for each fastq file, use corresponding tile fasta reference and map them
         fastq_dir: directory that contains fastq files
         sh_dir: directory that contains sh files (for sge submission)
-        sam_dir: direcotry for output sam/bam files 
+        sam_dir: direcotry for output sam/bam files
         """
         samples = self._get_samples()
 
@@ -84,10 +80,10 @@ class SeqParser(object):
             tile = "tile_" + str(index)
             tile_ref = ref_dir + tile
             for i in set(row.values.tolist()):
-                if math.isnan(i): continue 
+                if math.isnan(i): continue
                 # get R1 from fastq dir
                 r1 = glob.glob(fastq_dir+str(int(i))+"*_R1_*")
-                            
+
                 # get R2 from fastq dir
                 r2 = glob.glob(fastq_dir+str(int(i))+"*_R2_*")
 
@@ -97,7 +93,7 @@ if __name__ == "__main__":
     fastq_dir = "../MTHFR/190510_MTHFR_3del_strain/WT/"
     sh_dir = "./MTHFR_3del/shfiles/"
     sam_dir = "/MTHFR_3del/samfiles/"
-    
+
     tiles = pd.read_csv(tiles, sep="\t")
     sp = SeqParser(ref_dir,tiles, "MTHFR")
     #sp._get_samples()

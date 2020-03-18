@@ -176,80 +176,74 @@ class fastq2counts(object):
         3. For each pair of sam files, submit jobs to the cluster
         4. Log to main log
         """
-        # make dir for mut counts
-        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        mut_output_dir = os.path.join(self._output, time_stamp + "_mut_call")
-        os.makedirs(mut_output_dir)
+        pass
 
-        log_dir = os.path.join(mut_output_dir, "mut_log")
-        os.makedirs(log_dir)
+    def _main(self):
+        """
+        """
+        sam_df = []
+        if self._skip == False: # submit jobs for alignment
+            # get sam_df from self._align_sh()
+            sam_df = self._align_sh_()
 
-        if sam_df.empty: # skip alignment
-            if self._r1 != "" and self._r2 != "":
-                # submit mutation count job for this one pair of r1 and r2 file
-                job_list = cluster.mut_count_sh_bc()
-            #logging.info(f"Skipping alignment...")
-            #logging.info(f"Analyzing sam files in {self._output}")
-            # make sam_df
-            # sam df is built by reading the input csv file
-            sample_names = self._samples["Sample ID"].tolist()
-            sam_dir = os.path.join(self._output, "sam_files/")
-            sam_list = []
+        if self._r1 != "" and self._r2 != "":
+            # call functions in count_mut.py
+            # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
+            self._log.info("Counting mutations")
+            mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
+            mut_counts._merged_main()
+        # submit jobs for mutation counting
+        # if user did not provide r1 and r2 SAM file
+        # get r1 and r2 sam files from output dir provided by user
+        elif self._r1 == "" and self._r2 == "":
+            # output directory is the mut_count dir
+            # make folder to store all the sh files
+            if self._env == "BC2" or self._env == "DC" or self._env == "BC":
+                self._log.info(f"Running on {self._env}")
+                sh_output = os.path.join(self._output, "BC_mut_sh")
+                os.mkdir(sh_output)
+            # make folder to store all the log files
+            log_dir = os.path.join(self._output, "mut_log")
+            os.makedirs(log_dir)
+            # get samples in parameter file
+            sample_names = self._samples["Sample ID"].tolist() # samples in param file
+            # get sam files from parameter file
+            sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_files
+
+            job_list = [] # track how many jobs are running
             for i in sample_names:
                 sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
                 if len(sam_f) < 2:
-                    logging.error(f"SAM file for sample {i} not found")
+                    logging.error(f"SAM file for sample {i} not found. Please check your parameter file")
                     exit(1)
                 elif len(sam_f) == 2:
                     for sam in sam_f:
                         if "_R1_" in sam: # for read one
-                            sam_r1 = sam
+                            self._r1 = sam
                         else:
-                            sam_r2 = sam
-                    sam_list.append([sam_r1, sam_r2])
+                            self._r2 = sam
 
-            # convert sam_df to dataframe
-            sam_df = pd.DataFrame.from_records(sam_list, columns = ["r1_sam", "r2_sam"])
+                # submit job with main.py -r1 and -r2
+                # run main.py with -r1 and -r2
+                cmd = f"python {self._main_path} \
+                        -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param} --skip_alignment \
+                        -log {self._log} -env {self._env} -qual {self._cutoff} -min {self._min_cover} \
+                        -at {self._at} -mt {self._mt}"
 
-        if self._env == "BC2" or self._env == "DC" or self._env == "BC":
-            sh_output = os.path.join(mut_output_dir, "BC_mut_sh")
-            os.mkdir(sh_output)
-            if self._env == "BC2" or self._env == "BC":
-                logging.info("Submitting mutation counts jobs to BC2...")
-
-                cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, \
-                    sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
-                logging.info("All jobs submitted")
-            else:
-                logging.info("Submitting mutation counts jobs to DC...")
-
-                cluster.mut_count_sh_dc(sam_df, mut_output_dir, self._param, \
-                  sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
-                logging.info("All jobs submitted")
-
-                # get number of jobs running
-                cmd = ["whodami"]
-                process = subprocess.run(cmd, stdout=subprocess.PIPE)
-                userID = process.stdout.decode("utf-8").strip()
-
-                check = ["qstat", "-u", userID]
-                check_process = subprocess.run(check, stdout=subprocess.PIPE)
-                n_jobs = check_process.stdout.decode("utf-8").strip()
-                n = n_jobs.count("\n")
-                logging.info(f"{n-2} jobs running ....")
-                while n_jobs != '':
-                    n = n_jobs.count("\n")
-                    logging.info(f"{n-2} jobs running ....")
-                    # wait for 5 mins
-                    time.sleep(300)
-                    check_process = subprocess.run(check, stdout=subprocess.PIPE)
-                    n_jobs = check_process.stdout.decode("utf-8").strip()
-
-                # job complete if nothing is running
-                # go through mutation call files generated and log files without any mutations
-                logging.info("Check mutation counts file ...")
-                mutcount_list = glob.glob(os.path.join(mut_output_dir, "counts_sample*.csv"))
-                logging.info(f"{len(mutcount_list)} mutation counts file generated")
+                if self._env == "BC2" or self._env == "BC":
+                    logging.info("Submitting mutation counts jobs to BC2...")
+                    job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
+                elif self._env == "DC":
+                    logging.info("Submitting mutation counts jobs to DC...")
+                    job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
+                job_list.append(job_id)
+            self._log.info(f"Total jobs running: {len(job_list)}")
+            finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
+            if finished:
+                self._log.info(f"Mutaion counting jobs are finished!")
+                self._log.info("Check mutation counts file ...")
+                mutcount_list = glob.glob(os.path.join(output_dir, "counts_sample_*.csv"))
+                self._log.info(f"{len(mutcount_list)} mutation counts file generated")
                 for f in mutcount_list:
                     mut_n = 0
                     # double check if each output file has mutations
@@ -259,96 +253,16 @@ class fastq2counts(object):
                             if "c." in line:
                                     mut_n += 1
                     if mut_n == 0:
-                        logging.error(f"{f} has 0 variants! Check mut log for this sample.")
+                        self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
                     else:
-                        logging.info(f"{f} has {mut_n} variants")
-                all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
-                merged = os.path.join(mut_output_dir, "info.csv")
-                cmd = f"cat {all_tmp} > {merged}"
-                os.system(cmd)
-                #os.system(f"rm {all_tmp}")
-                logging.info("Job complete")
+                        self._log.info(f"{f} has {mut_n} variants")
+            all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
+            merged = os.path.join(mut_output_dir, "info.csv")
+            cmd = f"cat {all_tmp} > {merged}"
+            os.system(cmd)
+            #os.system(f"rm {all_tmp}")
+            logging.info("Job complete")
 
-    def _main(self):
-        """
-        """
-        sam_df = []
-        if self._skip == False: # submit jobs for alignment
-            sam_df, job_list = self._align_sh_()
-        else:
-            # submit jobs for mutation counting
-            # if user did not provide r1 and r2 SAM file
-            # get r1 and r2 sam files from output dir provided by user
-            if self._r1 == "" and self._r2 == "":
-                # output directory is the mut_count dir
-                # make log dir in the output dir
-                if self._env == "BC2" or self._env == "DC" or self._env == "BC":
-                    self._log.info(f"Running on {self._env}")
-                    sh_output = os.path.join(self._output, "BC_mut_sh")
-                    os.mkdir(sh_output)
-
-                log_dir = os.path.join(self._output, "mut_log")
-                os.makedirs(log_dir)
-
-                sample_names = self._samples["Sample ID"].tolist() # samples in param file
-                sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_files
-                job_list = [] # track how many jobs are running
-                for i in sample_names:
-                    sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
-                    if len(sam_f) < 2:
-                        logging.error(f"SAM file for sample {i} not found. Please check your parameter file")
-                        exit(1)
-                    elif len(sam_f) == 2:
-                        for sam in sam_f:
-                            if "_R1_" in sam: # for read one
-                                self._r1 = sam
-                            else:
-                                self._r2 = sam
-
-                    # submit job with main.py -r1 and -r2
-                    # run main.py with -r1 and -r2
-                    cmd = f"python {self._main_path} \
-                            -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param} --skip_alignment \
-                            -log {self._log} -env {self._env} -qual {self._cutoff} -min {self._min_cover} \
-                            -at {self._at} -mt {self._mt}"
-
-                    if self._env == "BC2" or self._env == "BC":
-                        logging.info("Submitting mutation counts jobs to BC2...")
-                        job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
-                    elif self._env == "DC":
-                        logging.info("Submitting mutation counts jobs to DC...")
-                        job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
-                    job_list.append(job_id)
-                self._log.info(f"Total jobs running: {len(job_list)}")
-                finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
-                if finished:
-                    self._log.info(f"Mutaion counting jobs are finished!")
-                    self._log.info("Check mutation counts file ...")
-                    mutcount_list = glob.glob(os.path.join(output_dir, "counts_sample_*.csv"))
-                    self._log.info(f"{len(mutcount_list)} mutation counts file generated")
-                    for f in mutcount_list:
-                        mut_n = 0
-                        # double check if each output file has mutations
-                        with open(f, "r") as mut_output:
-                            for line in mut_output:
-                                # skip header
-                                if "c." in line:
-                                        mut_n += 1
-                        if mut_n == 0:
-                            self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
-                        else:
-                            self._log.info(f"{f} has {mut_n} variants")
-                all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
-                merged = os.path.join(mut_output_dir, "info.csv")
-                cmd = f"cat {all_tmp} > {merged}"
-                os.system(cmd)
-                #os.system(f"rm {all_tmp}")
-                logging.info("Job complete")
-            else:
-                # call functions in count_mut.py
-                logger = self._logging.getLogger("mut_count")
-                mut_counts = count_mut.readSam(self._r1, self._r2, self._param, output_dir, logger)
-                mut_counts._merged_main()
 
 def main(args):
     """
