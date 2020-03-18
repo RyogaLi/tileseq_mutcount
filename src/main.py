@@ -209,32 +209,32 @@ class fastq2counts(object):
 			for i in sample_names:
 				sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
 				if len(sam_f) < 2:
-						logging.error(f"SAM file for sample {i} not found")
-						exit(1)
+					logging.error(f"SAM file for sample {i} not found")
+					exit(1)
 				elif len(sam_f) == 2:
-						for sam in sam_f:
-								if "_R1_" in sam: # for read one
-										sam_r1 = sam
-								else:
-										sam_r2 = sam
+					for sam in sam_f:
+						if "_R1_" in sam: # for read one
+							sam_r1 = sam
+						else:
+							sam_r2 = sam
 					sam_list.append([sam_r1, sam_r2])
 
 			# convert sam_df to dataframe
 			sam_df = pd.DataFrame.from_records(sam_list, columns = ["r1_sam", "r2_sam"])
 
 		if self._env == "BC2" or self._env == "DC" or self._env == "BC":
-				sh_output = os.path.join(mut_output_dir, "BC_mut_sh")
-				os.mkdir(sh_output)
-				if self._env == "BC2" or self._env == "BC":
-						logging.info("Submitting mutation counts jobs to BC2...")
+			sh_output = os.path.join(mut_output_dir, "BC_mut_sh")
+			os.mkdir(sh_output)
+			if self._env == "BC2" or self._env == "BC":
+				logging.info("Submitting mutation counts jobs to BC2...")
 
-						cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
-						logging.info("All jobs submitted")
-				else:
-						logging.info("Submitting mutation counts jobs to DC...")
+				cluster.mut_count_sh_bc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
+				logging.info("All jobs submitted")
+			else:
+				logging.info("Submitting mutation counts jobs to DC...")
 
-						cluster.mut_count_sh_dc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
-						logging.info("All jobs submitted")
+				cluster.mut_count_sh_dc(sam_df, mut_output_dir, self._param, sh_output, self._min_cover, self._mt, log_dir, logging, self._cutoff)
+				logging.info("All jobs submitted")
 
 
 				# get number of jobs running
@@ -248,12 +248,12 @@ class fastq2counts(object):
 				n = n_jobs.count("\n")
 				logging.info(f"{n-2} jobs running ....")
 				while n_jobs != '':
-						n = n_jobs.count("\n")
-						logging.info(f"{n-2} jobs running ....")
-						# wait for 5 mins
-						time.sleep(300)
-						check_process = subprocess.run(check, stdout=subprocess.PIPE)
-						n_jobs = check_process.stdout.decode("utf-8").strip()
+					n = n_jobs.count("\n")
+					logging.info(f"{n-2} jobs running ....")
+					# wait for 5 mins
+					time.sleep(300)
+					check_process = subprocess.run(check, stdout=subprocess.PIPE)
+					n_jobs = check_process.stdout.decode("utf-8").strip()
 
 				# job complete if nothing is running
 				# go through mutation call files generated and log files without any mutations
@@ -261,17 +261,17 @@ class fastq2counts(object):
 				mutcount_list = glob.glob(os.path.join(mut_output_dir, "counts_sample*.csv"))
 				logging.info(f"{len(mutcount_list)} mutation counts file generated")
 				for f in mutcount_list:
-						mut_n = 0
-						# double check if each output file has mutations
-						with open(f, "r") as mut_output:
-								for line in mut_output:
-										# skip header
-										if "c." in line:
-												mut_n += 1
-						if mut_n == 0:
-								logging.error(f"{f} has 0 variants! Check mut log for this sample.")
-						else:
-								logging.info(f"{f} has {mut_n} variants")
+					mut_n = 0
+					# double check if each output file has mutations
+					with open(f, "r") as mut_output:
+						for line in mut_output:
+							# skip header
+							if "c." in line:
+									mut_n += 1
+					if mut_n == 0:
+						logging.error(f"{f} has 0 variants! Check mut log for this sample.")
+					else:
+						logging.info(f"{f} has {mut_n} variants")
 				all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
 				merged = os.path.join(mut_output_dir, "info.csv")
 				cmd = f"cat {all_tmp} > {merged}"
