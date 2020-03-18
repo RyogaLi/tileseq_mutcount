@@ -373,7 +373,6 @@ def main(args):
     if not os.path.isdir(args.fastq):
         print(f"Fastq file path not found: {args.fastq}")
         exit(1)
-    output_folder = args.output
 
     # try convert csv to json in the same dir as the csv file
     # convert csv file to json
@@ -404,27 +403,26 @@ def main(args):
                 print("Please provide SAM files")
                 exit(1)
             # copy the parameter file to output dir if the json file is not in the dir
-            param_path = os.path.join(output_folder, param_base)
+            param_path = os.path.join(args.out, param_base)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_json, output_folder, follow_symlinks=True)
             # set up loggingthis creates main.log in the mut_count output dir
             main_log = log(output_folder, log_level.upper())
 
             # initialize mutcount object
-            mc = fastq2counts(param_path, output_dir, main_log, args)
+            mc = fastq2counts(param_path, args.out, main_log, args)
             mc._init_skip(skip=True, r1=args.r1, r2=args.r2)
 
         else:
             # user provided a csv file and path to sam files
             # for each pair of sam file we would submit one job to the cluster for mutation counting
             # make time stamped output folder for this project
-            updated_out = os.path.join(out, args.name + "_" + time + "_mut_count")
+            updated_out = os.path.join(args.out, args.name + "_" + time + "_mut_count")
             os.makedirs(updated_out)
             # load json file
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param, updated_out, follow_symlinks=True)
-
             main_log = log(updated_out, log_level.upper())
             # initialize mutcount object
             mc = fastq2counts(param_path, updated_out, main_log, args)
@@ -432,12 +430,12 @@ def main(args):
     else:
         # alignment
         # make time stamped output folder for this project
-        updated_out = os.path.join(output_folder, args.name + "_" + time)
+        updated_out = os.path.join(args.out, args.name + "_" + time)
         os.makedirs(updated_out)  # make directory to save this run
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
             param_path = shutil.copy(args.param, updated_out, follow_symlinks=True)
-        main_log = log(updated_out, log_level.upper())
+        main_log = log(updated_out, args.log)
 
         # initialize mutcount object
         mc = fastq2counts(param_json, args.fastq, updated_out, log_level, min_cover, mt, at, env, qual, main_log)
