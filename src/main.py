@@ -326,7 +326,7 @@ class fastq2counts(object):
 					if self._env == "BC2" or self._env == "BC":
 						logging.info("Submitting mutation counts jobs to BC2...")
 						job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
-					elif self._env == "DC"
+					elif self._env == "DC":
 						logging.info("Submitting mutation counts jobs to DC...")
 						job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
 					job_list.append(job_id)
