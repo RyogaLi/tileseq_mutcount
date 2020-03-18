@@ -410,7 +410,7 @@ def main(args):
 			# copy the parameter file to output dir if the json file is not in the dir
 			param_path = os.path.join(output_folder, param_base)
 			if not os.path.isfile(param_path):
-				param_path = shutil.copy(param_json, output_folder, *, follow_symlinks=True)
+				param_path = shutil.copy(param_json, output_folder, follow_symlinks=True)
 			# set up loggingthis creates main.log in the mut_count output dir
 			main_log = log(output_folder, log_level.upper())
 
@@ -427,7 +427,7 @@ def main(args):
 			# load json file
 			param_path = os.path.join(output_dir, param_base)
 			if not os.path.isfile(param_path):
-				param_path = shutil.copy(param, output_dir, *, follow_symlinks=True)
+				param_path = shutil.copy(param, output_dir, follow_symlinks=True)
 
 			main_log = log(output_dir, log_level.upper())
 			# initialize mutcount object
