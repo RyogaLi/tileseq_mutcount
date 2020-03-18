@@ -423,7 +423,7 @@ def main(args):
             # load json file
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
-                param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
+                param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
             main_log = log(updated_out, args.log_level)
             # initialize mutcount object
             mc = fastq2counts(param_path, updated_out, main_log, args)
@@ -435,7 +435,7 @@ def main(args):
         os.makedirs(updated_out)  # make directory to save this run
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
-            param_path = shutil.copy(param_path, updated_out, follow_symlinks=True)
+            param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
         main_log = log(updated_out, args.log_level)
 
         # initialize mutcount object
