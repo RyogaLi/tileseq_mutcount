@@ -12,22 +12,13 @@
 
 import pandas as pd
 import cigar
-import os
-import sys
 import re
-import math
-import difflib
-import itertools
-import datetime
-from operator import itemgetter
-from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio import pairwise2
-from Bio.Seq import MutableSeq
 
 import posterior
 
 class MutParser(object):
+
     def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging):
         """
         row: input row includes both reads from sam file
