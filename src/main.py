@@ -422,7 +422,7 @@ def main(args):
 			# user provided a csv file and path to sam files
 			# for each pair of sam file we would submit one job to the cluster for mutation counting
 			# make time stamped output folder for this project
-			updated_out = os.path.join(out, run_name+ "_" +time+"_mut_count")
+			updated_out = os.path.join(out, args.name+ "_" +time+"_mut_count")
 			os.makedirs(updated_out)
 			# load json file
 			param_path = os.path.join(output_dir, param_base)
@@ -436,11 +436,11 @@ def main(args):
 	else:
 		# alignment
 		# make time stamped output folder for this project
-		output_dir = os.path.join(output_folder, run_name+ "_" +time)
+		output_dir = os.path.join(output_folder, args.name+ "_" +time)
 		os.makedirs(output_dir) # make directory to save this run
 		param_path = os.path.join(out, param_base)
 		if not os.path.isfile(param_path):
-			param_path = shutil.copy(param, output_dir, follow_symlinks=True)
+			param_path = shutil.copy(args.param, output_dir, follow_symlinks=True)
 		main_log = log(output_dir, log_level.upper())
 
 		# initialize mutcount object
