@@ -149,7 +149,8 @@ class fastq2counts(object):
             if args.environment == "BC2" or args.environment == "BC":
                 # make sh files to submit to BC
                 self._log.info("Submitting alignment jobs to BC/BC2...")
-                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
+                # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
+                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
             elif args.environment == "DC":
                 # make sh files to submit to DC
@@ -157,7 +158,7 @@ class fastq2counts(object):
                 os.system("mkdir "+sh_output)
 
                 self._log.info("Submitting alignment jobs to DC...")
-                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._log)
+                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
             self._log.info(f"Total jobs submitted: {len(job_list)}")
