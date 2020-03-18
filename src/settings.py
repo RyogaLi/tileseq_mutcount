@@ -19,5 +19,5 @@ bc2_BCFTOOLS = "/home/rothlab1/rli/lib/bcftools-1.10.2/bcftools "
 dc_BOWTIE2 = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2 "
 dc_BOWTIE2_BUILD = "/home/home7/rothlab/rli/lib/bowtie2-2.3.5.1/bowtie2-build "
 
-# parse csv file 
-CSV2JSON = "/home/rothlab1/rli/tileseqMave/inst/scripts/csv2json.R "
+# parse csv file
+CSV2JSON = "/home/rothlab1/rli/tileseqMave/inst/scripts/csv2json.R ""
