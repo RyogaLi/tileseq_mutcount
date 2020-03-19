@@ -81,7 +81,7 @@ One output folder is created for each run. The output folder are named with `nam
 
 Within each output folder, the following files and folders will be generated:
 
-`./main.log` - main logging file
+`./main.log` - main logging file for alignment
 
 `./args` - arguments for this run
 
@@ -93,13 +93,15 @@ Within each output folder, the following files and folders will be generated:
 
 `./name_time-stamped_mut_count/` - Mutation counts in each sample are saved in csv files
 
-    - `./name_time-stamped_mut_count/info.csv` - Meta information for each sample: sequencing depth, tile starts/ends and # of reads mapped outside of the targeted tile
+    - `./main.log` - Main log file for mutation calling
 
-    - `./name_time-stamped_mut_count/count_sample_*.csv` - Raw mutation counts for each sample. With meta data in header. Variants are represented in hgvs format
+    - `./info.csv` - Meta information for each sample: sequencing depth, tile starts/ends and # of reads mapped outside of the targeted tile
 
-    - `./tname_time-stamped_mut_count/env_mut_sh/` - Bash scripts for summitting the mutation count jobs
+    - `./count_sample_*.csv` - Raw mutation counts for each sample. With meta data in header. Variants are represented in hgvs format
 
-    - `./name_time-stamped_mut_count/sample_id.log` - Log file for each sample
+    - `./env_mut_sh/` - Bash scripts for summitting the mutation count jobs
+
+    - `./sample_id.log` - Log file for each sample
 
 The count_sample_\*\*.csv is passed to tileseqMave for further analysis
 

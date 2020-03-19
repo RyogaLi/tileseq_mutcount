@@ -220,7 +220,9 @@ class fastq2counts(object):
                 logging.info("Submitting mutation counts jobs to DC...")
                 # (sample_name, cmd, mt, sh_output_dir, logger)
                 job_id = cluster.mut_count_sh_dc(i, cmd, args.mt, sh_output, self._log) # this function will make a sh file for submitting the job
+
             job_list.append(job_id)
+
         self._log.info(f"Total jobs running: {len(job_list)}")
         finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
 
