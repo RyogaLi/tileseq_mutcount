@@ -19,7 +19,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir, log_dir):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -55,9 +55,9 @@ class readSam(object):
         self._sample_tp = self._sample_info["Time point"].values[0]
         self._sample_rep = self._sample_info["Replicate"].values[0]
 
-        self._seq_lookup = help_functions.build_lookup(self._cds_start, self._seq.cds_end, self._cds_seq)
+        self._seq_lookup = help_functions.build_lookup(self._cds_start.values.item(), self._seq.cds_end.values.item(), self._cds_seq)
 
-        log_f = os.path.join(log_dir, f"sample_{str(self._sample_id)}_mut_count.log")
+        log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
 
         logging.basicConfig(filename=log_f,
                 filemode="w",

@@ -265,9 +265,9 @@ class fastq2counts(object):
                 self._log.info(f"Running on {args.environment}")
                 sh_output = os.path.join(self._output, "BC_mut_sh")
                 os.mkdir(sh_output)
-            # make folder to store all the log files
-            log_dir = os.path.join(self._output, "mut_log")
-            os.makedirs(log_dir)
+            # # make folder to store all the log files
+            # log_dir = os.path.join(self._output, "mut_log")
+            # os.makedirs(log_dir)
             # get samples in parameter file
 
             finished = self._makejobs(sh_output)
