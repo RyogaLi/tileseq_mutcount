@@ -310,6 +310,8 @@ def check(args):
         print("Json file does not exist, check conversion!")
         exit(1)
 
+    return param_json
+
 def main(args):
     """
     Main for fastq2counts
