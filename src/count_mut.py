@@ -31,8 +31,6 @@ class readSam(object):
         """
         self._r1 = sam_r1
         self._r2 = sam_r2
-
-
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param)
 
         self._qual = args.quality
@@ -86,10 +84,7 @@ class readSam(object):
 
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n \
-          #Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n \
-          #Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n \
-          #Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover \%:{args.min_cover}")
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover \%:{args.min_cover}")
         output_csv.close()
 
     def _merged_main(self):
@@ -250,41 +245,41 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')
-    parser.add_argument("-r1", "--read_1", help="sam file for R1", required=True)
-    parser.add_argument("-r2", "--read_2", help="sam file for R2", required=True)
-    parser.add_argument("-qual", "--quality", help="quality filter using posterior probability", default=0.99)
-    parser.add_argument("-o", "--output", help="Output folder that contains the directory: ./sam_files", required = True)
-    parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
-    parser.add_argument("-mutlog", "--log_dir", help="Directory to save all the log files for each sample")
-    parser.add_argument("-p", "--param", help="csv paramter file", required = True)
-    parser.add_argument("-min", "--min_cover", help="Minimum percentage required to be covered by reads", default = 0.4)
-
-    args = parser.parse_args()
-
-    sam_r1 = args.read_1
-    sam_r2 = args.read_2
-    qual_filter = float(args.quality)
-    log_dir = args.log_dir
-    min_map = float(args.min_cover)
-
-    out = args.output
-    param = args.param
-
-    # conver the csv file to json
-    # csv2json = os.path.abspath("src/csv2json.R")
-    param_json = param.replace(".csv", ".json")
-    #convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
-    #os.system(convert)
-
-    # process the json file
-    project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
-    # build lookup table
-    lookup_df = help_functions.build_lookup(seq.cds_start.values.item(), seq.cds_end.values.item(), cds_seq)
-
-    # initialize the object
-    MutCounts = readSam(sam_r1, sam_r2, seq, lookup_df, tile_map, region_map, samples, out, qual_filter, min_map, args.log_level, log_dir)
-
-    MutCounts._merged_main(seq, cds_seq)
+# if __name__ == "__main__":
+#
+#     parser = argparse.ArgumentParser(description='TileSeq mutation counts (for sam files)')
+#     parser.add_argument("-r1", "--read_1", help="sam file for R1", required=True)
+#     parser.add_argument("-r2", "--read_2", help="sam file for R2", required=True)
+#     parser.add_argument("-qual", "--quality", help="quality filter using posterior probability", default=0.99)
+#     parser.add_argument("-o", "--output", help="Output folder that contains the directory: ./sam_files", required = True)
+#     parser.add_argument("-log", "--log_level", help="Set log level: debug, info, warning, error, critical.", default = "debug")
+#     parser.add_argument("-mutlog", "--log_dir", help="Directory to save all the log files for each sample")
+#     parser.add_argument("-p", "--param", help="csv paramter file", required = True)
+#     parser.add_argument("-min", "--min_cover", help="Minimum percentage required to be covered by reads", default = 0.4)
+#
+#     args = parser.parse_args()
+#
+#     sam_r1 = args.read_1
+#     sam_r2 = args.read_2
+#     qual_filter = float(args.quality)
+#     log_dir = args.log_dir
+#     min_map = float(args.min_cover)
+#
+#     out = args.output
+#     param = args.param
+#
+#     # conver the csv file to json
+#     # csv2json = os.path.abspath("src/csv2json.R")
+#     param_json = param.replace(".csv", ".json")
+#     #convert = f"Rscript {csv2json} {param} -o {param_json} -l stdout"
+#     #os.system(convert)
+#
+#     # process the json file
+#     project, seq, cds_seq, tile_map, region_map, samples = help_functions.parse_json(param_json)
+#     # build lookup table
+#     lookup_df = help_functions.build_lookup(seq.cds_start.values.item(), seq.cds_end.values.item(), cds_seq)
+#
+#     # initialize the object
+#     MutCounts = readSam(sam_r1, sam_r2, seq, lookup_df, tile_map, region_map, samples, out, qual_filter, min_map, args.log_level, log_dir)
+#
+#     MutCounts._merged_main(seq, cds_seq)

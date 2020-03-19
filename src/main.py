@@ -76,8 +76,8 @@ class fastq2counts(object):
             if args.r1 and args.r2:
                 self._r1 = args.r1
                 self._r2 = args.r2
-                self._log.info(f"SAM R1: {r1}")
-                self._log.info(f"SAM R2: {r2}")
+                # self._log.info(f"SAM R1: {r1}")
+                # self._log.info(f"SAM R2: {r2}")
             else:
                 self._r1 = ""
                 self._r2 = ""
@@ -155,6 +155,7 @@ class fastq2counts(object):
                 # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
                 sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
+
             elif args.environment == "DC":
                 # make sh files to submit to DC
                 sh_output = os.path.join(self._output, "DC_aln_sh")
