@@ -191,11 +191,14 @@ class fastq2counts(object):
         sample_names = self._samples["Sample ID"].tolist() # samples in param file
         # get sam files from parameter file
         sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_file
+        if not os.path.isdir(sam_dir):
+            self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
+            exit(1)
         for i in sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}_R1*.sam") # assume all the sam files have the same name format (id_*.sam)
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_R2*.sam")
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
-                logging.error(f"SAM file for sample {i} not found. Please check your parameter file")
+                self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
                 exit(1)
             else:
                 self._r1 = sam_f_r1
@@ -422,7 +425,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", help="Output folder", required=True)
     parser.add_argument("-p", "--param", help="csv paramter file", required=True)
     parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
-    parser.add_argument("-name", "--name", help="Name for this run", required=True)
+    parser.add_argument("-n", "--name", help="Name for this run", required=True)
     parser.add_argument("-r1", help="r1 SAM file")
     parser.add_argument("-r2", help="r2 SAM file")
 
