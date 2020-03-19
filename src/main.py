@@ -59,6 +59,7 @@ class fastq2counts(object):
         # parse parameter json file
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, \
             self._samples = help_functions.parse_json(param_path)
+        self._sample_names = self._samples["Sample ID"].tolist()
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
         self._log = self._logging.getLogger("main.log")
@@ -93,16 +94,14 @@ class fastq2counts(object):
         """
         # VALIDATE: if all samples are present in fastq files
         # also check if any fastq file is empty
-
-        sample_names = self._samples["Sample ID"].tolist()
         fastq_sample_id = [os.path.basename(i).split("_")[0] for i in self._fastq_list]
         fastq_sample_id = list(set(fastq_sample_id))
 
         # validation
         # check if input fastq files contains all the samples in paramter file
-        if set(sample_names).issubset(fastq_sample_id):
+        if set(self._sample_names).issubset(fastq_sample_id):
             self._log.info("All samples found")
-            self._log.info(f"In total there are {len(list(set(sample_names)))} samples in the csv file")
+            self._log.info(f"In total there are {len(list(set(self._sample_names)))} samples in the csv file")
             self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
         else:
             self._log.error("fastq files do not match input samples.")
@@ -114,7 +113,7 @@ class fastq2counts(object):
         fastq_map = []
         for r1 in self._fastq_list:
             ID = os.path.basename(r1).split("_")[0]
-            if ("_R1_" in r1) and (ID in sample_names):
+            if ("_R1_" in r1) and (ID in self._sample_names):
                     r2 = r1.replace("_R1_", "_R2_")
                     fastq_map.append([r1,r2])
 
@@ -192,14 +191,13 @@ class fastq2counts(object):
         submit mut count job to the cluster
         """
         # get samples in parameter file
-        sample_names = self._samples["Sample ID"].tolist() # samples in param file
         sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
         # get sam files from parameter file
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
             exit(1)
         job_list = []
-        for i in sample_names:
+        for i in self._sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}_*_R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_*_R2_*.sam")
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
@@ -281,6 +279,11 @@ class fastq2counts(object):
                 self._log.info("Check mutation counts file ...")
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 self._log.info(f"{len(mutcount_list)} mutation counts file generated")
+                if len(self._sample_names) > len(mutcount_list):
+                    self._log.error("Job finished but some variant call files are missing!!")
+                    missing = list(set(self._sample_names)-set(mutcount_list))
+                    missing = ",".join(missing)
+                    self._log.error(f"Missing samples: {missing}")
                 for f in mutcount_list:
                     mut_n = self._checkoutput(f)
                     if mut_n == 0:
