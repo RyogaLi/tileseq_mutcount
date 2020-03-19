@@ -251,7 +251,7 @@ class fastq2counts(object):
             # output directory is the mut_count dir
             # make folder to store all the sh files
             if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
-                self._log.info(f"Running on {self._env}")
+                self._log.info(f"Running on {args.environment}")
                 sh_output = os.path.join(self._output, "BC_mut_sh")
                 os.mkdir(sh_output)
             # make folder to store all the log files
