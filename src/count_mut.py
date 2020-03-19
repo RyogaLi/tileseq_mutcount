@@ -10,7 +10,7 @@ import os
 import math
 import logging
 import argparse
-import datetime
+# import datetime
 from collections import deque
 
 # modules in package
@@ -70,7 +70,7 @@ class readSam(object):
                 filemode="w",
                 format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 datefmt="%m/%d/%Y %I:%M:%S %p",
-                level = log_level.upper())
+                level = args.log_level)
 
         # define a Handler which writes INFO messages or higher to the sys.stderr
         console = logging.StreamHandler()

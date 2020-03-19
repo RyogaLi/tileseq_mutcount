@@ -288,7 +288,7 @@ def check(args):
         print(f"Output directory not found: {args.output}")
         exit(1)
     # check if fastq dir exists
-    if not os.path.isdir(args.fastq):
+    if args.fastq and not os.path.isdir(args.fastq):
         print(f"Fastq file path not found: {args.fastq}")
         exit(1)
     # try convert csv to json in the same dir as the csv file
@@ -366,7 +366,7 @@ def main(args):
         mc = fastq2counts(param_path, updated_out, main_log, args)
         mc._init_skip(skip=False)
 
-    if output_dir != "":
+    if output_dir == "":
         # this parameter file will be saved in the main output dir
         param_f = open(os.path.join(output_dir, "param.log"), "a")
         # log - time for this run (same as the output folder name)
@@ -380,6 +380,15 @@ def main(args):
 
     # start the run
     mc._main()
+
+def write_param(args_log_path, args):
+    """
+    Write input arguments to param.log
+    """
+    with open(args_log_path, "w") as args_log:
+        for arg in vars(args):
+            args_log.write(arg+",")
+            args_log.write(getattr(args, arg)+"\n")
 
 def log(output_dir, log_level):
     """
@@ -413,6 +422,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", help="Output folder", required=True)
     parser.add_argument("-p", "--param", help="csv paramter file", required=True)
     parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
+    parser.add_argument("-name", "--name", help="Name for this run", required=True)
     parser.add_argument("-r1", help="r1 SAM file")
     parser.add_argument("-r2", help="r2 SAM file")
 
