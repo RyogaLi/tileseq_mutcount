@@ -106,14 +106,14 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
     return fastq_map, all_job_id
 
 
-def mut_count_sh_bc(sample_name, cmd, mt, logger):
+def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
     """
     Submit mutation count jobs to BC
 
     """
     # go through files df and submit jobs for each pair of sam files
     # counting mutations in raw sam output files
-    shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
+    shfile = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.sh")
     with open(shfile, "w") as sh:
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
@@ -122,17 +122,17 @@ def mut_count_sh_bc(sample_name, cmd, mt, logger):
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
     # log sample name and job id
-    logging.info(f"Sample {sample_name}: job id - {job_id}")
+    logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
 
-def mut_count_sh_dc(sample_name, cmd, mt, logger):
+def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
     """
     Submit mutation count jobs to DC
 
     """
     # go through files df and submit jobs for each pair of sam files
     # counting mutations in raw sam output files
-    shfile = os.path.join(sh_output, f"Mut_count_{sample_name}.sh")
+    shfile = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.sh")
     with open(shfile, "w") as sh:
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
@@ -142,7 +142,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, logger):
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
     # log sample name and job id
-    logging.info(f"Sample {sample_name}: job id - {job_id}")
+    logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
 
 
@@ -159,7 +159,7 @@ def parse_jobs(job_list, logger):
     qstat_err = job.stderr.decode("utf-8")
 
     f_id = []
-    updated_list = job_list
+    updated_list = []
     while True:
         running = []
         queued = []
@@ -176,14 +176,11 @@ def parse_jobs(job_list, logger):
                 job_id = match.group(1)
                 f_id.append(job_id)
             err_id = set(f_id)
-            updated_list = [x for x in updated_list if x not in err_id]
+            updated_list = [x for x in job_list if x not in err_id]
 
         if qstat_out != "":
             qstat_out = qstat_out.split("\n")[:-1]
             id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
-            completed = []
-            running = []
-            queued = []
             for line in qstat_out:
                 if ("---" in line) or ("Job ID" in line): continue
                 match = id_regex.search(line)
@@ -195,6 +192,7 @@ def parse_jobs(job_list, logger):
                     running.append(job_id)
                 elif job_s == "Q":
                     queued.append(job_id)
+
         logger.info(f"{len(queued)} jobs queued")
         logger.info(f"{len(running)} jobs running")
         final_list = list(set(updated_list+running+queued))
@@ -209,7 +207,6 @@ def parse_jobs(job_list, logger):
             qstat_out = job.stdout.decode("utf-8")
             qstat_err = job.stderr.decode("utf-8")
 
-        #break
 if __name__ == "__main__":
     # test job list
     job_list = ["291879", "29171333", "29171340", "29171466"]

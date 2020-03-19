@@ -180,7 +180,7 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
         mut_counts._merged_main()
 
-    def _makejobs(self, mut_output_dir):
+    def _makejobs(self, sh_output, mut_output_dir, sam_df):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
@@ -188,9 +188,7 @@ class fastq2counts(object):
         # get samples in parameter file
         sample_names = self._samples["Sample ID"].tolist() # samples in param file
         # get sam files from parameter file
-        sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_files
-
-        job_list = [] # track how many jobs are running
+        sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_file
         for i in sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}_R1*.sam") # assume all the sam files have the same name format (id_*.sam)
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_R2*.sam")
@@ -243,26 +241,27 @@ class fastq2counts(object):
         if self._skip == False: # submit jobs for alignment
             # get sam_df from self._align_sh()
             sam_df = self._align_sh_()
-        if self._r1 != "" and self._r2 != "":
-            # call functions in count_mut.py
-            # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
-            self._mut_count()
-        # submit jobs for mutation counting
-        # if user did not provide r1 and r2 SAM file
-        # get r1 and r2 sam files from output dir provided by user
-        elif self._r1 == "" and self._r2 == "":
-            # output directory is the mut_count dir
-            # make folder to store all the sh files
-            if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
-                self._log.info(f"Running on {self._env}")
-                sh_output = os.path.join(self._output, "BC_mut_sh")
-                os.mkdir(sh_output)
-            # make folder to store all the log files
-            log_dir = os.path.join(self._output, "mut_log")
-            os.makedirs(log_dir)
-            # get samples in parameter file
+        else:  # read sam df from user provided output dir
+            if self._r1 != "" and self._r2 != "":
+                # call functions in count_mut.py
+                # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
+                self._mut_count()
+            # submit jobs for mutation counting
+            # if user did not provide r1 and r2 SAM file
+            # get r1 and r2 sam files from output dir provided by user
+            elif self._r1 == "" and self._r2 == "":
+                # output directory is the mut_count dir
+                # make folder to store all the sh files
+                if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
+                    self._log.info(f"Running on {self._env}")
+                    sh_output = os.path.join(self._output, "BC_mut_sh")
+                    os.mkdir(sh_output)
+                # make folder to store all the log files
+                log_dir = os.path.join(self._output, "mut_log")
+                os.makedirs(log_dir)
+                # get samples in parameter file
 
-            finished = self._makejobs(self, self._output)
+                finished = self._makejobs(self, sh_output, self._output)
 
 
 def main(args):
