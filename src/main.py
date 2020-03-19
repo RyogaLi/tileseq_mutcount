@@ -259,7 +259,7 @@ class fastq2counts(object):
             os.makedirs(log_dir)
             # get samples in parameter file
 
-            finished = self._makejobs(self, sh_output, self._output)
+            finished = self._makejobs(sh_output)
 
             if finished:
                 self._log.info(f"Mutaion counting jobs are finished!")
