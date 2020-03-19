@@ -182,7 +182,7 @@ class fastq2counts(object):
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
 
-        mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
+        mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
         mut_counts._merged_main()
 
     def _makejobs(self, sh_output):
