@@ -436,7 +436,6 @@ if __name__ == "__main__":
         run this script (default = DC)", default="DC")
     parser.add_argument("-qual", "--quality", help="Posterior threshold for \
         filtering mutations (default = 0.99)", default = 0.99)
-    parser.add_argument("-name", help="Name for this run", required=True)
     parser.add_argument("-min", "--min_cover", help="Minimal % required to \
         cover the tile (default = 0.4)", default=0.6)
     parser.add_argument("-at", type = int, help="Alignment time \
