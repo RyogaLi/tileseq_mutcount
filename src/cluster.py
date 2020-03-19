@@ -118,7 +118,7 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob", str(mt), "-c", "8", "-m", "4", shfile]
+    sub_cmd = ["submitjob2","-w", str(mt), "-c", "8", "-m", "4", shfile]
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
     # log sample name and job id
@@ -181,6 +181,7 @@ def parse_jobs(job_list, logger):
         if qstat_out != "":
             qstat_out = qstat_out.split("\n")[:-1]
             id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
+
             for line in qstat_out:
                 if ("---" in line) or ("Job ID" in line): continue
                 match = id_regex.search(line)

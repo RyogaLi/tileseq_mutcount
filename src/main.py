@@ -21,7 +21,6 @@ import pandas as pd
 import os
 import glob
 import argparse
-import subprocess
 import logging
 import datetime
 import shutil
@@ -60,6 +59,7 @@ class fastq2counts(object):
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
         self._log = self._logging.getLogger("main.log")
+
 
     def _init_skip(self, skip, r1=None, r2=None):
         """
@@ -166,7 +166,6 @@ class fastq2counts(object):
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")
-        return sam_df
 
     def _mut_count(self):
         """
@@ -177,10 +176,13 @@ class fastq2counts(object):
         4. Log to main log
         """
         self._log.info("Counting mutations")
+        # submit job with main.py -r1 and -r2
+        # run main.py with -r1 and -r2
+
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
         mut_counts._merged_main()
 
-    def _makejobs(self, sh_output, mut_output_dir, sam_df):
+    def _makejobs(self, sh_output):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
@@ -202,16 +204,16 @@ class fastq2counts(object):
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
             cmd = f"python {self._main_path} \
-                    -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param} --skip_alignment \
-                    -log {args._log_level} -env {args.environment} -qual {args.qual} -min {self._min_cover} \
+                    -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param} --skip_alignment \
+                    -log {args._log_level} -env {args.environment} -qual {args.qual} -min {args._min_cover} \
                     -at {args.at} -mt {args.mt}"
-
+            job_list = []
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
+                job_id = cluster.mut_count_sh_bc(i, cmd, sh_output, self._mt, self._log)
             elif args.environment == "DC":
                 logging.info("Submitting mutation counts jobs to DC...")
-                job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
+                job_id = cluster.mut_count_sh_dc(i, cmd, sh_output, self._mt, self._log) # this function will make a sh file for submitting the job
             job_list.append(job_id)
         self._log.info(f"Total jobs running: {len(job_list)}")
         finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
@@ -219,7 +221,7 @@ class fastq2counts(object):
         if finished:
             self._log.info(f"Mutaion counting jobs are finished!")
             self._log.info("Check mutation counts file ...")
-            mutcount_list = glob.glob(os.path.join(mut_output_dir, "counts_sample_*.csv"))
+            mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
             self._log.info(f"{len(mutcount_list)} mutation counts file generated")
             for f in mutcount_list:
                 mut_n = 0
@@ -228,7 +230,7 @@ class fastq2counts(object):
                     for line in mut_output:
                         # skip header
                         if "c." in line:
-                                mut_n += 1
+                            mut_n += 1
                 if mut_n == 0:
                     self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
                 else:
@@ -237,41 +239,50 @@ class fastq2counts(object):
     def _main(self):
         """
         """
-        sam_df = []
         if self._skip == False: # submit jobs for alignment
             # get sam_df from self._align_sh()
-            sam_df = self._align_sh_()
-        else:  # read sam df from user provided output dir
-            if self._r1 != "" and self._r2 != "":
-                # call functions in count_mut.py
-                # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
-                self._mut_count()
-            # submit jobs for mutation counting
-            # if user did not provide r1 and r2 SAM file
-            # get r1 and r2 sam files from output dir provided by user
-            elif self._r1 == "" and self._r2 == "":
-                # output directory is the mut_count dir
-                # make folder to store all the sh files
-                if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
-                    self._log.info(f"Running on {self._env}")
-                    sh_output = os.path.join(self._output, "BC_mut_sh")
-                    os.mkdir(sh_output)
-                # make folder to store all the log files
-                log_dir = os.path.join(self._output, "mut_log")
-                os.makedirs(log_dir)
-                # get samples in parameter file
+            self._align_sh_()
 
-                finished = self._makejobs(self, sh_output, self._output)
+        if self._r1 != "" and self._r2 != "":
+            # call functions in count_mut.py
+            # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
+            self._mut_count()
+        # submit jobs for mutation counting
+        # if user did not provide r1 and r2 SAM file
+        # get r1 and r2 sam files from output dir provided by user
+        elif self._r1 == "" and self._r2 == "":
+            if not args.skip_alignment:
+                time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                # make mut count dir alignemnt not skipped
+                # otherwise the user input dir should be the output dir gnerated
+                self._output = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
+                os.makedirs(self._output)
 
+            # output directory is the mut_count dir
+            # make folder to store all the sh files
+            if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
+                self._log.info(f"Running on {self._env}")
+                sh_output = os.path.join(self._output, "BC_mut_sh")
+                os.mkdir(sh_output)
+            # make folder to store all the log files
+            log_dir = os.path.join(self._output, "mut_log")
+            os.makedirs(log_dir)
+            # get samples in parameter file
 
-def main(args):
+            self._makejobs(self, sh_output, self._output)
+
+def check(args):
     """
-    Main for fastq2counts
-    Validate user inputs
+    Validate args and convert csv to JSON
+    return path to json
     """
-    # get time stamp for this object
-    time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
+    # check if the correct args are provided
+    # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
+    if not args.skip_alignment:
+        if args.r1 or args.r2:
+            print(f"Invalid paramters! Please specify --skip_alignment if you want to analyze\
+            one pair of sam files")
+            exit(1)
     # check if output dir exists
     if not os.path.isdir(args.output):
         print(f"Output directory not found: {args.output}")
@@ -280,7 +291,6 @@ def main(args):
     if not os.path.isdir(args.fastq):
         print(f"Fastq file path not found: {args.fastq}")
         exit(1)
-
     # try convert csv to json in the same dir as the csv file
     # convert csv file to json
     if args.param.endswith(".csv"):
@@ -297,12 +307,20 @@ def main(args):
         print("Json file does not exist, check conversion!")
         exit(1)
 
+def main(args):
+    """
+    Main for fastq2counts
+    Validate user inputs
+    """
+    # get time stamp for this object
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+    param_json = check(args)
     # get basename for the param file
     param_base = os.path.basename(param_json)
     output_dir = ""
-    if args.skip_alignment:
-        # if we want to skip the alignment part
-        # if user provided a parameter file and R1sam + R2sam
+    if args.skip_alignment: # if we want to skip the alignment part
+        # if user provided R1sam + R2sam
         if args.r1 and args.r2:
             # analyze one pair of r1 and r2 file
             # VALIDATE if both files are sam files
