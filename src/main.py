@@ -329,7 +329,6 @@ def main(args):
     param_json = check(args)
     # get basename for the param file
     param_base = os.path.basename(param_json)
-    output_dir = ""
     if args.skip_alignment: # if we want to skip the alignment part
         # if user provided R1sam + R2sam
         if args.r1 and args.r2:
@@ -355,6 +354,8 @@ def main(args):
             # make time stamped output folder for this project
             updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
             os.makedirs(updated_out)
+            args_log_path = os.path.join(updated_out, "args.log")
+            write_param(args_log_path, args)
             # load json file
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
@@ -368,6 +369,8 @@ def main(args):
         # make time stamped output folder for this project
         updated_out = os.path.join(args.output, args.name + "_" + time_now)
         os.makedirs(updated_out)  # make directory to save this run
+        args_log_path = os.path.join(updated_out, "args.log")
+        write_param(args_log_path, args)
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
             param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
@@ -376,19 +379,7 @@ def main(args):
         # initialize mutcount object
         mc = fastq2counts(param_path, updated_out, main_log, args)
         mc._init_skip(skip=False)
-
-    if output_dir == "":
-        # this parameter file will be saved in the main output dir
-        param_f = open(os.path.join(output_dir, "param.log"), "a")
-        # log - time for this run (same as the output folder name)
-        param_f.write(f"Run started: {time}\n")
-        param_f.write(f"Run name: {args.name}\n")
-        param_f.write(f"This run was on the cluster: {args.env}\n")
-        param_f.write(f"Input parameter file used: {args.param}\n")
-        param_f.write(f"Posterior probability cutoff for mutation counts: {args.qual}\n")
-        param_f.write(f"Min_ cover percentage: {args.min_cover}\n")
-        param_f.close()
-
+        
     # start the run
     mc._main()
 
