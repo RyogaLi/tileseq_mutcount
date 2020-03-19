@@ -23,24 +23,15 @@ class readSam(object):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
-        seq: sequence information dictionary from json file
-        seq_lookup: df contains DNA sequence, Protein sequence and positions mapped to each other
 
-        tile_map: tile start and end pos
-        region_map: region start and end pos
-
-        samples: df with sample names and corresponding conditions, tiles
         output_dir: main output directory
-
-        qual_filter: threshold for posterior probability filtering
-        min_map: minimal percentage of a tile that needs to be covered by both reads (otherwise the read will be marked as "off_tile")
 
         log_level: settings for logging
         log_dir: directory to save all the logging for each sample
         """
         self._r1 = sam_r1
         self._r2 = sam_r2
-        #self._seq_lookup = seq_lookup
+
 
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param)
 
@@ -63,6 +54,8 @@ class readSam(object):
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
         self._sample_rep = self._sample_info["Replicate"].values[0]
+
+        self._seq_lookup = help_functions.build_lookup(self._cds_start, self._seq.cds_end, self._cds_seq)
 
         log_f = os.path.join(log_dir, f"sample_{str(self._sample_id)}_mut_count.log")
 
