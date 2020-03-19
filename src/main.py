@@ -24,7 +24,7 @@ import argparse
 import logging
 import datetime
 import shutil
-import time
+# import time
 
 # pakage modules
 import settings
@@ -185,15 +185,15 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
         mut_counts._merged_main()
 
-    def _makejobs(self, sh_output):
+    def _makejobs(self, sh_output, sam_dir):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
         """
         # get samples in parameter file
         sample_names = self._samples["Sample ID"].tolist() # samples in param file
+        sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
         # get sam files from parameter file
-        sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_file
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
             exit(1)
@@ -353,6 +353,7 @@ def main(args):
             # for each pair of sam file we would submit one job to the cluster for mutation counting
             # make time stamped output folder for this project
             updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
+            # sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
             os.makedirs(updated_out)
             args_log_path = os.path.join(updated_out, "args.log")
             write_param(args_log_path, args)
