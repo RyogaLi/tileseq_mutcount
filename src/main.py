@@ -392,7 +392,7 @@ def write_param(args_log_path, args):
     with open(args_log_path, "w") as args_log:
         for arg in vars(args):
             args_log.write(arg+",")
-            args_log.write(getattr(args, arg, "N/A")+"\n")
+            args_log.write(f"{getattr(args, arg, 'N/A')}\n")
 
 def log(output_dir, log_level):
     """
