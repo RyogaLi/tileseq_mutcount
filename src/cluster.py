@@ -101,7 +101,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
         all_job_id.append(job_id)
-        logging.info(f"Sample {sample_name}: job id - {ids}")
+        logging.info(f"Sample {sample_name}: job id - {job_id}")
 
     return fastq_map, all_job_id
 
