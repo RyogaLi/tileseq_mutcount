@@ -226,6 +226,19 @@ class fastq2counts(object):
 
         return finished
 
+    def _checkoutput(self, f):
+        """
+        Check how many variants are generated in each file
+        """
+        mut_n = 0
+        with open(f, "r") as mut_output:
+            for line in mut_output:
+                # skip header
+                if "c." in line:
+                    mut_n += 1
+        return mut_n
+
+
     def _main(self):
         """
         """
@@ -267,13 +280,7 @@ class fastq2counts(object):
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 self._log.info(f"{len(mutcount_list)} mutation counts file generated")
                 for f in mutcount_list:
-                    mut_n = 0
-                    # double check if each output file has mutations
-                    with open(f, "r") as mut_output:
-                        for line in mut_output:
-                            # skip header
-                            if "c." in line:
-                                mut_n += 1
+                    mut_n = self._checkoutput(f)
                     if mut_n == 0:
                         self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
                     else:
