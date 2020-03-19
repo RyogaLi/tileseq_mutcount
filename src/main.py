@@ -50,7 +50,10 @@ class fastq2counts(object):
 
         self._args = args  # user input arguments
 
-        self._fastq_list = glob.glob(args.fastq+"/*.fastq.gz")
+        if args.fastq:
+            self._fastq_list = glob.glob(args.fastq+"/*.fastq.gz")
+        else:
+            self._fastq_list = []
         self._output = output_dir
 
         # parse parameter json file
@@ -221,23 +224,7 @@ class fastq2counts(object):
         self._log.info(f"Total jobs running: {len(job_list)}")
         finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
 
-        if finished:
-            self._log.info(f"Mutaion counting jobs are finished!")
-            self._log.info("Check mutation counts file ...")
-            mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
-            self._log.info(f"{len(mutcount_list)} mutation counts file generated")
-            for f in mutcount_list:
-                mut_n = 0
-                # double check if each output file has mutations
-                with open(f, "r") as mut_output:
-                    for line in mut_output:
-                        # skip header
-                        if "c." in line:
-                            mut_n += 1
-                if mut_n == 0:
-                    self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
-                else:
-                    self._log.info(f"{f} has {mut_n} variants")
+        return finished
 
     def _main(self):
         """
@@ -272,7 +259,26 @@ class fastq2counts(object):
             os.makedirs(log_dir)
             # get samples in parameter file
 
-            self._makejobs(self, sh_output, self._output)
+            finished = self._makejobs(self, sh_output, self._output)
+
+            if finished:
+                self._log.info(f"Mutaion counting jobs are finished!")
+                self._log.info("Check mutation counts file ...")
+                mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
+                self._log.info(f"{len(mutcount_list)} mutation counts file generated")
+                for f in mutcount_list:
+                    mut_n = 0
+                    # double check if each output file has mutations
+                    with open(f, "r") as mut_output:
+                        for line in mut_output:
+                            # skip header
+                            if "c." in line:
+                                mut_n += 1
+                    if mut_n == 0:
+                        self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
+                    else:
+                        self._log.info(f"{f} has {mut_n} variants")
+
 
 def check(args):
     """
