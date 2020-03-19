@@ -198,6 +198,7 @@ class fastq2counts(object):
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
             exit(1)
+        job_list = []
         for i in sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}_*_R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_*_R2_*.sam")
@@ -211,7 +212,7 @@ class fastq2counts(object):
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
             cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -qual {args.quality} -min {args.min_cover} -at {args.at} -mt {args.mt}"
-            job_list = []
+
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
                 job_id = cluster.mut_count_sh_bc(i, cmd, args.mt, sh_output, self._log)
