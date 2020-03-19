@@ -210,7 +210,7 @@ class fastq2counts(object):
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
             cmd = f"python {self._main_path} \
-                    -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param} --skip_alignment \
+                    -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment \
                     -log {args._log_level} -env {args.environment} -qual {args.qual} -min {args._min_cover} \
                     -at {args.at} -mt {args.mt}"
             job_list = []
