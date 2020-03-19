@@ -440,7 +440,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", type=str)
     parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
     parser.add_argument("-p", "--param", help="csv paramter file", type=str, required=True)
-    parser.add_argument("--skip_alignment", action="store_true", type=str, help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
+    parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
     parser.add_argument("-n", "--name", help="Name for this run", type=str, required=True)
     parser.add_argument("-r1", help="r1 SAM file", type=str)
     parser.add_argument("-r2", help="r2 SAM file", type=str)
