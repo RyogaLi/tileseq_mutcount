@@ -222,7 +222,7 @@ class fastq2counts(object):
             job_list.append(job_id)
 
         jobs = ",".join(job_list)
-        self._log.debug("jobs: {jobs}")
+        self._log.debug(f"All jobs: {jobs}")
         self._log.info(f"Total jobs running: {len(job_list)}")
         finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
 
