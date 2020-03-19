@@ -50,7 +50,7 @@ class readSam(object):
 
         # sample information
         self._sample_id = os.path.basename(sam_r1).split("_")[0]
-        self._sample_info = samples[samples["Sample ID"] == self._sample_id]
+        self._sample_info = self._samples[self._samples["Sample ID"] == self._sample_id]
 
         # tile information
         self._sample_tile = self._sample_info["Tile ID"].values[0]
