@@ -37,7 +37,7 @@ python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/
 ``` bash
 # Required parameters:
 
--p PARAM, parameter csv file (please see details in the input files section)
+-p PARAM, parameter csv or json file (please see details in the input files section)
 -o OUTPUT, Output directory
 -f FASTQ, Path to fastq files you want to analyze
 -n NAME RUN_NAME
@@ -54,7 +54,7 @@ Optional parameters:
 **Example of skipping alignment:**
 
 ```
-python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.json -o /home/rothlab1/rli/dev/tilseq_mutcount/output/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment
+python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment
 ```
 
 **Example of running on one pair of SAM sam_files**
