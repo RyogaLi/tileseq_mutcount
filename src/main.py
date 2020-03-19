@@ -216,10 +216,10 @@ class fastq2counts(object):
             job_list = []
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(i, cmd, sh_output, self._mt, self._log)
+                job_id = cluster.mut_count_sh_bc(i, cmd, sh_output, args.mt, self._log)
             elif args.environment == "DC":
                 logging.info("Submitting mutation counts jobs to DC...")
-                job_id = cluster.mut_count_sh_dc(i, cmd, sh_output, self._mt, self._log) # this function will make a sh file for submitting the job
+                job_id = cluster.mut_count_sh_dc(i, cmd, sh_output, args.mt, self._log) # this function will make a sh file for submitting the job
             job_list.append(job_id)
         self._log.info(f"Total jobs running: {len(job_list)}")
         finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
