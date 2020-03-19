@@ -19,7 +19,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir, log_dir):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
