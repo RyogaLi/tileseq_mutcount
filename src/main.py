@@ -430,23 +430,23 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='TileSeq mutation counts')
     # user input arguments
-    parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze")
-    parser.add_argument("-o", "--output", help="Output folder", required=True)
-    parser.add_argument("-p", "--param", help="csv paramter file", required=True)
-    parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
-    parser.add_argument("-n", "--name", help="Name for this run", required=True)
-    parser.add_argument("-r1", help="r1 SAM file")
-    parser.add_argument("-r2", help="r2 SAM file")
+    parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", type=str)
+    parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
+    parser.add_argument("-p", "--param", help="csv paramter file", type=str, required=True)
+    parser.add_argument("--skip_alignment", action="store_true", type=str, help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
+    parser.add_argument("-n", "--name", help="Name for this run", type=str, required=True)
+    parser.add_argument("-r1", help="r1 SAM file", type=str)
+    parser.add_argument("-r2", help="r2 SAM file", type=str)
 
     # user input arguments with default values set
     parser.add_argument("-log", "--log_level", help="set log level: debug, \
-        info, warning, error, critical. (default = debug)", default="debug")
+        info, warning, error, critical. (default = debug)", type=str, default="debug")
     parser.add_argument("-env", "--environment", help= "The cluster used to \
-        run this script (default = DC)", default="DC")
+        run this script (default = DC)",type=str, default="DC")
     parser.add_argument("-qual", "--quality", help="Posterior threshold for \
-        filtering mutations (default = 0.99)", default = 0.99)
+        filtering mutations (default = 0.99)", type=float, default = 0.99)
     parser.add_argument("-min", "--min_cover", help="Minimal % required to \
-        cover the tile (default = 0.4)", default=0.6)
+        cover the tile (default = 0.4)", type=float, default=0.6)
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
