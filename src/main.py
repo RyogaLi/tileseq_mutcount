@@ -369,8 +369,10 @@ def main(args):
         # make time stamped output folder for this project
         updated_out = os.path.join(args.output, args.name + "_" + time_now)
         os.makedirs(updated_out)  # make directory to save this run
+        # write args to file
         args_log_path = os.path.join(updated_out, "args.log")
         write_param(args_log_path, args)
+
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
             param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
@@ -379,7 +381,7 @@ def main(args):
         # initialize mutcount object
         mc = fastq2counts(param_path, updated_out, main_log, args)
         mc._init_skip(skip=False)
-        
+
     # start the run
     mc._main()
 
@@ -390,7 +392,7 @@ def write_param(args_log_path, args):
     with open(args_log_path, "w") as args_log:
         for arg in vars(args):
             args_log.write(arg+",")
-            args_log.write(getattr(args, arg)+"\n")
+            args_log.write(getattr(args, arg, "N/A")+"\n")
 
 def log(output_dir, log_level):
     """
@@ -444,19 +446,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # convert all the args to variables
-    # store all the parameters in dictionary
-    # param_dict["f"] = args.fastq # path to fastq files
-    # param_dict["out"] = args.output # path to ouptut dir
-    # param_dict["param"] = args.param # path to parameter.csv
-    # param_dict["env"] = args.environment # environment settings (DC, BC, BC2)
-    # param_qual = float(args.quality) # posterior quality cutoff
-    # min_cover = float(ais.min_cover) # min coverage
-    # log_level = args.log_level # log level defaultl
-    # r1sam = args.r1 # sam file r1
-    # r2sam = args.r2 # sam file r2
-    # mt = args.mt # mutation count time required
-    # at = args.at # alignment time required
-    # name = args.name
     print(" **** NOTE: Before you run this pipeline, please check settings.py to update program paths **** ")
     main(args)
