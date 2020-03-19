@@ -47,7 +47,7 @@ class readSam(object):
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
         self._tile_len = self._tile_ends - self._tile_begins
         self._cds_start = self._seq.cds_start
-        self._min_map_len = math.ceil(self._tile_len * args.min_cover)
+        self._min_map_len = math.ceil(self._tile_len * float(self._args.min_cover))
 
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
