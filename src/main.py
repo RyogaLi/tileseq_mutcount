@@ -185,7 +185,7 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
         mut_counts._merged_main()
 
-    def _makejobs(self, sh_output, sam_dir):
+    def _makejobs(self, sh_output):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
