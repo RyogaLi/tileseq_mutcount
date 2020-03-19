@@ -58,7 +58,7 @@ class readSam(object):
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
         self._tile_len = self._tile_ends - self._tile_begins
         self._cds_start = seq.cds_start
-        self._min_map_len = math.ceil(self._tile_len * min_map)
+        self._min_map_len = math.ceil(self._tile_len * args.min_cover)
 
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
@@ -91,13 +91,15 @@ class readSam(object):
         self._mut_log.info(f"Sam file input R1:{sam_r1}")
         self._mut_log.info(f"Sam file input R2:{sam_r2}")
 
-
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n")
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n \
+          #Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n \
+          #Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n \
+          #Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover \%:{args.min_cover}")
         output_csv.close()
 
-    def _merged_main(self, full_seq, cds_seq):
+    def _merged_main(self):
         """
         Read sam files at the same time, store mutations that passed filter
         """
@@ -211,7 +213,7 @@ class readSam(object):
                 # pass this dictionary to locate mut
                 # mut = locate_mut_main()
                 # add mutation to mut list
-                mut_parser = locate_mut.MutParser(row, full_seq, cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log)
+                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log)
                 hgvs, outside_mut= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
@@ -225,7 +227,6 @@ class readSam(object):
                     for i in outside_mut:
                         if not (i in off_mut):
                             off_mut[i] = 1
-        print(datetime.datetime.now().strftime("%H:%M:%S"))
 
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
@@ -234,7 +235,6 @@ class readSam(object):
         tmp_f = os.path.join(self._output_counts_dir,f"{self._sample_id}_tmp.csv")
         off_mut = list(set(off_mut))
         off_mut.sort()
-        join_off = "-".join([str(i) for i in off_mut])
         f = open(tmp_f, "w")
         f.write(f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read/read_pair}\n")
         f.close()
@@ -256,11 +256,6 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
-
-
-def main(sam_r1, sam_r2, seq, seq_lookup, tile_map, region_map, samples, output_dir, qual_filter, min_map, log_level, log_dir):
-
-    pass
 
 if __name__ == "__main__":
 

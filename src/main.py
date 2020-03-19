@@ -176,7 +176,65 @@ class fastq2counts(object):
         3. For each pair of sam files, submit jobs to the cluster
         4. Log to main log
         """
-        pass
+        self._log.info("Counting mutations")
+        mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
+        mut_counts._merged_main()
+
+    def _makejobs(self, mut_output_dir):
+        """
+        For each pair of sam files in output/sam_files/
+        submit mut count job to the cluster
+        """
+        # get samples in parameter file
+        sample_names = self._samples["Sample ID"].tolist() # samples in param file
+        # get sam files from parameter file
+        sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_files
+
+        job_list = [] # track how many jobs are running
+        for i in sample_names:
+            sam_f_r1 = glob.glob(f"{sam_dir}{i}_R1*.sam") # assume all the sam files have the same name format (id_*.sam)
+            sam_f_r2 = glob.glob(f"{sam_dir}{i}_R2*.sam")
+            if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
+                logging.error(f"SAM file for sample {i} not found. Please check your parameter file")
+                exit(1)
+            else:
+                self._r1 = sam_f_r1
+                self._r2 = sam_f_r2
+
+            # submit job with main.py -r1 and -r2
+            # run main.py with -r1 and -r2
+            cmd = f"python {self._main_path} \
+                    -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param} --skip_alignment \
+                    -log {args._log_level} -env {args.environment} -qual {args.qual} -min {self._min_cover} \
+                    -at {args.at} -mt {args.mt}"
+
+            if args.environment == "BC2" or args.environment == "BC":
+                logging.info("Submitting mutation counts jobs to BC2...")
+                job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
+            elif args.environment == "DC":
+                logging.info("Submitting mutation counts jobs to DC...")
+                job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
+            job_list.append(job_id)
+        self._log.info(f"Total jobs running: {len(job_list)}")
+        finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
+
+        if finished:
+            self._log.info(f"Mutaion counting jobs are finished!")
+            self._log.info("Check mutation counts file ...")
+            mutcount_list = glob.glob(os.path.join(mut_output_dir, "counts_sample_*.csv"))
+            self._log.info(f"{len(mutcount_list)} mutation counts file generated")
+            for f in mutcount_list:
+                mut_n = 0
+                # double check if each output file has mutations
+                with open(f, "r") as mut_output:
+                    for line in mut_output:
+                        # skip header
+                        if "c." in line:
+                                mut_n += 1
+                if mut_n == 0:
+                    self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
+                else:
+                    self._log.info(f"{f} has {mut_n} variants")
 
     def _main(self):
         """
@@ -185,20 +243,17 @@ class fastq2counts(object):
         if self._skip == False: # submit jobs for alignment
             # get sam_df from self._align_sh()
             sam_df = self._align_sh_()
-
         if self._r1 != "" and self._r2 != "":
             # call functions in count_mut.py
             # init(sam_r1, sam_r2, param, args, ouptut_dir, logger)
-            self._log.info("Counting mutations")
-            mut_counts = count_mut.readSam(self._r1, self._r2, self._param, self._args, self._output)
-            mut_counts._merged_main()
+            self._mut_count()
         # submit jobs for mutation counting
         # if user did not provide r1 and r2 SAM file
         # get r1 and r2 sam files from output dir provided by user
         elif self._r1 == "" and self._r2 == "":
             # output directory is the mut_count dir
             # make folder to store all the sh files
-            if self._env == "BC2" or self._env == "DC" or self._env == "BC":
+            if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
                 self._log.info(f"Running on {self._env}")
                 sh_output = os.path.join(self._output, "BC_mut_sh")
                 os.mkdir(sh_output)
@@ -206,62 +261,8 @@ class fastq2counts(object):
             log_dir = os.path.join(self._output, "mut_log")
             os.makedirs(log_dir)
             # get samples in parameter file
-            sample_names = self._samples["Sample ID"].tolist() # samples in param file
-            # get sam files from parameter file
-            sam_dir = os.path.join(self._output, "sam_files/") # read sam file from sam_files
 
-            job_list = [] # track how many jobs are running
-            for i in sample_names:
-                sam_f = glob.glob(f"{sam_dir}{i}_*.sam") # assume all the sam files have the same name format (id_*.sam)
-                if len(sam_f) < 2:
-                    logging.error(f"SAM file for sample {i} not found. Please check your parameter file")
-                    exit(1)
-                elif len(sam_f) == 2:
-                    for sam in sam_f:
-                        if "_R1_" in sam: # for read one
-                            self._r1 = sam
-                        else:
-                            self._r2 = sam
-
-                # submit job with main.py -r1 and -r2
-                # run main.py with -r1 and -r2
-                cmd = f"python {self._main_path} \
-                        -r1 {self._r1} -r2 {self._r2} -o {mut_output_dir} -p {self._param} --skip_alignment \
-                        -log {self._log} -env {self._env} -qual {self._cutoff} -min {self._min_cover} \
-                        -at {self._at} -mt {self._mt}"
-
-                if self._env == "BC2" or self._env == "BC":
-                    logging.info("Submitting mutation counts jobs to BC2...")
-                    job_id = cluster.mut_count_sh_bc(cmd, self._mt, self._log)
-                elif self._env == "DC":
-                    logging.info("Submitting mutation counts jobs to DC...")
-                    job_id = cluster.mut_count_sh_dc(cmd, self._mt, self._log) # this function will make a sh file for submitting the job
-                job_list.append(job_id)
-            self._log.info(f"Total jobs running: {len(job_list)}")
-            finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
-            if finished:
-                self._log.info(f"Mutaion counting jobs are finished!")
-                self._log.info("Check mutation counts file ...")
-                mutcount_list = glob.glob(os.path.join(output_dir, "counts_sample_*.csv"))
-                self._log.info(f"{len(mutcount_list)} mutation counts file generated")
-                for f in mutcount_list:
-                    mut_n = 0
-                    # double check if each output file has mutations
-                    with open(f, "r") as mut_output:
-                        for line in mut_output:
-                            # skip header
-                            if "c." in line:
-                                    mut_n += 1
-                    if mut_n == 0:
-                        self._log.error(f"{f} has 0 variants! Check mut log for this sample.")
-                    else:
-                        self._log.info(f"{f} has {mut_n} variants")
-            all_tmp = os.path.join(mut_output_dir, "*_tmp.csv")
-            merged = os.path.join(mut_output_dir, "info.csv")
-            cmd = f"cat {all_tmp} > {merged}"
-            os.system(cmd)
-            #os.system(f"rm {all_tmp}")
-            logging.info("Job complete")
+            finished = self._makejobs(self, self._output)
 
 
 def main(args):
@@ -270,7 +271,7 @@ def main(args):
     Validate user inputs
     """
     # get time stamp for this object
-    time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
     # check if output dir exists
     if not os.path.isdir(args.output):
@@ -324,7 +325,7 @@ def main(args):
             # user provided a csv file and path to sam files
             # for each pair of sam file we would submit one job to the cluster for mutation counting
             # make time stamped output folder for this project
-            updated_out = os.path.join(args.output, args.name + "_" + time + "_mut_count")
+            updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
             os.makedirs(updated_out)
             # load json file
             param_path = os.path.join(updated_out, param_base)
@@ -337,7 +338,7 @@ def main(args):
     else:
         # alignment
         # make time stamped output folder for this project
-        updated_out = os.path.join(args.output, args.name + "_" + time)
+        updated_out = os.path.join(args.output, args.name + "_" + time_now)
         os.makedirs(updated_out)  # make directory to save this run
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):

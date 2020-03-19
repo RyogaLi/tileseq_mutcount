@@ -6,9 +6,6 @@
 
 
 # TODO
-# 1. merge parse cigar and parse mdz into one function
-# 2. store ref positions and read base into a dictionary
-
 
 import pandas as pd
 import cigar

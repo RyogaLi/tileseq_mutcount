@@ -159,7 +159,7 @@ def parse_jobs(job_list, logger):
     qstat_err = job.stderr.decode("utf-8")
 
     f_id = []
-    updated_list = []
+    updated_list = job_list
     while True:
         running = []
         queued = []
@@ -176,7 +176,7 @@ def parse_jobs(job_list, logger):
                 job_id = match.group(1)
                 f_id.append(job_id)
             err_id = set(f_id)
-            updated_list = [x for x in job_list if x not in err_id]
+            updated_list = [x for x in updated_list if x not in err_id]
 
         if qstat_out != "":
             qstat_out = qstat_out.split("\n")[:-1]
