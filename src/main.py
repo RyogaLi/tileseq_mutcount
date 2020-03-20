@@ -84,6 +84,8 @@ class fastq2counts(object):
                 self._r2 = ""
                 self._log.info(f"Sam files are read from {self._output}")
         else:
+            self._r1 = ""
+            self._r2 = ""
             self._skip = False
 
     def _align_sh_(self):
