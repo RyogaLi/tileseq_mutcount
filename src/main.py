@@ -318,7 +318,10 @@ def check(args):
     # convert csv file to json
     if args.param.endswith(".csv"):
         param_json = args.param.replace(".csv", ".json")
-        convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
+        if args.sr_Override:
+            convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
+        else:
+            convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json}"
         os.system(convert)
     # if the file ends with .json, do nothing
     elif args.param.endswith(".json"):
@@ -458,6 +461,7 @@ if __name__ == "__main__":
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 36h)", default=36)
+    parser.add_argument("-override", "--sr_Override", action="store_true", help="Provide this argument when there is only one replicate")
 
     args = parser.parse_args()
 
