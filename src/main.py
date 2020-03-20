@@ -171,6 +171,7 @@ class fastq2counts(object):
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")
+        return sam_output
 
     def _mut_count(self):
         """
@@ -187,13 +188,14 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
         mut_counts._merged_main()
 
-    def _makejobs(self, sh_output):
+    def _makejobs(self, sh_output, sam_dir):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
         """
-        # get samples in parameter file
-        sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
+        if sam_dir == "":
+            # get samples in parameter file
+            sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
         # get sam files from parameter file
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
@@ -247,9 +249,10 @@ class fastq2counts(object):
         """
         Main for the fastq2counts object
         """
+        sam_dir = ""
         if self._skip == False: # submit jobs for alignment
             # get sam_df from self._align_sh()
-            self._align_sh_()
+            sam_dir = self._align_sh_()
 
         if self._r1 != "" and self._r2 != "":
             # call functions in count_mut.py
@@ -263,8 +266,8 @@ class fastq2counts(object):
                 time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 # make mut count dir alignemnt not skipped
                 # otherwise the user input dir should be the output dir gnerated
-                self._output = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
-                os.makedirs(self._output)
+                self._output = os.path.join(self._output, args.name + "_" + time_now + "_mut_count")
+                os.makedirs(self._output, sam_dir)
 
             # output directory is the mut_count dir
             # make folder to store all the sh files
