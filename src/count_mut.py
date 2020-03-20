@@ -89,7 +89,7 @@ class readSam(object):
 
     def _merged_main(self):
         """
-        Read sam files at the same time, store mutations that passed filter
+        Read two sam files at the same time, store mutations that passed filter
         """
         read_pair = 0 # total pairs
         un_map = 0 # total number of unmapped reads

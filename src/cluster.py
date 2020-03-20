@@ -128,7 +128,6 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
 def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
     """
     Submit mutation count jobs to DC
-
     """
     # go through files df and submit jobs for each pair of sam files
     # counting mutations in raw sam output files
@@ -149,7 +148,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
 def parse_jobs(job_list, logger):
     """
     return true if all the jobs in job list finished
-    else wait for 10 mins and return how man jobs are running
+    else wait for 10 mins and return how man jobs are running and queued
     job_list: list of job ids
     logger: logging object
     """
