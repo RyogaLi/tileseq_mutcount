@@ -262,12 +262,12 @@ class fastq2counts(object):
         # if user did not provide r1 and r2 SAM file
         # get r1 and r2 sam files from output dir provided by user
         elif self._r1 == "" and self._r2 == "":
-            if not args.skip_alignment:
+            if self._skip == False:
                 time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 # make mut count dir alignemnt not skipped
                 # otherwise the user input dir should be the output dir gnerated
                 self._output = os.path.join(self._output, args.name + "_" + time_now + "_mut_count")
-                os.makedirs(self._output, sam_dir)
+                os.makedirs(self._output)
 
             # output directory is the mut_count dir
             # make folder to store all the sh files
@@ -276,7 +276,7 @@ class fastq2counts(object):
                 self._log.info(f"Mutation count sh files are made in {sh_output}")
                 os.mkdir(sh_output)
 
-            finished = self._makejobs(sh_output)
+            finished = self._makejobs(sh_output, sam_dir)
 
             if finished:
                 self._log.info(f"Mutaion counting jobs are finished!")
