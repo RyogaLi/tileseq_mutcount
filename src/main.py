@@ -110,7 +110,6 @@ class fastq2counts(object):
             test= list(np.setdiff1d(self._sample_names,fastq_sample_id))
             join_list = ",".join(test)
             self._log.error("fastq files do not match input samples.")
-            self._log.error("Program terminated due to error")
             self._log.error(f"Fastq files not found for {join_list}")
             exit(1)
 
@@ -204,7 +203,7 @@ class fastq2counts(object):
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
             exit(1)
-        self._log.info(f"Sam files are read from {sam_dir}")
+        self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
         for i in self._sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}*_R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
