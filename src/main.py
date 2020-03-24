@@ -18,6 +18,7 @@
 
 # modules
 import pandas as pd
+import numpy as np
 import os
 import glob
 import argparse
@@ -106,8 +107,11 @@ class fastq2counts(object):
             self._log.info(f"In total there are {len(list(set(self._sample_names)))} samples in the csv file")
             self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
         else:
+            test= list(np.setdiff1d(self._sample_names,fastq_sample_id))
+            join_list = test.join(",")
             self._log.error("fastq files do not match input samples.")
             self._log.error("Program terminated due to error")
+            self._log.error(f"Fastq files not found for {join_list}")
             exit(1)
 
         # create mappving for R1 and R2 for each sample
