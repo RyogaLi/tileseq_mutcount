@@ -460,7 +460,7 @@ if __name__ == "__main__":
         run this script (default = DC)",type=str, default="DC")
     parser.add_argument("-qual", "--quality", help="Posterior threshold for \
         filtering mutations (default = 0.99)", type=float, default = 0.99)
-    parser.add_argument("-min", "--min_cover", help="Minimal % required to \
+    parser.add_argument("-min", "--min_cover", help="Minimal percent required to \
         cover the tile (default = 0.4)", type=float, default=0.6)
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
