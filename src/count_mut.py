@@ -121,7 +121,7 @@ class readSam(object):
                 line_r1 = line_r1.split()
                 line_r2 = line_r2.split()
 
-                if len(line_r1) == 1:
+                if len(line_r1) <= 1:
                     continue
 
                 read_pair += 1 # count how many read pairs in this pair of sam files

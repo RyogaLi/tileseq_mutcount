@@ -5,7 +5,6 @@
 # Output: samfiles
 
 import os
-import settings
 
 def make_ref(name, ref_seq, ref_path, bowtie_build):
     """
@@ -19,7 +18,7 @@ def make_ref(name, ref_seq, ref_path, bowtie_build):
     build_cmd =f"{bowtie_build}--quiet -f {ref_fasta} {os.path.join(ref_path, name)}"
     os.system(build_cmd)
 
-    return os.path.join(ref_path, name) 
+    return os.path.join(ref_path, name)
 
 def align_main(ref, r1, r2, sam_path, bowtie, shfile):
     """
