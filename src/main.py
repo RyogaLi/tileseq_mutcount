@@ -108,7 +108,7 @@ class fastq2counts(object):
             self._log.info(f"In total there are {len(fastq_sample_id)} fastq files")
         else:
             test= list(np.setdiff1d(self._sample_names,fastq_sample_id))
-            join_list = test.join(",")
+            join_list = ",".join(test)
             self._log.error("fastq files do not match input samples.")
             self._log.error("Program terminated due to error")
             self._log.error(f"Fastq files not found for {join_list}")
