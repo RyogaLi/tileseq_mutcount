@@ -120,7 +120,8 @@ class readSam(object):
 
                 line_r1 = line_r1.split()
                 line_r2 = line_r2.split()
-
+                print(line_r1)
+                print(line_r2)
                 if len(line_r1) <= 1:
                     continue
 
