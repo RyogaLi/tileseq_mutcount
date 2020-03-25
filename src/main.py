@@ -212,6 +212,13 @@ class fastq2counts(object):
                 self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
                 exit(1)
             else:
+                self._log.info(f"Sample {i}")
+                self._log.info(f"Read1: {sam_f_r1[0]}")
+                self._log.info(f"Read2: {sam_f_r2[0]}")
+                sam_id_1 = os.path.basename(sam_f_r1[0]).split("_")[0]
+                sam_id_2 = os.path.basename(sam_f_r2[0]).split("_")[0]
+                if sam_id_1 != sam_id_2:
+                    self._log.error("ID in sam files don't match!")
                 self._r1 = sam_f_r1[0]
                 self._r2 = sam_f_r2[0]
 
