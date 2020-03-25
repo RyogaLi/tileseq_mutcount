@@ -206,8 +206,8 @@ class fastq2counts(object):
         self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
         for i in self._sample_names:
-            sam_f_r1 = glob.glob(f"{sam_dir}{i}*_R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
-            sam_f_r2 = glob.glob(f"{sam_dir}{i}*_R2_*.sam")
+            sam_f_r1 = glob.glob(f"{sam_dir}{i}_*R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
+            sam_f_r2 = glob.glob(f"{sam_dir}{i}_*R2_*.sam")
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
                 self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
                 exit(1)
