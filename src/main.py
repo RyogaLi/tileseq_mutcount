@@ -217,8 +217,8 @@ class fastq2counts(object):
                 self._log.info(f"Read2: {sam_f_r2[0]}")
                 sam_id_1 = os.path.basename(sam_f_r1[0]).split("_")[0]
                 sam_id_2 = os.path.basename(sam_f_r2[0]).split("_")[0]
-                if sam_id_1 != sam_id_2:
-                    self._log.error("ID in sam files don't match!")
+                if (sam_id_1 != i) or (sam_id_1 != sam_id_2) or (sam_id_2 != i):
+                    self._log.error("IDs in sam files don't match!")
                 self._r1 = sam_f_r1[0]
                 self._r2 = sam_f_r2[0]
 
