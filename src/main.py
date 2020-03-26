@@ -197,7 +197,7 @@ class fastq2counts(object):
         submit mut count job to the cluster
         """
         if sam_dir == "":
-            # get samples in parameter file
+            # get samples in param file
             sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
         # get sam files from parameter file
         if not os.path.isdir(sam_dir):

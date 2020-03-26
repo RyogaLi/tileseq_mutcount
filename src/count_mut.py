@@ -84,7 +84,7 @@ class readSam(object):
 
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover %:{args.min_cover}")
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover %:{args.min_cover}\n")
         output_csv.close()
 
     def _merged_main(self):
