@@ -31,9 +31,9 @@ class readSam(object):
         """
         self._r1 = sam_r1
         self._r2 = sam_r2
-        self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples = help_functions.parse_json(param)
+        self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples, self._var = help_functions.parse_json(param)
 
-        self._qual = args.quality
+        self._qual = self._var["posteriorThreshold"]
 
         self._output_counts_dir = output_dir
 
@@ -47,7 +47,7 @@ class readSam(object):
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
         self._tile_len = self._tile_ends - self._tile_begins
         self._cds_start = self._seq.cds_start
-        self._min_map_len = math.ceil(self._tile_len * float(args.min_cover))
+        self._min_map_len = math.ceil(self._tile_len * float(self._var["minCover"]))
 
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
@@ -204,7 +204,7 @@ class readSam(object):
                 # pass this dictionary to locate mut
                 # mut = locate_mut_main()
                 # add mutation to mut list
-                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log)
+                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
                 hgvs, outside_mut= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1

@@ -16,7 +16,7 @@ import posterior
 
 class MutParser(object):
 
-    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging):
+    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate):
         """
         row: input row includes both reads from sam file
         full_seq: full sequence (including cds and padding sequence)
@@ -38,9 +38,12 @@ class MutParser(object):
 
         # user defined post_prob_cutoff
         self._cutoff = post_prob_cutoff
-
+        self._mutrate = mut_rate
+        
         # logger
         self._logging = logging
+
+
 
     def _get_seq(self):
         """
@@ -110,7 +113,7 @@ class MutParser(object):
                 r2_basecall = self._r2_read[r2_map_pos[pos]]
                 if r1_basecall == "N" or r2_basecall == "N": continue
                 wt = row["ref"]
-                pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt)
+                pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt, self._mutrate)
                 #print(pos_prob)
                 # if two mut are different, it will return a dictionary with two keys and their posterior probabilities
                 # pick the one with higher probability
@@ -208,7 +211,7 @@ class MutParser(object):
         inserted_pos = 0
         deleted_len = 0
         map_pos = 0
-        read_ref_map = [] # map [ref_pos, ref_base, read_pos, read_base, read_quality_score]
+        ##read_ref_map = [] # map [ref_pos, ref_base, read_pos, read_base, read_quality_score]
         for i in mdz:
             # for each item in the MD:Z string
             # split the item into number and letter

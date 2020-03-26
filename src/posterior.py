@@ -4,7 +4,7 @@
 import math
 from fractions import Fraction
 
-def bayesian_variant_call(basecall, phred, wt, mut_rate=0.0025):
+def bayesian_variant_call(basecall, phred, wt, mut_rate):
     """
     basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])
     phred: phred score for the base calls (in letters) ["!", "J"]

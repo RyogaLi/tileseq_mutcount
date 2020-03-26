@@ -59,7 +59,7 @@ class fastq2counts(object):
 
         # parse parameter json file
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, \
-            self._samples = help_functions.parse_json(param_path)
+            self._samples, self._var = help_functions.parse_json(param_path)
         self._sample_names = self._samples["Sample ID"].tolist()
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
@@ -224,7 +224,7 @@ class fastq2counts(object):
 
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
-            cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -qual {args.quality} -min {args.min_cover} -at {args.at} -mt {args.mt}"
+            cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
 
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
@@ -465,10 +465,10 @@ if __name__ == "__main__":
         info, warning, error, critical. (default = debug)", type=str, default="debug")
     parser.add_argument("-env", "--environment", help= "The cluster used to \
         run this script (default = DC)",type=str, default="DC")
-    parser.add_argument("-qual", "--quality", help="Posterior threshold for \
-        filtering mutations (default = 0.99)", type=float, default = 0.99)
-    parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
-        cover the tile (default = 0.4)", type=float, default=0.6)
+    ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
+    ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
+    ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
+    ##    cover the tile (default = 0.4)", type=float, default=0.6)
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
