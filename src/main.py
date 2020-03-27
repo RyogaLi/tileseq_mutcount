@@ -331,6 +331,8 @@ def check(args):
     # convert csv file to json
     if args.param.endswith(".csv"):
         param_json = args.param.replace(".csv", ".json")
+        if os.path.isfile(param_json):
+            os.remove(param_json)
         if args.sr_Override:
             convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
         else:
