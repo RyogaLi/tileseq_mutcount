@@ -335,10 +335,8 @@ def check(args):
             os.remove(param_json)
         if args.sr_Override:
             convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
-            print(convert)
         else:
             convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json}"
-            print(convert)
         os.system(convert)
     # if the file ends with .json, do nothing
     elif args.param.endswith(".json"):
