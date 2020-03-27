@@ -1,4 +1,4 @@
-#~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
 
 # Main script for sequencing analysis
 # Input of this script:

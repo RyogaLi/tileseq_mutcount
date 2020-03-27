@@ -1,4 +1,4 @@
-#~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
 
 # The functions in this script is used to manage submitting jobs to different clusters
 # This script is called by main.py

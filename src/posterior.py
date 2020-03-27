@@ -1,4 +1,4 @@
-#~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
 
 # This is used to calculate the posterior probability for variants
 import math

@@ -1,4 +1,5 @@
-#!~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
+
 # input files and parameters
 
 # FIXED PARAMETERS #

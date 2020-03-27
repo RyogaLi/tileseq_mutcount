@@ -1,4 +1,4 @@
-#~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
 
 ## Read sam file (R1 and R2)
 # count mutations in sam files

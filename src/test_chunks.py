@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.6
 from collections import deque
 
 def test(file1, file2):

@@ -1,4 +1,4 @@
-#!~/lib/Python-3.6.4/python
+#!/usr/bin/env python3.6
 
 #  What does this script do?
 # This script takes a pair of read (R1 and R2) in the format of dataframe row
@@ -39,7 +39,7 @@ class MutParser(object):
         # user defined post_prob_cutoff
         self._cutoff = post_prob_cutoff
         self._mutrate = mut_rate
-        
+
         # logger
         self._logging = logging
 

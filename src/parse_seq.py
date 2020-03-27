@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.6
 import parameters
 import pandas as pd
 import os
