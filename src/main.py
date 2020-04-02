@@ -286,7 +286,9 @@ class fastq2counts(object):
                 sh_output = os.path.join(self._output, "BC_mut_sh")
                 self._log.info(f"Mutation count sh files are made in {sh_output}")
                 os.mkdir(sh_output)
-
+            else:
+                self._log.error("Please provide valid environment: BC/BC2/DC")
+                exit(1)
             finished = self._makejobs(sh_output, sam_dir)
 
             if finished:
