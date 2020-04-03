@@ -171,9 +171,13 @@ def parse_jobs(job_list, logger):
             id_regex = re.compile(r"(\d+).bc")
             f_id = [] # finished jobs
             for i in err:
-                match = id_regex.search(i)
-                job_id = match.group(1)
-                f_id.append(job_id)
+                try:
+                    match = id_regex.search(i)
+                    job_id = match.group(1)
+                    f_id.append(job_id)
+                except:
+                    print(i)
+                    continue
             err_id = set(f_id)
             updated_list = [x for x in job_list if x not in err_id]
 

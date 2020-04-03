@@ -224,7 +224,10 @@ class fastq2counts(object):
 
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
-            cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
+            if args.sr_Override:
+                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt} -override"
+            else:
+                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
 
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")

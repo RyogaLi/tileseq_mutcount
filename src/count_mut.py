@@ -34,7 +34,8 @@ class readSam(object):
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples, self._var = help_functions.parse_json(param)
 
         self._qual = self._var["posteriorThreshold"]
-
+        min_cover = self._var["minCover"]
+        self._mutrate = self._var["mutRate"]
         self._output_counts_dir = output_dir
 
         # sample information
@@ -47,7 +48,7 @@ class readSam(object):
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
         self._tile_len = self._tile_ends - self._tile_begins
         self._cds_start = self._seq.cds_start
-        self._min_map_len = math.ceil(self._tile_len * float(self._var["minCover"]))
+        self._min_map_len = math.ceil(self._tile_len * float(min_cover))
 
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
@@ -84,7 +85,7 @@ class readSam(object):
 
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover %:{args.min_cover}\n")
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
         output_csv.close()
 
     def _merged_main(self):
@@ -120,8 +121,6 @@ class readSam(object):
 
                 line_r1 = line_r1.split()
                 line_r2 = line_r2.split()
-                print(line_r1)
-                print(line_r2)
                 if len(line_r1) <= 1:
                     continue
 
