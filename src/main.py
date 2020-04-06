@@ -225,9 +225,9 @@ class fastq2counts(object):
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
             if args.sr_Override:
-                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt} -override"
+                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt} -override"
             else:
-                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {args.param} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
+                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
 
             if args.environment == "BC2" or args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
@@ -335,9 +335,10 @@ def check(args):
     # try convert csv to json in the same dir as the csv file
     # convert csv file to json
     if args.param.endswith(".csv"):
+        print("parameter sheet in csv format, converting to json")
         param_json = args.param.replace(".csv", ".json")
-        if os.path.isfile(param_json):
-            os.remove(param_json)
+        # if os.path.isfile(param_json):
+        #     os.remove(param_json)
         if args.sr_Override:
             convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
         else:
