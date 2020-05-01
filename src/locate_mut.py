@@ -128,6 +128,8 @@ class MutParser(object):
                     if pos_prob[r2_basecall] > self._cutoff:
                         final_mut.append(row.snp)
                 elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
+                    if r2_basecall == wt or r1_basecall == wt: 
+                        print(r1_basecall, r2_basecall, wt)
                     if pos_prob[r2_basecall] > self._cutoff:
                         final_mut.append(row.snp)
 
@@ -135,7 +137,6 @@ class MutParser(object):
         final_mut = list(set(final_mut))
         final_mut.sort()
         hgvs, outside_mut = self._get_hgvs(final_mut)
-
         return hgvs, outside_mut
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -190,7 +191,7 @@ class MutParser(object):
 
             else:
                 # based on number of bases mapped, get the inserted base from read
-                ins_base = read[mapped:mapped+int(i[0])]
+                ins_base = read[read_start:read_start+int(i[0])]
                 # calculate inserted base posterior by using the quality string
                 # qual_ins = qual[mapped:mapped+int(i[0])]
                 # keep the insertion position and inserted lenth in a list
@@ -212,7 +213,7 @@ class MutParser(object):
         read_pos = 0
         inserted_pos = 0
         deleted_len = 0
-        map_pos = 0
+        map_pos = 0 + clip
         ##read_ref_map = [] # map [ref_pos, ref_base, read_pos, read_base, read_quality_score]
         for i in mdz:
             # for each item in the MD:Z string
@@ -221,29 +222,52 @@ class MutParser(object):
             match_len = int(m.group(1))
             base = m.group(2)
 
-            map_pos += match_len # update how many bp are mapped
+            map_pos += match_len# update how many bp are mapped
+            read_pos += match_len
 
-            if ins and map_pos >= ins[0]:
+            while ins and map_pos >= ins[0]:
+                map_pos += ins[1]
                 inserted_pos += ins[1]
                 ins = next(iter_ins, None)
 
             if "^" not in base:
                 # this means a single nt change
-                read_pos += match_len
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
                 snp_list.append(str(pos+read_pos)+"|"+base+"|"+str(read[read_pos+inserted_pos-deleted_len+clip]))
+                
+                ## DEBUG ##
+                if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
+                    print(snp_list)
+                    print(delins_list)
+                    print("map_pos", map_pos)
+                    print("ins_pos", ins_pos)
+                    print("ins", ins)
+                    print("mdz", i)
+                    print(mdz)
+                    print(match_len)
+                    print(read_pos)
+                    print(inserted_pos)
+                    print(deleted_len)
+                    print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
+                    ## DEBUG ##
+                    print(self._r1_ref)
+                    print(self._r1_read)
+                    print(self._r1_mdz, self._r1_cigar)
+
+                    print(self._r2_ref)
+                    print(self._r2_read)
+                    print(self._r2_mdz, self._r2_cigar)
+
 
                 map_pos += len(base)
-                read_pos += 1
+                read_pos += len(base) # adjust read pos with 1bp change (move to the right for 1 pos)
             else: # deletion
-                read_pos += match_len
                 #mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
                 delins_list.append(str(pos+read_pos)+"|"+base[1:]+"|"+"del")
 
                 deleted_len += len(base[1:])
                 read_pos += len(base[1:])
-                map_pos -= len(base[1:])
-
+                map_pos += len(base[1:])
         return snp_list, delins_list, pos_map
 
     def _get_hgvs(self, mut_list):
@@ -348,7 +372,6 @@ class MutParser(object):
         if len(delins) != 0:
             hgvs = delins_to_hgvs(self._cds, delins)
             mutations.append(hgvs)
-
         if len(mutations) == 1:
             mutations = f"c.{mutations[0]}"
         elif len(mutations) == 0:
@@ -422,6 +445,7 @@ def delins_to_hgvs(cds_seq, delins):
                     prev_pos += len(mid)
 
         hgvs = f"{start_pos}_{end_pos}delins{modified}"
+        #print("del+ins, ",hgvs)
     return hgvs
 
 if __name__ == "__main__":
