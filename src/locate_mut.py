@@ -97,6 +97,7 @@ class MutParser(object):
             # mutations are on both reads
             # mutaiton only shows on one read
 
+            # d = dict(tuple(df.groupby(df['x'].diff().gt(100).cumsum())))
             # 1. group mutations by position
             # split snp column into 3
             snp_df[["pos", "ref", "alt"]] = snp_df["snp"].str.split("|", expand=True)
@@ -128,7 +129,7 @@ class MutParser(object):
                     if pos_prob[r2_basecall] > self._cutoff:
                         final_mut.append(row.snp)
                 elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
-                    if r2_basecall == wt or r1_basecall == wt: 
+                    if r2_basecall == wt or r1_basecall == wt:
                         print(r1_basecall, r2_basecall, wt)
                     if pos_prob[r2_basecall] > self._cutoff:
                         final_mut.append(row.snp)
@@ -234,30 +235,29 @@ class MutParser(object):
                 # this means a single nt change
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
                 snp_list.append(str(pos+read_pos)+"|"+base+"|"+str(read[read_pos+inserted_pos-deleted_len+clip]))
-                
+
                 ## DEBUG ##
-                if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
-                    print(snp_list)
-                    print(delins_list)
-                    print("map_pos", map_pos)
-                    print("ins_pos", ins_pos)
-                    print("ins", ins)
-                    print("mdz", i)
-                    print(mdz)
-                    print(match_len)
-                    print(read_pos)
-                    print(inserted_pos)
-                    print(deleted_len)
-                    print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
-                    ## DEBUG ##
-                    print(self._r1_ref)
-                    print(self._r1_read)
-                    print(self._r1_mdz, self._r1_cigar)
-
-                    print(self._r2_ref)
-                    print(self._r2_read)
-                    print(self._r2_mdz, self._r2_cigar)
-
+                # if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
+                #     print(snp_list)
+                #     print(delins_list)
+                #     print("map_pos", map_pos)
+                #     print("ins_pos", ins_pos)
+                #     print("ins", ins)
+                #     print("mdz", i)
+                #     print(mdz)
+                #     print(match_len)
+                #     print(read_pos)
+                #     print(inserted_pos)
+                #     print(deleted_len)
+                #     print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
+                #     ## DEBUG ##
+                #     print(self._r1_ref)
+                #     print(self._r1_read)
+                #     print(self._r1_mdz, self._r1_cigar)
+                #
+                #     print(self._r2_ref)
+                #     print(self._r2_read)
+                #     print(self._r2_mdz, self._r2_cigar)
 
                 map_pos += len(base)
                 read_pos += len(base) # adjust read pos with 1bp change (move to the right for 1 pos)

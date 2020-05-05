@@ -1,10 +1,20 @@
 #!/usr/bin/env python3.6
 
 # This is used to calculate the posterior probability for variants
+# the script is modified from varCallerSnippet.r
+
 import math
 from fractions import Fraction
 
-def bayesian_variant_call(basecall, phred, wt, mut_rate, ins=False):
+def parse_mut_cluster(mut_cluster, mut_rate):
+    """
+    Parse cluster of mutations
+    mut_cluster is a  list of clusters (clustered mutations found in one read pair)
+    Mutations are clustered together if they are within
+    """
+    pass
+
+def bayesian_variant_call(basecall, phred, wt, mut_rate, clusterSize=1):
     """
     basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])
     phred: phred score for the base calls (in letters) ["!", "J"]
@@ -19,22 +29,20 @@ def bayesian_variant_call(basecall, phred, wt, mut_rate, ins=False):
     post_p = []
     for base in nt: # go through each nt
         log_odd = 0
-        if ins == False:
-            if base == wt:
-                log_odd += math.log(1-mut_rate) - math.log(mut_rate)
-            else:
-                log_odd += math.log(mut_rate) - math.log(3) - math.log(1-(mut_rate/3))
-        
+        if base == wt:
+            log_odd += math.log((1-mut_rate) ** clusterSize) - math.log(1-((1-mut_rate)**clusterSize)/3)
         else:
-            # insertion prior
-            log_odd += math.log(mut_rate) - math.log(4) - math.log(1-(mut_rate/4))
+            log_odd += math.log(1-(1-mut_rate) ** clusterSize) - math.log(3) - math.log(1-(1-(1-mut_rate) ** clusterSize)/3)
+
+        # insertion prior
+        # log_odd += math.log(mut_rate) - math.log(4) - math.log(1-(mut_rate/4))
 
         for j in range(len(basecall)):
             if basecall[j] == base:
                 log_odd += (math.log(1-phred[j]) - math.log(phred[j]) + math.log(3))
             else:
                 log_odd += (math.log(phred[j]) - math.log(3) - math.log((1/3) -(phred[j]/9)))
-        
+
         logit_value = math.exp(log_odd) / (1+math.exp(log_odd))
         post_p.append(logit_value)
 
