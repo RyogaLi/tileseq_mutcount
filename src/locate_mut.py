@@ -79,20 +79,43 @@ class MutParser(object):
         self._get_seq()
 
         # parse mutations in R1
-        r1_snp, r1_delins, r1_map_pos = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read, self._r1_pos, self._r1_qual)
+        r1_mut = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read, self._r1_pos, self._r1_qual)
         # parse mutations in R2
-        r2_snp, r2_delins, r2_map_pos = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read, self._r2_pos, self._r2_qual)
+        r2_mut = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read, self._r2_pos, self._r2_qual)
 
-        # final list of mutations
-        final_mut = []
         # for deletion or insertion, we count those that appeared on both reads
-        del_ins = list(set(r1_delins) & set(r2_delins))
-        if r1_snp != [] or r2_snp != []:
-            r1_snp = pd.DataFrame({"snp": r1_snp})
-            r1_snp["read"] = "r1"
-            r2_snp = pd.DataFrame({"snp": r2_snp})
-            r2_snp["read"] = "r2"
-            snp_df = r1_snp.append(r2_snp).reset_index(drop=True)
+        # del_ins = list(set(r1_delins) & set(r2_delins))
+        if r1_mut != [] or r2_mut != []:
+            final_mut = []
+        #if len(r1_mut)>5:
+            r1_m = pd.DataFrame({"m_r1": r1_mut})
+            r1_m["read"] = "r1"
+            r2_m = pd.DataFrame({"m_r2": r2_mut})
+            r2_m["read"] = "r2"
+            if not r1_mut == []: 
+                r1_m = pd.DataFrame({"m_r1": r1_mut})
+                r1_m["read"] = "r1"
+                r2_m = pd.DataFrame({"m_r2": r2_mut})
+                r2_m["read"] = "r2"
+                r1_m[["pos", "ref_r1", "alt_r1", "qual_r1"]] = r1_m["m_r1"].str.split("|", expand=True)
+            else:
+                r1_m = pd.DataFrame([], columns = ["m_r1", "pos", "ref_r1", "alt_r1", "qual_r1", "read"])
+
+            if not r2_mut == []:
+                r2_m = pd.DataFrame({"m_r2": r2_mut})
+                r2_m["read"] = "r2"
+                r2_m[["pos", "ref_r2", "alt_r2", "qual_r2"]] = r2_m["m_r2"].str.split("|", expand=True)
+            else: 
+                r2_m = pd.DataFrame([], columns = ["m_r2", "pos", "ref_r2", "alt_r2", "qual_r2", "read"])
+
+            snp_df = pd.merge(r1_m, r2_m, on=["pos"], how="outer")
+
+            snp_df["pos"] = pd.to_numeric(snp_df["pos"])
+            # group mutations based on positions
+            n = 3 #tmp
+            d = dict(tuple(snp_df.groupby(snp_df['pos'].diff().gt(n).cumsum())))
+            
+            pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
             # two cases of snp
             # mutations are on both reads
             # mutaiton only shows on one read
@@ -100,45 +123,32 @@ class MutParser(object):
             # d = dict(tuple(df.groupby(df['x'].diff().gt(100).cumsum())))
             # 1. group mutations by position
             # split snp column into 3
-            snp_df[["pos", "ref", "alt"]] = snp_df["snp"].str.split("|", expand=True)
             #print(snp_df)
-            final_mut = []
-            for index, row in snp_df.iterrows():
-                pos = int(row["pos"])
-                if row["alt"] == "N": continue
-                if (r1_map_pos.get(pos) is None) or (r2_map_pos.get(pos) is None):
-                    continue
-                r1_qual = self._r1_qual[r1_map_pos[pos]]
-                r2_qual = self._r2_qual[r2_map_pos[pos]]
-                r1_basecall = self._r1_read[r1_map_pos[pos]]
-                r2_basecall = self._r2_read[r2_map_pos[pos]]
-                if r1_basecall == "N" or r2_basecall == "N": continue
-                wt = row["ref"]
-                pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt, self._mutrate)
+                #pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt, self._mutrate)
                 #print(pos_prob)
                 # if two mut are different, it will return a dictionary with two keys and their posterior probabilities
                 # pick the one with higher probability
                 # if it is the wt then do nothing
                 # if not, add this mutation to the final list
-                if pos_prob[r1_basecall] > pos_prob[r2_basecall]:
-                    if r1_basecall == wt: continue
-                    if pos_prob[r1_basecall] > self._cutoff:
-                        final_mut.append(row.snp)
-                elif pos_prob[r1_basecall] < pos_prob[r2_basecall]:
-                    if r2_basecall == wt: continue
-                    if pos_prob[r2_basecall] > self._cutoff:
-                        final_mut.append(row.snp)
-                elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
-                    if r2_basecall == wt or r1_basecall == wt:
-                        print(r1_basecall, r2_basecall, wt)
-                    if pos_prob[r2_basecall] > self._cutoff:
-                        final_mut.append(row.snp)
+                #if pos_prob[r1_basecall] > pos_prob[r2_basecall]:
+                #    if r1_basecall == wt: continue
+                #    if pos_prob[r1_basecall] > self._cutoff:
+                #        final_mut.append(row.snp)
+                #elif pos_prob[r1_basecall] < pos_prob[r2_basecall]:
+                #    if r2_basecall == wt: continue
+                #    if pos_prob[r2_basecall] > self._cutoff:
+                #        final_mut.append(row.snp)
+                #elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
+                #    if r2_basecall == wt or r1_basecall == wt:
+                #        print(r1_basecall, r2_basecall, wt)
+                #    if pos_prob[r2_basecall] > self._cutoff:
+                #        final_mut.append(row.snp)
 
-        final_mut += del_ins
-        final_mut = list(set(final_mut))
-        final_mut.sort()
-        hgvs, outside_mut = self._get_hgvs(final_mut)
-        return hgvs, outside_mut
+            final_mut = list(set(pos_df.m.tolist()))
+            final_mut.sort()
+            hgvs, outside_mut = self._get_hgvs(final_mut)
+
+        return hgvs, outside_mut, pos_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
@@ -193,13 +203,14 @@ class MutParser(object):
             else:
                 # based on number of bases mapped, get the inserted base from read
                 ins_base = read[read_start:read_start+int(i[0])]
+                qual_base = qual[read_start:read_start+int(i[0])]
                 # calculate inserted base posterior by using the quality string
                 # qual_ins = qual[mapped:mapped+int(i[0])]
                 # keep the insertion position and inserted lenth in a list
                 ins_pos.append([ins_pos_ref, int(i[0])])
                 # add the insertion to mut_list
                 #mut_list.append([str(pos+mapped+deleted),ins_base,"ins"])
-                delins_list.append(str(pos+mapped+deleted)+"|"+ins_base+"|ins")
+                delins_list.append(f"{pos+mapped+deleted}|{ins_base}|ins|{qual_base}")
                 # skip inserted bases on read
                 read_start += int(i[0])
         # zip two lists into a dictionary
@@ -234,41 +245,29 @@ class MutParser(object):
             if "^" not in base:
                 # this means a single nt change
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
-                snp_list.append(str(pos+read_pos)+"|"+base+"|"+str(read[read_pos+inserted_pos-deleted_len+clip]))
-
-                ## DEBUG ##
-                # if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
-                #     print(snp_list)
-                #     print(delins_list)
-                #     print("map_pos", map_pos)
-                #     print("ins_pos", ins_pos)
-                #     print("ins", ins)
-                #     print("mdz", i)
-                #     print(mdz)
-                #     print(match_len)
-                #     print(read_pos)
-                #     print(inserted_pos)
-                #     print(deleted_len)
-                #     print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
-                #     ## DEBUG ##
-                #     print(self._r1_ref)
-                #     print(self._r1_read)
-                #     print(self._r1_mdz, self._r1_cigar)
-                #
-                #     print(self._r2_ref)
-                #     print(self._r2_read)
-                #     print(self._r2_mdz, self._r2_cigar)
+                snp_list.append(f"{pos+read_pos}|{base}|{read[read_pos+inserted_pos-deleted_len+clip]}|{qual[read_pos+inserted_pos-deleted_len+clip]}")
 
                 map_pos += len(base)
                 read_pos += len(base) # adjust read pos with 1bp change (move to the right for 1 pos)
             else: # deletion
                 #mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
-                delins_list.append(str(pos+read_pos)+"|"+base[1:]+"|"+"del")
+                delins_list.append(f"{pos+read_pos}|{base[1:]}|del|{qual[read_pos+inserted_pos-deleted_len+clip-1]},{qual[read_pos+inserted_pos-deleted_len+clip]}")
 
                 deleted_len += len(base[1:])
                 read_pos += len(base[1:])
                 map_pos += len(base[1:])
-        return snp_list, delins_list, pos_map
+        
+        if len(delins_list) >= 3:
+            print(snp_list, delins_list, pos_map)
+            print(mdz)
+            print(cigar)
+            print(ref)
+            print(read)
+            print(qual)
+            print("---")
+            #exit()
+        mut_list = snp_list+delins_list
+        return mut_list
 
     def _get_hgvs(self, mut_list):
         """
@@ -402,7 +401,8 @@ def delins_to_hgvs(cds_seq, delins):
     # sort delins
     delins.sort()
     # convert delins to df
-    delins_df = pd.DataFrame(delins, columns=["pos", "base", "type"])
+    print(delins)
+    delins_df = pd.DataFrame(delins, columns=["pos", "base", "type", "qual"])
     types = delins_df["type"].unique()
 
     if len(types) == 1:

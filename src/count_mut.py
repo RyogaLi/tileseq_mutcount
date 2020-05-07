@@ -99,7 +99,7 @@ class readSam(object):
         hgvs_output = {} # save all the hgvs in this pair of sam files
         off_mut = {} # save all the positions that were mapped but outside of the tile
         row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
-
+        pos_df = [] # store the posterior prob into df
         final_pairs = 0
         off_read = 0
         chunkSize = 1500000 # number of characters in each chunk (you will need to adjust this)
@@ -204,20 +204,21 @@ class readSam(object):
                 # mut = locate_mut_main()
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
-                hgvs, outside_mut= mut_parser._main()
+                hgvs, outside_mut, mutation_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
                     if hgvs in hgvs_output:
                         hgvs_output[hgvs] += 1
                     else:
                         hgvs_output[hgvs] = 1
+                    pos_df.append(mutation_posterior)
                     #hgvs_output.append(hgvs)
                 if outside_mut != []:
                     outside_mut = list(set(outside_mut))
                     for i in outside_mut:
                         if not (i in off_mut):
                             off_mut[i] = 1
-
+                
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
         # write this information to a tmp file
@@ -246,6 +247,11 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+
+        pos_df = pd.concat(pos_df)
+        posterior_f = os.path.join(self._output_counts_dir,f"{self._sample_id}_posprob.csv")
+
+        pos_df.to_csv(posterior_f, index=False)
 
 # if __name__ == "__main__":
 #
