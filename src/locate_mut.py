@@ -143,11 +143,13 @@ class MutParser(object):
                 #        print(r1_basecall, r2_basecall, wt)
                 #    if pos_prob[r2_basecall] > self._cutoff:
                 #        final_mut.append(row.snp)
-
+                
             final_mut = list(set(pos_df.m.tolist()))
             final_mut.sort()
-            hgvs, outside_mut = self._get_hgvs(final_mut)
-
+            if final_mut != []:
+                hgvs, outside_mut = self._get_hgvs(final_mut)
+            else:
+                hgvs, outside_mut, pos_df = [],[],[]
         return hgvs, outside_mut, pos_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -204,6 +206,8 @@ class MutParser(object):
                 # based on number of bases mapped, get the inserted base from read
                 ins_base = read[read_start:read_start+int(i[0])]
                 qual_base = qual[read_start:read_start+int(i[0])]
+                qual_base = list(qual_base)
+                qual_base = ",".join(qual_base)
                 # calculate inserted base posterior by using the quality string
                 # qual_ins = qual[mapped:mapped+int(i[0])]
                 # keep the insertion position and inserted lenth in a list

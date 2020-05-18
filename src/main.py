@@ -159,6 +159,9 @@ class fastq2counts(object):
                 # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
                 sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
+                self._log.info(f"Total jobs submitted: {len(job_list)}")
+                finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs"))  # track list of jobs
+
 
             elif args.environment == "DC":
                 # make sh files to submit to DC
@@ -169,8 +172,8 @@ class fastq2counts(object):
                 sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
-            self._log.info(f"Total jobs submitted: {len(job_list)}")
-            finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs"))  # track list of jobs
+                self._log.info(f"Total jobs submitted: {len(job_list)}")
+                finished = cluster.parse_jobs_dc(job_list, self._logging.getLogger("track.jobs"))  # track list of jobs
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")

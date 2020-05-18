@@ -24,20 +24,20 @@ def cluster(mut_cluster, mut_rate, cut_off):
         pos_prob = {"m":[], "prob":[], "read":[]}
         for index, row in mutcall.iterrows():
 
-            if pd.isnull(row["m_r1"]) or row["alt_r1"] == "N":
+            if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
                 pos = bayesian_variant_call([row["alt_r2"]], [row["qual_r2"]], row["ref_r2"], mut_rate, c_size)                 
                 if pos[next(iter(pos))] > cut_off:
                     pos_prob["m"].append(row["m_r2"])
                     pos_prob["prob"].append(pos)
                     pos_prob["read"].append("r2")
 
-            elif pd.isnull(row["m_r2"]) or row["alt_r2"] == "N":
+            elif (pd.isnull(row["m_r2"]) or row["alt_r2"] == "N") and not pd.isnull(row["ref_r1"]):
                 pos = bayesian_variant_call([row["alt_r1"]], [row["qual_r1"]], row["ref_r1"], mut_rate, c_size)
                 if pos[next(iter(pos))] > cut_off:
                     pos_prob["m"].append(row["m_r1"])
                     pos_prob["prob"].append(pos)
                     pos_prob["read"].append("r1")
-            else:
+            elif (not pd.isnull(row["m_r2"])) and (not pd.isnull(row["ref_r1"])):
                 basecall = [row["alt_r1"], row["alt_r2"]]
                 qual = [row["qual_r1"], row["qual_r2"]]
                 pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size) 

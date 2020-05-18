@@ -211,7 +211,75 @@ def parse_jobs(job_list, logger):
             qstat_out = job.stdout.decode("utf-8")
             qstat_err = job.stderr.decode("utf-8")
 
+def parse_jobs_dc(job_list, logger):
+    """
+    return true if all the jobs in job list finished
+    else wait for 10 mins and return how man jobs are running and queued
+    job_list: list of job ids
+    logger: logging object
+    """
+    qstat_cmd = ["qstat"] + job_list
+    job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    qstat_out = job.stdout.decode("utf-8")
+    qstat_err = job.stderr.decode("utf-8")
+    print(qstat_out)
+    print(qstat_err)
+    f_id = []
+    updated_list = []
+    while True:
+        running = []
+        queued = []
+        completed = []
+
+        if qstat_err != "":
+            # jobs might be finished and no longer in queue
+            # extract job id from std err
+            err = qstat_err.split("\n")[:-1]
+            id_regex = re.compile(r"(\d+).dc")
+            f_id = [] # finished jobs
+            for i in err:
+                try:
+                    match = id_regex.search(i)
+                    job_id = match.group(1)
+                    f_id.append(job_id)
+                except:
+                    print(i)
+                    continue
+            err_id = set(f_id)
+            updated_list = [x for x in job_list if x not in err_id]
+        if qstat_out != "":
+            qstat_out = qstat_out.split("\n")[:-1]
+            id_regex = re.compile(r"(\d+).dc[0-9]+.+(R|Q|C|E)")
+
+            for line in qstat_out:
+                if ("---" in line) or ("Job ID" in line): continue
+                match = id_regex.search(line)
+                job_id = match.group(1)
+                job_s = match.group(2)
+                if job_s == "E" or job_s == "C":
+                    completed.append(job_id)
+                elif job_s == "R":
+                    running.append(job_id)
+                elif job_s == "Q":
+                    queued.append(job_id)
+
+        #logger.info(f"{len(queued)} jobs queued")
+        #logger.info(f"{len(running)} jobs running")
+        final_list = list(set(updated_list+running+queued))
+        if final_list == []:
+            return True
+        else:
+            # check in 10min
+            time.sleep(600)
+            job_list = final_list
+            qstat_cmd = ["qstat"] + job_list
+            job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            qstat_out = job.stdout.decode("utf-8")
+            qstat_err = job.stderr.decode("utf-8")
+
+
+
 if __name__ == "__main__":
     # test job list
-    job_list = ["291879", "29171333", "29171340", "29171466"]
-    parse_jobs(job_list)
+    job_list_dc = ["274267", "274269", "274268", "274270", "22"]
+    parse_jobs_dc(job_list_dc, "")
