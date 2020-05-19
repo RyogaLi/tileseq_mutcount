@@ -114,36 +114,7 @@ class MutParser(object):
             # group mutations based on positions
             n = 3 #tmp
             d = dict(tuple(snp_df.groupby(snp_df['pos'].diff().gt(n).cumsum())))
-            
             pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
-            # two cases of snp
-            # mutations are on both reads
-            # mutaiton only shows on one read
-
-            # d = dict(tuple(df.groupby(df['x'].diff().gt(100).cumsum())))
-            # 1. group mutations by position
-            # split snp column into 3
-            #print(snp_df)
-                #pos_prob = posterior.bayesian_variant_call([r1_basecall, r2_basecall], [r1_qual, r2_qual], wt, self._mutrate)
-                #print(pos_prob)
-                # if two mut are different, it will return a dictionary with two keys and their posterior probabilities
-                # pick the one with higher probability
-                # if it is the wt then do nothing
-                # if not, add this mutation to the final list
-                #if pos_prob[r1_basecall] > pos_prob[r2_basecall]:
-                #    if r1_basecall == wt: continue
-                #    if pos_prob[r1_basecall] > self._cutoff:
-                #        final_mut.append(row.snp)
-                #elif pos_prob[r1_basecall] < pos_prob[r2_basecall]:
-                #    if r2_basecall == wt: continue
-                #    if pos_prob[r2_basecall] > self._cutoff:
-                #        final_mut.append(row.snp)
-                #elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
-                #    if r2_basecall == wt or r1_basecall == wt:
-                #        print(r1_basecall, r2_basecall, wt)
-                #    if pos_prob[r2_basecall] > self._cutoff:
-                #        final_mut.append(row.snp)
-                
             final_mut = list(set(pos_df.m.tolist()))
             final_mut.sort()
             if final_mut != []:
@@ -260,16 +231,6 @@ class MutParser(object):
                 deleted_len += len(base[1:])
                 read_pos += len(base[1:])
                 map_pos += len(base[1:])
-        
-        if len(delins_list) >= 3:
-            print(snp_list, delins_list, pos_map)
-            print(mdz)
-            print(cigar)
-            print(ref)
-            print(read)
-            print(qual)
-            print("---")
-            #exit()
         mut_list = snp_list+delins_list
         return mut_list
 

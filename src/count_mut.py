@@ -79,9 +79,9 @@ class readSam(object):
         self._mut_log = logging.getLogger("count.mut")
         self._locate_log = logging.getLogger("locate.mut")
 
-        self._mut_log.info(f"Counting mutations in sample-{self._sample_id}")
-        self._mut_log.info(f"Sam file input R1:{sam_r1}")
-        self._mut_log.info(f"Sam file input R2:{sam_r2}")
+        #self._mut_log.info(f"Counting mutations in sample-{self._sample_id}")
+        #self._mut_log.info(f"Sam file input R1:{sam_r1}")
+        #self._mut_log.info(f"Sam file input R2:{sam_r2}")
 
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
@@ -100,6 +100,7 @@ class readSam(object):
         off_mut = {} # save all the positions that were mapped but outside of the tile
         row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
         pos_df = [] # store the posterior prob into df
+
         final_pairs = 0
         off_read = 0
         chunkSize = 1500000 # number of characters in each chunk (you will need to adjust this)
@@ -218,7 +219,6 @@ class readSam(object):
                     for i in outside_mut:
                         if not (i in off_mut):
                             off_mut[i] = 1
-                
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
         # write this information to a tmp file
@@ -239,9 +239,9 @@ class readSam(object):
 
         output_csv.close()
 
-        self._mut_log.info(f"Raw sequencing depth: {read_pair}")
-        self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
-        self._mut_log.info(f"Final read-depth: {read_pair - un_map - off_read}")
+        #self._mut_log.info(f"{self._sample_id}_Raw sequencing depth: {read_pair}")
+        #self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
+        self._mut_log.info(f"{self._sample_id}: Final read-depth = {read_pair - un_map - off_read}")
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()

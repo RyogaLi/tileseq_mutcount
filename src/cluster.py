@@ -66,7 +66,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob2", "-w", str(time), "-c", "4", str(shfile), "2>", sam_log_f]
+        sub_cmd = ["submitjob2", "-w", str(time), str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
@@ -97,7 +97,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob","-w", str(time),"-c", "4", str(shfile), "2>", sam_log_f]
+        sub_cmd = ["submitjob","-w", str(time), str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
         all_job_id.append(job_id)
@@ -118,7 +118,7 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob2","-w", str(mt), "-c", "8", "-m", "4", shfile]
+    sub_cmd = ["submitjob2","-w", str(mt), "-m", "7", shfile]
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
     # log sample name and job id
@@ -137,7 +137,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
         os.system(f"chmod 755 {shfile}")
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
-    sub_cmd = ["submitjob", "-w", str(mt), "-c", "8", "-m", "4", shfile]
+    sub_cmd = ["submitjob", "-w", str(mt), "-m", "7", shfile]
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
     # log sample name and job id
