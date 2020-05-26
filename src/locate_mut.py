@@ -92,7 +92,7 @@ class MutParser(object):
             r1_m["read"] = "r1"
             r2_m = pd.DataFrame({"m_r2": r2_mut})
             r2_m["read"] = "r2"
-            if not r1_mut == []: 
+            if not r1_mut == []:
                 r1_m = pd.DataFrame({"m_r1": r1_mut})
                 r1_m["read"] = "r1"
                 r2_m = pd.DataFrame({"m_r2": r2_mut})
@@ -105,7 +105,7 @@ class MutParser(object):
                 r2_m = pd.DataFrame({"m_r2": r2_mut})
                 r2_m["read"] = "r2"
                 r2_m[["pos", "ref_r2", "alt_r2", "qual_r2"]] = r2_m["m_r2"].str.split("|", expand=True)
-            else: 
+            else:
                 r2_m = pd.DataFrame([], columns = ["m_r2", "pos", "ref_r2", "alt_r2", "qual_r2", "read"])
 
             snp_df = pd.merge(r1_m, r2_m, on=["pos"], how="outer")
@@ -343,6 +343,9 @@ class MutParser(object):
         else:
             joined = ";".join(mutations)
             mutations = f"c.[{joined}]"
+            if mutations == "c.[256_258del;257_258delinsTG;264T>G;262_264del]":
+                print(mut_list)
+                exit(1)
         return mutations, outside_mut
 
 def snp_to_hgvs(concec_pos, combined_bases, cds):
