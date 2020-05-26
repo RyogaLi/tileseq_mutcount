@@ -366,7 +366,6 @@ def delins_to_hgvs(cds_seq, delins):
     # sort delins
     delins.sort()
     # convert delins to df
-    print(delins)
     delins_df = pd.DataFrame(delins, columns=["pos", "base", "type", "qual"])
     types = delins_df["type"].unique()
 

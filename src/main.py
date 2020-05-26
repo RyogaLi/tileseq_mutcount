@@ -340,8 +340,9 @@ def check(args):
     if args.param.endswith(".csv"):
         print("parameter sheet in csv format, converting to json")
         param_json = args.param.replace(".csv", ".json")
-        # if os.path.isfile(param_json):
-        #     os.remove(param_json)
+        if os.path.isfile(param_json):
+            print("Overwriting existing json file ..")
+            os.remove(param_json)
         if args.sr_Override:
             convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
         else:
@@ -353,6 +354,7 @@ def check(args):
     else:
         print("Please provide valid paramter file format (csv or json)")
         exit(1)
+
     if not os.path.isfile(param_json):
         print("Json file does not exist, check conversion!")
         exit(1)
@@ -483,7 +485,7 @@ if __name__ == "__main__":
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
-        (default = 36h)", default=36)
+        (default = 36h)", default=48)
     parser.add_argument("-override", "--sr_Override", action="store_true", help="Provide this argument when there is only one replicate")
 
     args = parser.parse_args()

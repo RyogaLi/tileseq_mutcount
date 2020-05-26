@@ -24,7 +24,8 @@ def cluster(mut_cluster, mut_rate, cut_off):
         for index, row in mutcall.iterrows():
 
             if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
-                pos = bayesian_variant_call([row["alt_r2"]], [row["qual_r2"]], row["ref_r2"], mut_rate, c_size)                 
+                pos = bayesian_variant_call([row["alt_r2"]], [row["qual_r2"]], row["ref_r2"], mut_rate, c_size)
+
                 if pos[next(iter(pos))] > cut_off:
                     pos_prob["m"].append(row["m_r2"])
                     pos_prob["prob"].append(list(pos.values())[0])
