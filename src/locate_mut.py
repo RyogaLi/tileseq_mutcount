@@ -109,13 +109,16 @@ class MutParser(object):
                 r2_m = pd.DataFrame([], columns = ["m_r2", "pos", "ref_r2", "alt_r2", "qual_r2", "read"])
 
             snp_df = pd.merge(r1_m, r2_m, on=["pos"], how="outer")
-
             snp_df["pos"] = pd.to_numeric(snp_df["pos"])
             # group mutations based on positions
             n = 3 #tmp
             d = dict(tuple(snp_df.groupby(snp_df['pos'].diff().gt(n).cumsum())))
             pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
             final_mut = list(set(pos_df.m.tolist()))
+            if "437|GAT|del|E,E" in final_mut:
+                print(snp_df)
+                print(pos_df)
+                print(d)
             final_mut.sort()
             if final_mut != []:
                 hgvs, outside_mut = self._get_hgvs(final_mut)
