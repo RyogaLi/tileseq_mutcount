@@ -108,7 +108,7 @@ class MutParser(object):
         final_df_r2 = self._convert_mut(r2_mut, "r2")
 
         # merge two df
-        snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer")
+        snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         snp_df["pos"] = pd.to_numeric(snp_df["pos"])
 
         # group mutations based on positions
