@@ -89,7 +89,7 @@ class MutParser(object):
                 final_mut.append(i)
         final_df = pd.DataFrame({"m":final_mut})
         final_df["read"] = read
-        final_df[["pos", "ref_r2", "alt_r2", "qual_r2"]] = final_df["m"].str.split("|", expand=True)
+        final_df[["pos", "ref", "alt", "qual"]] = final_df["m"].str.split("|", expand=True)
         return final_df
 
     def _main(self):
