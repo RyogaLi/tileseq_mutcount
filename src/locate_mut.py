@@ -43,8 +43,6 @@ class MutParser(object):
         # logger
         self._logging = logging
 
-
-
     def _get_seq(self):
         """
         Parse the sequence and CIGAR string
@@ -71,6 +69,29 @@ class MutParser(object):
 
         return self
 
+    def _convert_mut(self, mut_list, read):
+        """
+        convert a list of mutations into the input format for posterior function
+        return a df with mutations
+        """
+        if mut_list == []:
+            return pd.DataFrame({}, columns=["m", "read", "pos", "ref_r2", "alt_r2", "qual_r2"])
+        final_mut = []
+        for i in mut_list:
+            mut = i.split("|")
+            if "del" in mut:
+                del_pos = mut[0]
+                for base in mut[1]:
+                    m = f"{del_pos}|{base}|del|{mut[-1]}"
+                    del_pos+=1
+                    final_mut.append(m)
+            else:
+                final_mut.append(i)
+        final_df = pd.DataFrame({"m":final_mut})
+        final_df["read"] = read
+        final_df[["pos", "ref_r2", "alt_r2", "qual_r2"]] = final_df["m"].str.split("|", expand=True)
+        return final_df
+
     def _main(self):
         """
         return a list of mutations from paired reads (R1 and R2)
@@ -83,47 +104,28 @@ class MutParser(object):
         # parse mutations in R2
         r2_mut = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read, self._r2_pos, self._r2_qual)
 
-        # for deletion or insertion, we count those that appeared on both reads
-        # del_ins = list(set(r1_delins) & set(r2_delins))
-        if r1_mut != [] or r2_mut != []:
-            final_mut = []
-        #if len(r1_mut)>5:
-            r1_m = pd.DataFrame({"m_r1": r1_mut})
-            r1_m["read"] = "r1"
-            r2_m = pd.DataFrame({"m_r2": r2_mut})
-            r2_m["read"] = "r2"
-            if not r1_mut == []:
-                r1_m = pd.DataFrame({"m_r1": r1_mut})
-                r1_m["read"] = "r1"
-                r2_m = pd.DataFrame({"m_r2": r2_mut})
-                r2_m["read"] = "r2"
-                r1_m[["pos", "ref_r1", "alt_r1", "qual_r1"]] = r1_m["m_r1"].str.split("|", expand=True)
-            else:
-                r1_m = pd.DataFrame([], columns = ["m_r1", "pos", "ref_r1", "alt_r1", "qual_r1", "read"])
+        final_df_r1 = self._convert_mut(r1_mut, "r1")
+        final_df_r2 = self._convert_mut(r2_mut, "r2")
 
-            if not r2_mut == []:
-                r2_m = pd.DataFrame({"m_r2": r2_mut})
-                r2_m["read"] = "r2"
-                r2_m[["pos", "ref_r2", "alt_r2", "qual_r2"]] = r2_m["m_r2"].str.split("|", expand=True)
-            else:
-                r2_m = pd.DataFrame([], columns = ["m_r2", "pos", "ref_r2", "alt_r2", "qual_r2", "read"])
+        # merge two df
+        snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer")
+        snp_df["pos"] = pd.to_numeric(snp_df["pos"])
 
-            snp_df = pd.merge(r1_m, r2_m, on=["pos"], how="outer")
-            snp_df["pos"] = pd.to_numeric(snp_df["pos"])
-            # group mutations based on positions
-            n = 3 #tmp
-            d = dict(tuple(snp_df.groupby(snp_df['pos'].diff().gt(n).cumsum())))
-            pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
-            final_mut = list(set(pos_df.m.tolist()))
-            if "437|GAT|del|E,E" in final_mut:
-                print(snp_df)
-                print(pos_df)
-                print(d)
-            final_mut.sort()
-            if final_mut != []:
-                hgvs, outside_mut = self._get_hgvs(final_mut)
-            else:
-                hgvs, outside_mut, pos_df = [],[],[]
+        # group mutations based on positions
+        n = 3 #tmp
+
+        d = dict(tuple(snp_df.groupby(snp_df['pos'].diff().gt(n).cumsum())))
+
+        pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
+        final_mut = list(set(pos_df.m.tolist()))
+        print(snp_df)
+        print(pos_df)
+        print(d)
+        final_mut.sort()
+        if final_mut != []:
+            hgvs, outside_mut = self._get_hgvs(final_mut)
+        else:
+            hgvs, outside_mut, pos_df = [],[],[]
         return hgvs, outside_mut, pos_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -141,11 +143,8 @@ class MutParser(object):
 
         # convert mdz string into a list
         mdz = re.findall('.*?[.ATCG]+', mdz_raw)
-        # convert cigar list to a string
-        cigar_joined = [str(i[0])+str(i[1]) for i in cigar]
 
         ins_pos_ref = 0 # on ref sequence where was the insertion
-        total_len = 0 # total lenth indicates in CIGAR string
         ins_pos = [] # store [ins_pos, ins_len]
 
         mapped = 0
@@ -191,8 +190,6 @@ class MutParser(object):
                 delins_list.append(f"{pos+mapped+deleted}|{ins_base}|ins|{qual_base}")
                 # skip inserted bases on read
                 read_start += int(i[0])
-        # zip two lists into a dictionary
-        pos_map = dict(zip(ref_positions, read_positions))
         # parse snp and deletion from mdz string
         # given the inserted position on reference sequence
         r = re.compile("([0-9]+)([a-zA-Z\^]+)")
@@ -283,7 +280,6 @@ class MutParser(object):
                 else: # compare bases
                     # delins = [[19,T,del]]
                     prev_pos = delins[-1][0] # previous deletion or insertion position
-                    prev_bases = delins[-1][1]
                     prev_change = delins[-1][2]
                     if "del" in mut:
                         record_pos = mut_change[0]
