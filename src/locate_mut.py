@@ -75,12 +75,12 @@ class MutParser(object):
         return a df with mutations
         """
         if mut_list == []:
-            return pd.DataFrame({}, columns=["m", "read", "pos", "ref_r2", "alt_r2", "qual_r2"])
+            return pd.DataFrame({}, columns=["m", "read", "pos", "ref", "alt", "qual"])
         final_mut = []
         for i in mut_list:
             mut = i.split("|")
             if "del" in mut:
-                del_pos = mut[0]
+                del_pos = int(mut[0])
                 for base in mut[1]:
                     m = f"{del_pos}|{base}|del|{mut[-1]}"
                     del_pos+=1
@@ -118,9 +118,8 @@ class MutParser(object):
 
         pos_df = posterior.cluster(d, self._mutrate, self._cutoff) # analyze the dictionary of clusters and get posterior
         final_mut = list(set(pos_df.m.tolist()))
-        print(snp_df)
-        print(pos_df)
-        print(d)
+        if "437|GAT|del|E,E" in final_mut:
+            print(final_mut)
         final_mut.sort()
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
