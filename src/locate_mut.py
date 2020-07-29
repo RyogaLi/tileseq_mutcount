@@ -4,9 +4,6 @@
 # This script takes a pair of read (R1 and R2) in the format of dataframe row
 # and call mutaitons based on the reads
 
-
-# TODO
-
 import pandas as pd
 import cigar
 import re
@@ -36,7 +33,7 @@ class MutParser(object):
         # get paired reads and their cigar scores
         self._reads = row
 
-        # user defined post_prob_cutoff
+        # user defined post_prob_cutoff and mutation rate
         self._cutoff = post_prob_cutoff
         self._mutrate = mut_rate
 
@@ -137,7 +134,8 @@ class MutParser(object):
         clip = 0
         # check starting point of the sequence
         # remove soft clipped bases and adjust for position
-        if cigar[0][1] == "S": # soft clip occurs in the beginning of a read
+        # soft clip occurs in the beginning of a read
+        if cigar[0][1] == "S":
             clip += cigar[0][0]
 
         # convert mdz string into a list
@@ -156,8 +154,6 @@ class MutParser(object):
         read_positions = []
         read_start = 0+clip
         ref_start = pos
-        #if "I" in "".join(cigar_joined): # if insertion is in the read
-            # get insertion position from cigar string
         for i in cigar: # go through each cigar string
             if i[1] != "I": # not insertion
                 ins_pos_ref += int(i[0])
@@ -170,7 +166,6 @@ class MutParser(object):
 
                 if i[1] == "D": # track number of bases deleted
                     deleted += int(i[0])
-                    #read_start += int(i[0])
                     # skip deleted bases on ref read
                     ref_start += int(i[0])
 
@@ -178,14 +173,12 @@ class MutParser(object):
                 # based on number of bases mapped, get the inserted base from read
                 ins_base = read[read_start:read_start+int(i[0])]
                 qual_base = qual[read_start:read_start+int(i[0])]
-                qual_base = list(qual_base)
-                qual_base = ",".join(qual_base)
-                # calculate inserted base posterior by using the quality string
-                # qual_ins = qual[mapped:mapped+int(i[0])]
+                qual_base = ",".join(list(qual_base))
+
                 # keep the insertion position and inserted lenth in a list
+                # i.e [(12, 2)] -- at position 12, 2 bases are inserted
                 ins_pos.append([ins_pos_ref, int(i[0])])
                 # add the insertion to mut_list
-                #mut_list.append([str(pos+mapped+deleted),ins_base,"ins"])
                 delins_list.append(f"{pos+mapped+deleted}|{ins_base}|ins|{qual_base}")
                 # skip inserted bases on read
                 read_start += int(i[0])
@@ -208,7 +201,8 @@ class MutParser(object):
             match_len = int(m.group(1))
             base = m.group(2)
 
-            map_pos += match_len# update how many bp are mapped
+            # update how many bp are mapped
+            map_pos += match_len
             read_pos += match_len
 
             while ins and map_pos >= ins[0]:
@@ -220,9 +214,9 @@ class MutParser(object):
                 # this means a single nt change
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
                 snp_list.append(f"{pos+read_pos}|{base}|{read[read_pos+inserted_pos-deleted_len+clip]}|{qual[read_pos+inserted_pos-deleted_len+clip]}")
-
-                map_pos += len(base)
-                read_pos += len(base) # adjust read pos with 1bp change (move to the right for 1 pos)
+                # adjust read pos with 1bp change (move to the right for 1 pos)
+                map_pos += 1
+                read_pos += 1
             else: # deletion
                 #mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
                 delins_list.append(f"{pos+read_pos}|{base[1:]}|del|{qual[read_pos+inserted_pos-deleted_len+clip-1]},{qual[read_pos+inserted_pos-deleted_len+clip]}")
