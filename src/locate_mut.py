@@ -138,6 +138,20 @@ class MutParser(object):
         final_mut = list(set(final_mut))
         final_mut.sort()
         hgvs, outside_mut = self._get_hgvs(final_mut)
+        if "45T1T0A2T0T5A3C0C8A2A0A1A3C4A0C4A2C2A0G2C1A2G4C0T2A5A4" in self._r1_mdz:
+          print(final_mut)
+          print(snp_df)
+          print(r1_delins)
+          print(self._r1_cigar)
+          print(self._r1_pos)
+          print(self._r1_ref)
+          print(self._r1_read)
+          print(self._r1_mdz)
+          print(self._r2_cigar)
+          print(self._r2_pos)
+          print(self._r2_ref)
+          print(self._r2_read)
+          print(self._r2_mdz)
         return hgvs, outside_mut
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -224,32 +238,32 @@ class MutParser(object):
             base = m.group(2)
 
             map_pos += match_len# update how many bp are mapped
-            read_pos += match_len
 
             while ins and map_pos >= ins[0]:
-                map_pos += ins[1]
+                #map_pos += ins[1]
                 inserted_pos += ins[1]
                 ins = next(iter_ins, None)
 
             if "^" not in base:
+                read_pos += match_len
                 # this means a single nt change
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
                 snp_list.append(str(pos+read_pos)+"|"+base+"|"+str(read[read_pos+inserted_pos-deleted_len+clip]))
 
                 ## DEBUG ##
-                # if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
-                #     print(snp_list)
-                #     print(delins_list)
-                #     print("map_pos", map_pos)
-                #     print("ins_pos", ins_pos)
-                #     print("ins", ins)
-                #     print("mdz", i)
-                #     print(mdz)
-                #     print(match_len)
-                #     print(read_pos)
-                #     print(inserted_pos)
-                #     print(deleted_len)
-                #     print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
+                if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
+                     print(snp_list)
+                     print(delins_list)
+                     print("map_pos", map_pos)
+                     print("ins_pos", ins_pos)
+                     print("ins", ins)
+                     print("mdz", i)
+                     print(mdz)
+                     print(match_len)
+                     print(read_pos)
+                     print(inserted_pos)
+                     print(deleted_len)
+                     print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
                 #     ## DEBUG ##
                 #     print(self._r1_ref)
                 #     print(self._r1_read)
@@ -260,8 +274,9 @@ class MutParser(object):
                 #     print(self._r2_mdz, self._r2_cigar)
 
                 map_pos += len(base)
-                read_pos += len(base) # adjust read pos with 1bp change (move to the right for 1 pos)
+                read_pos += 1 # adjust read pos with 1bp change (move to the right for 1 pos)
             else: # deletion
+                read_pos += match_len
                 #mut_list.append([str(pos+read_pos-clip),base[1:],"del"])
                 delins_list.append(str(pos+read_pos)+"|"+base[1:]+"|"+"del")
 

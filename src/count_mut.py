@@ -43,6 +43,7 @@ class readSam(object):
         self._sample_info = self._samples[self._samples["Sample ID"] == self._sample_id]
 
         # tile information
+        # if one sample is with two tiles 
         self._sample_tile = self._sample_info["Tile ID"].values[0]
         self._tile_begins = (self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["Start AA"].values[0] *3)-2 # beginning position of this tile (cds position)
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
