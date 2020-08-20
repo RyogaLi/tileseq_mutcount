@@ -136,7 +136,8 @@ class readSam(object):
                 read_name_r1 = line_r1[0]
                 read_name_r2 = line_r2[0]
                 if read_name_r1 != read_name_r2:
-                    self._mut_log.warning("READ PAIR DID NOT MAP")
+                    self._mut_log.error("Read pair IDs did not map, please check fastq files")
+                    exit(1)
 
                 # get starting position for r1 and r2
                 pos_start_r1 = line_r1[3]

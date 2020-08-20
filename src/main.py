@@ -447,7 +447,7 @@ def log(output_dir, log_level):
     console = logging.StreamHandler()
     console.setLevel(log_level)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
