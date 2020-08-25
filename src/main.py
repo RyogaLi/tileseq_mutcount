@@ -373,7 +373,7 @@ def main(args):
             # VALIDATE if both files are sam files
             if not args.r1.endswith(".sam") or not args.r2.endswith(".sam"):
                 print("Please provide SAM files")
-                exit(1)
+                return
             # copy the parameter file to output dir if the json file is not in the dir
             param_path = os.path.join(args.output, param_base)
             if not os.path.isfile(param_path):
