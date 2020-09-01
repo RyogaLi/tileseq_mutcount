@@ -43,8 +43,6 @@ class MutParser(object):
         # logger
         self._logging = logging
 
-
-
     def _get_seq(self):
         """
         Parse the sequence and CIGAR string
