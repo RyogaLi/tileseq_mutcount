@@ -174,6 +174,36 @@ class fastq2counts(object):
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")
+                self._log.info(f"Merging alignment log files...")
+                # go through alignment output dir and parse all the log files
+                log_files = os.path.join(sam_output, "*.log")
+                log_list = glob.glob(log_files)
+                alignment_master_log = []
+                for f in log_list:
+                    f_info = []
+                    sample_id = os.path.basename(f).split(".")[0]
+                    f_info.append(sample_id)
+                    with open(f, "r") as fp:
+                        for i, line in enumerate(fp):
+                            if i == 0:
+                                line = line.split(" ")
+                                f_info.append(line[0]) # number of reads in r1
+                            elif i == 5:
+                                line = line.split(" ")
+                                f_info.append(line[0]) # overall alignment rate for r1
+                            elif i == 6:
+                                line = line.split(" ")
+                                f_info.append(line[0]) # number of reads in r2
+                            elif i == 11:
+                                line = line.split(" ")
+                                f_info.append(line[0]) # overall alignment rate for r2
+                    alignment_master_log.append(f_info)
+                df = pd.DataFrame(alignment_master_log)
+                df.columns = ["sample_id", "R1_reads", "R1_alignment_rate", "R2_reads", "R2_alignment_rate"]
+                alignment_log = os.path.join(sam_output, "aligned_rate.log")
+                df.to_csv(alignment_log, index=False)
+                self._log.info(f"Alignment log file created")
+
         return sam_output
 
     def _mut_count(self):
