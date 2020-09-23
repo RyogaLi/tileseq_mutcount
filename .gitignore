@@ -4,3 +4,4 @@ for_testing/*
 test.sh
 *.csv
 *.json
+/dist/

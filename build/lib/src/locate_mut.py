@@ -5,8 +5,6 @@
 # and call mutaitons based on the reads
 
 
-# TODO
-
 import pandas as pd
 import cigar
 import re

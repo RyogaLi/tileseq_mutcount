@@ -1,0 +1,5 @@
+pandas
+seaborn
+numpy
+biopython
+cigar
