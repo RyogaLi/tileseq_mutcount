@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.1.10",
+    version="0.1.11",
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",

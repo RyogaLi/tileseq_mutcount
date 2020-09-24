@@ -5,27 +5,28 @@ Output of this pipeline is mutation counts for each pair of fastq files.
 
 ## Dependencies
 
-`python 3.6/3.7/3.8 (tested)`
+`python 3.6/3.7/3.8 (tested mainly under py3.6)`
 
 `R 3.4.4+`
 
 `Bowtie2 Bowtie2-build`
 
-If you are using conda, you can set up the envirment before installing the package: 
-
-`conda install -n <env_name> pandas biopython seaborn`
-
-Then install the package `cigar` with `pip install cigar`. (`cigar` is not available on with condas nor testpypi
-, this has to be installed manually)
-
-You will also need the script `csv2json.R` which can be installed via installing [https://github.com/jweile
-/tileseqMave]. Make sure `csv2json.R` can be found in `$PATH`
-
 ## Installation 
 
 The alpha version is available by running:
 
-`python -m pip install -i https://test.pypi.org/simple/ TileSeqMut`
+`python -m pip install TileSeqMut`
+
+If you are using conda, you can set up the envirment before installing the package: 
+
+`conda install -n <env_name> pandas biopython seaborn`
+
+Then install the package `cigar` with `pip install cigar`. (Sometimes `cigar` is not available on with condas nor
+ testpypi
+, this would need to be installed manually)
+
+You will also need the script `csv2json.R` which can be installed via installing [https://github.com/jweile
+/tileseqMave]. Make sure `csv2json.R` can be found in `$PATH`
 
 ### Execution
 ---
