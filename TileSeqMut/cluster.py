@@ -10,8 +10,6 @@ import time
 
 # other modules
 from TileSeqMut import alignment
-from TileSeqMut import help_functions
-from TileSeqMut import settings
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
@@ -28,18 +26,18 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
     submit sh files to SGE
     """
     ## build reference
-    ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.guru_BOWTIE2_BUILD)
+    ref = alignment.make_ref(ref_name, ref_seq, ref_path)
 
     for index, row in fastq_map.iterrows():
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, sample_name+"_aln.sh") # for each sample, the alignment is for both R1 and R2 (they are aligning separately)
-        log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.guru_BOWTIE2, shfile)
+        log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile)
 
         sub_cmd = f"qsub -cwd -N {'aln_'+sample_name} -e {log_file} {shfile}"
         os.system(sub_cmd)
         shfile_ds = os.path.join(sh_output, sample_name+"_aln_ds.sh")
-        log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, settings.guru_BOWTIE2, shfile_ds)
+        log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, shfile_ds)
         sub_cmd = f"qsub -cwd -N {'aln_ds_'+sample_name} -e {log_file_ds} {shfile_ds}"
         os.system(sub_cmd)
         #break
@@ -52,7 +50,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
     """
 
     # build reference
-    ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.bc2_BOWTIE2_BUILD)
+    ref = alignment.make_ref(ref_name, ref_seq, ref_path)
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
     time = at
@@ -61,7 +59,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.bc2_BOWTIE2, shfile)
+        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile)
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         # create log file for alignment
@@ -83,7 +81,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
     """
 
     # build reference
-    ref = alignment.make_ref(ref_name, ref_seq, ref_path, settings.dc_BOWTIE2_BUILD)
+    ref = alignment.make_ref(ref_name, ref_seq, ref_path)
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
     time = at
@@ -92,7 +90,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, settings.dc_BOWTIE2, shfile)
+        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile)
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         # create log file for alignment

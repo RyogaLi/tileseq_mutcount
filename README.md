@@ -5,45 +5,66 @@ Output of this pipeline is mutation counts for each pair of fastq files.
 
 ## Dependencies
 
-***Before you run this pipeline, please goto `settings.py` to set the path to `BOWTIE2`***
-
-`python 3.6+`
-* Packages: `python3.6 -m pip install --user pandas cigar`
+`python 3.6/3.7/3.8 (tested)`
 
 `R 3.4.4+`
 
 `Bowtie2 Bowtie2-build`
 
+If you are using conda, you can set up the envirment before installing the package: 
+
+`conda install -n <env_name> pandas biopython seaborn`
+
+Then install the package `cigar` with `pip install cigar`. (`cigar` is not available on with condas nor testpypi
+, this has to be installed manually)
+
+You will also need the script `csv2json.R` which can be installed via installing [https://github.com/jweile
+/tileseqMave]. Make sure `csv2json.R` can be found in `$PATH`
+
+## Installation 
+
+The alpha version is available by running:
+
+`python -m pip install -i https://test.pypi.org/simple/ TileSeqMut`
+
 ### Execution
 ---
 
-To run this pipeline on DC (with default parameters)
+After installation, you can run the package: 
 
 ```
-python main.py -p ~/path/to/param.csv -o ~/path/to/output_folder -f ~/path/to/fastq_file_folder -name name_of_the_run
+tileseq_mut -p ~/path/to/paramSheet.csv -o ~/path/to/output_folder -f ~/path/to/fastq_file_folder/ -name
+ name_of_the_run 
 ```
 
-**Example (DC):**
+**Examples:**
 
 * This command would analyze fastq files in the folder: `$HOME/tileseq_data/WT/` and make a time stamped output folder with the prefix: `MTHFR_test` in `$HOME/dev/tilseq_mutcount/output/` (Using all default parameters, see below)
 
 ``` bash
-python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME/tileseq_data/WT/ -name MTHFR_test
+# on DC
+tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
+/tileseq_data/WT/ -name MTHFR_test
+
+# on BC2
+tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
+/tileseq_data/WT/ -name MTHFR_test -env BC2
 ```
+
 
 **Parameters**
 
-* To show all the parameters of `main.py` run `python main.py --help`
+* Run `tileseq_mut --help`
 
 ``` bash
-# Required parameters:
+# Required:
 
 -p PARAM, parameter csv or json file (please see details in the input files section)
 -o OUTPUT, Output directory
 -f FASTQ, Path to fastq files you want to analyze (only required when you are running alignment)
 -n NAME, RUN_NAME
 
-# Optional parameters:
+# Optional:
 
 -h, --help list all the args
 
@@ -60,13 +81,16 @@ python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/
 **Example of skipping alignment:**
 
 ```
-python main.py -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment
+tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output
+/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment
 ```
 
 **Example of running on one pair of SAM sam_files**
 
 ```
-python main.py -r1 /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-2812/sam_files/45_S45_R1_001.sam -r2 /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-28-12/sam_files/45_S45_R2_001.sam -o /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-28-12/MTHFR_test_2020-03-19-14-32-21_mut_count -p /home/rothlab1/rli//dev/tilseq_mutcount/paramsheets/190506_MTHFR_WT.csv --skip_alignment -n MTHFR_test
+tileseq_mut -r1 /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-2812/sam_files/45_S45_R1_001.sam
+ -r2
+ /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-28-12/sam_files/45_S45_R2_001.sam -o /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_2020-03-19-11-28-12/MTHFR_test_2020-03-19-14-32-21_mut_count -p /home/rothlab1/rli//dev/tilseq_mutcount/paramsheets/190506_MTHFR_WT.csv --skip_alignment -n MTHFR_test
 ```
 
 ### Input files
@@ -74,7 +98,7 @@ python main.py -r1 /home/rothlab1/rli//dev/tilseq_mutcount/output/MTHFR_test_202
 
 `/path/to/fastq/` - Full path to input fastq files
 
-`param.csv` - CSV file contains information for this run (please see example
+`parameters.csv` - CSV file contains information for this run (please see example
 [here](https://docs.google.com/spreadsheets/d/1tIblmIFgOApPNzWN2KUwj8BKzBiJ1pOL7R4AOUGrqvE/edit?usp=sharing)
 ).
 This file is required to be comma-seperated and saved in csv format.
@@ -89,7 +113,7 @@ Within each output folder, the following files and folders will be generated:
 
 `./main.log` - main logging file for alignment
 
-`./args` - arguments for this run
+`./args.log` - arguments for this run
 
 `./ref/` - Reference fasta file and bowtie2 index
 
@@ -102,6 +126,7 @@ Within each output folder, the following files and folders will be generated:
     - `./main.log` - Main log file for mutation calling
 
     - `./args.log` - command line arguments
+    
     - `./info.csv` - Meta information for each sample: sequencing depth, tile starts/ends and # of reads mapped outside of the targeted tile
 
     - `./count_sample_*.csv` - Raw mutation counts for each sample. With meta data in header. Variants are represented in hgvs format

@@ -8,9 +8,7 @@ TileSeqMut/count_mut.py
 TileSeqMut/help_functions.py
 TileSeqMut/locate_mut.py
 TileSeqMut/main.py
-TileSeqMut/parse_seq.py
 TileSeqMut/posterior.py
-TileSeqMut/settings.py
 TileSeqMut.egg-info/PKG-INFO
 TileSeqMut.egg-info/SOURCES.txt
 TileSeqMut.egg-info/dependency_links.txt

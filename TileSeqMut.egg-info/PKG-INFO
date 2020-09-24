@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: TileSeqMut
-Version: 0.1.7
+Version: 0.1.10
 Summary: Analysis scripts for TileSeq sequencing data
 Home-page: https://github.com/RyogaLi/tilseq_mutcount
 Author: ROUJIA LI
@@ -15,7 +15,7 @@ Description: ## TileSeq mutation count package
         
         ***Before you run this pipeline, please goto `settings.py` to set the path to `BOWTIE2`***
         
-        `python 3.6+`
+        `python 3.6/3.7/3.8 (tested)`
         * Packages: `python3.6 -m pip install --user pandas cigar`
         
         `R 3.4.4+`

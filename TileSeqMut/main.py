@@ -28,7 +28,6 @@ import shutil
 # import time
 
 # pakage modules
-from TileSeqMut import settings
 from TileSeqMut import help_functions
 from TileSeqMut import count_mut
 from TileSeqMut import cluster
@@ -50,8 +49,8 @@ class fastq2counts(object):
 
         self._args = args  # user input arguments
 
-        if args.fastq:
-            self._fastq_list = glob.glob(args.fastq+"/*.fastq.gz")
+        if self._args.fastq:
+            self._fastq_list = glob.glob(self._args.fastq+"/*.fastq.gz")
         else:
             self._fastq_list = []
         self._output = output_dir
@@ -74,9 +73,9 @@ class fastq2counts(object):
         """
         if skip:  # only run mutation counts on the aligned samples
             self._skip = True
-            if args.r1 and args.r2:
-                self._r1 = args.r1
-                self._r2 = args.r2
+            if self._args.r1 and self._args.r2:
+                self._r1 = self._args.r1
+                self._r2 = self._args.r2
                 # self._log.info(f"SAM R1: {r1}")
                 # self._log.info(f"SAM R2: {r2}")
             else:
@@ -133,7 +132,7 @@ class fastq2counts(object):
         os.system("mkdir "+ ref_path)
 
         # GURU
-        if args.environment == "GURU":
+        if self._args.environment == "GURU":
             # make sh files to submit to GURU
             sh_output = os.path.join(self._output, "GURU_sh")
             os.system("mkdir "+sh_output)
@@ -147,25 +146,25 @@ class fastq2counts(object):
 
             # wait for alignment to finish and call mutations
 
-        elif args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
+        elif self._args.environment == "BC2" or self._args.environment == "DC" or self._args.environment == "BC":
             # make sh files to submit to BC
             sh_output = os.path.join(self._output, "BC_aln_sh")
             os.system("mkdir "+sh_output)
 
-            if args.environment == "BC2" or args.environment == "BC":
+            if self._args.environment == "BC2" or self._args.environment == "BC":
                 # make sh files to submit to BC
                 self._log.info("Submitting alignment jobs to BC/BC2...")
                 # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
-                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
+                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._args.at, self._log)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
-            elif args.environment == "DC":
+            elif self._args.environment == "DC":
                 # make sh files to submit to DC
                 sh_output = os.path.join(self._output, "DC_aln_sh")
                 os.system("mkdir "+sh_output)
 
                 self._log.info("Submitting alignment jobs to DC...")
-                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, args.at, self._log)
+                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._args.at, self._log)
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
             self._log.info(f"Total jobs submitted: {len(job_list)}")
@@ -227,7 +226,7 @@ class fastq2counts(object):
         """
         if sam_dir == "":
             # get samples in param file
-            sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
+            sam_dir = os.path.join(self._args.output, "sam_files/") # read sam file from sam_file
         # get sam files from parameter file
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
@@ -253,18 +252,18 @@ class fastq2counts(object):
 
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
-            if args.sr_Override:
-                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt} -override"
+            if self._args.sr_Override:
+                cmd = f"python {self._main_path} -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
             else:
-                cmd = f"python {self._main_path} -n {args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {args.log_level} -env {args.environment} -at {args.at} -mt {args.mt}"
+                cmd = f"python {self._main_path} -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
 
-            if args.environment == "BC2" or args.environment == "BC":
+            if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(i, cmd, args.mt, sh_output, self._log)
-            elif args.environment == "DC":
+                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, sh_output, self._log)
+            elif self._args.environment == "DC":
                 logging.info("Submitting mutation counts jobs to DC...")
                 # (sample_name, cmd, mt, sh_output_dir, logger)
-                job_id = cluster.mut_count_sh_dc(i, cmd, args.mt, sh_output, self._log) # this function will make a sh file for submitting the job
+                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, sh_output, self._log) # this function will make a sh file for submitting the job
 
             job_list.append(job_id)
 
@@ -309,12 +308,12 @@ class fastq2counts(object):
                 time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 # make mut count dir alignemnt not skipped
                 # otherwise the user input dir should be the output dir gnerated
-                self._output = os.path.join(self._output, args.name + "_" + time_now + "_mut_count")
+                self._output = os.path.join(self._output, self._args.name + "_" + time_now + "_mut_count")
                 os.makedirs(self._output)
 
             # output directory is the mut_count dir
             # make folder to store all the sh files
-            if args.environment == "BC2" or args.environment == "DC" or args.environment == "BC":
+            if self._args.environment == "BC2" or self._args.environment == "DC" or self._args.environment == "BC":
                 sh_output = os.path.join(self._output, "BC_mut_sh")
                 self._log.info(f"Mutation count sh files are made in {sh_output}")
                 os.mkdir(sh_output)
@@ -369,9 +368,9 @@ def check(args):
         if os.path.isfile(param_json):
              os.remove(param_json)
         if args.sr_Override:
-            convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json} --srOverride"
+            convert = f"csv2json.R {args.param} -o {param_json} --srOverride"
         else:
-            convert = f"Rscript {settings.CSV2JSON} {args.param} -o {param_json}"
+            convert = f"csv2json.R {args.param} -o {param_json}"
         os.system(convert)
     # if the file ends with .json, do nothing
     elif args.param.endswith(".json"):
@@ -502,17 +501,17 @@ if __name__ == "__main__":
         info, warning, error, critical. (default = debug)", type=str, default="debug")
     parser.add_argument("-env", "--environment", help= "The cluster used to \
         run this script (default = DC)",type=str, default="DC")
-    ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
-    ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
-    ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
-    ##    cover the tile (default = 0.4)", type=float, default=0.6)
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 36h)", default=36)
+    ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
+    ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
+    ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
+    ##    cover the tile (default = 0.4)", type=float, default=0.6)
+
     parser.add_argument("-override", "--sr_Override", action="store_true", help="Provide this argument when there is only one replicate")
 
     args = parser.parse_args()
 
-    print(" **** NOTE: Before you run this pipeline, please check settings.py to update program paths **** ")
     main(args)
