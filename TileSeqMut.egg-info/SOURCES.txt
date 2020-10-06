@@ -8,10 +8,12 @@ TileSeqMut/count_mut.py
 TileSeqMut/help_functions.py
 TileSeqMut/locate_mut.py
 TileSeqMut/main.py
+TileSeqMut/mergeruns.py
 TileSeqMut/posterior.py
 TileSeqMut.egg-info/PKG-INFO
 TileSeqMut.egg-info/SOURCES.txt
 TileSeqMut.egg-info/dependency_links.txt
 TileSeqMut.egg-info/requires.txt
 TileSeqMut.egg-info/top_level.txt
+bin/mergeRuns
 bin/tileseq_mut

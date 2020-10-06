@@ -13,14 +13,14 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.1.11",
+    version="0.1.16",
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/RyogaLi/tilseq_mutcount",
-	scripts=['bin/tileseq_mut'],
+	scripts=['bin/tileseq_mut', 'bin/mergeRuns'],
 	# For a list of valid classifiers, see https://pypi.org/classifiers/
 	classifiers=[  # Optional
 		# How mature is this project? Common values are

@@ -1,0 +1,22 @@
+#!python
+
+# Author: Roujia Li
+# email: Roujia.li@mail.utoronto.ca
+import argparse
+
+from TileSeqMut.mergeruns import merge_main
+
+parser = argparse.ArgumentParser(description='TileSeq mutation counts - Merge two runs')
+# user input arguments
+parser.add_argument("-p1", "--paramOne", help="Path to parameter sheet (JSON) for the first run", type=str)
+parser.add_argument("-p2", "--paramTwo", help="Path to parameter sheet (JSON) for the second run", type=str)
+parser.add_argument("-d1", "--dir1", help="Path to *_mut_count folder for the first run", type=str)
+parser.add_argument("-d2", "--dir2", help="Path to *_mut_count folder for the second run", type=str)
+parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
+# user input arguments with default values set
+parser.add_argument("-log", "--log_level", help="set log level: debug, \
+        info, warning, error, critical. (default = debug)", type=str, default="debug")
+
+args = parser.parse_args()
+
+merge_main(args)
