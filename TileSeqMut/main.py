@@ -28,9 +28,9 @@ import shutil
 # import time
 
 # pakage modules
-from TileSeqMut import help_functions
-from TileSeqMut import count_mut
-from TileSeqMut import cluster
+import help_functions
+import count_mut
+import cluster
 
 class fastq2counts(object):
     """Main class to read fastq files and output mutation counts."""
