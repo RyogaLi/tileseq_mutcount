@@ -143,7 +143,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
     return job_id
 
 
-def parse_jobs(job_list, logger):
+def parse_jobs(job_list, env, logger):
     """
     return true if all the jobs in job list finished
     else wait for 10 mins and return how man jobs are running and queued
@@ -165,8 +165,12 @@ def parse_jobs(job_list, logger):
         if qstat_err != "":
             # jobs might be finished and no longer in queue
             # extract job id from std err
-            err = qstat_err.split("\n")[:-1]
-            id_regex = re.compile(r"(\d+).bc")
+            if env == "BC" or env == "BC2":
+                err = qstat_err.split("\n")[:-1]
+                id_regex = re.compile(r"(\d+).bc")
+            elif env == "DC":
+                id_regex = re.compile(r"(\d+).dc[0-9]+")
+
             f_id = [] # finished jobs
             for i in err:
                 try:
@@ -181,7 +185,10 @@ def parse_jobs(job_list, logger):
 
         if qstat_out != "":
             qstat_out = qstat_out.split("\n")[:-1]
-            id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
+            if env == "BC" or env == "BC2":
+                id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
+            elif env == "DC":
+                id_regex = re.compile(r"(\d+).dc[0-9]+.+(R|Q|C|E)")
 
             for line in qstat_out:
                 if ("---" in line) or ("Job ID" in line): continue
@@ -211,5 +218,5 @@ def parse_jobs(job_list, logger):
 
 if __name__ == "__main__":
     # test job list
-    job_list = ["291879", "29171333", "29171340", "29171466"]
+    job_list = ["344775", "344777", "344771", "344780"]
     parse_jobs(job_list)

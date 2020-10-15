@@ -147,11 +147,10 @@ class fastq2counts(object):
             # wait for alignment to finish and call mutations
 
         elif self._args.environment == "BC2" or self._args.environment == "DC" or self._args.environment == "BC":
-            # make sh files to submit to BC
-            sh_output = os.path.join(self._output, "BC_aln_sh")
-            os.system("mkdir "+sh_output)
-
             if self._args.environment == "BC2" or self._args.environment == "BC":
+                # make sh files to submit to BC
+                sh_output = os.path.join(self._output, "BC_aln_sh")
+                os.system("mkdir " + sh_output)
                 # make sh files to submit to BC
                 self._log.info("Submitting alignment jobs to BC/BC2...")
                 # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
