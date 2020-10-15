@@ -14,8 +14,8 @@ import argparse
 from collections import deque
 
 # modules in package
-from TileSeqMut import help_functions
-from TileSeqMut import locate_mut
+import help_functions
+import locate_mut
 
 class readSam(object):
 

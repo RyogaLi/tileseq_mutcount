@@ -9,7 +9,7 @@ import subprocess
 import time
 
 # other modules
-from TileSeqMut import alignment
+import alignment
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
