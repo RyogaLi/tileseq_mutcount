@@ -218,10 +218,10 @@ class fastq2counts(object):
         # run main.py with -r1 and -r2
 
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
-        start = time.time()
-        mut_counts._merged_main()
-        end = time.time()
-        print('Time taken for original program: ', end - start)
+        # start = time.time()
+        # mut_counts._merged_main()
+        # end = time.time()
+        # print('Time taken for original program: ', end - start)
         # testing multicore program
         start = time.time()
         mut_counts.test_multi()

@@ -21,7 +21,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores=8):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores=16):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -277,7 +277,6 @@ class readSam(object):
         pool = mp.Pool(self._cores)
         jobs = []
 
-        lines = 0
         while chunk1 and chunk2:
             line_r1 = chunk1.popleft()
             if not chunk1:
