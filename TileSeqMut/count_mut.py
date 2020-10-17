@@ -274,9 +274,6 @@ class readSam(object):
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
         while chunk1 and chunk2:
-            print(chunk1)
-            print(chunk2)
-            exit(1)
             line_r1 = chunk1.popleft()
             if not chunk1:
                 line_r1, *more = (line_r1 + r1_f.read(chunkSize)).split("\n")
@@ -285,7 +282,13 @@ class readSam(object):
             if not chunk2:
                 line_r2, *more = (line_r2 + r2_f.read(chunkSize)).split("\n")
                 chunk2.extend(more)
-
+            print(chunk1)
+            print(chunk2)
+            print(line_r2)
+            print(line_r2)
+            exit(1)
+        r1_f.close()
+        r2_f.close()
 
 
 
