@@ -9,6 +9,8 @@ import re
 import os
 import math
 import logging
+import mmap
+import multiprocessing as mp
 import argparse
 # import datetime
 from collections import deque
@@ -19,7 +21,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores=8):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -37,6 +39,7 @@ class readSam(object):
         min_cover = self._var["minCover"]
         self._mutrate = self._var["mutRate"]
         self._output_counts_dir = output_dir
+        self._cores = cores
 
         # sample information
         self._sample_id = os.path.basename(sam_r1).split("_")[0]
@@ -103,6 +106,7 @@ class readSam(object):
 
         final_pairs = 0
         off_read = 0
+
         chunkSize = 1500000 # number of characters in each chunk (you will need to adjust this)
         chunk1 = deque([""]) #buffered lines from 1st file
         chunk2 = deque([""]) #buffered lines from 2nd file
@@ -248,6 +252,43 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+
+    def test_multi(self):
+        """
+        Read two sam files at the same time, store mutations that passed filter
+        """
+        read_pair = 0 # total pairs
+        un_map = 0 # total number of unmapped reads
+        read_nomut = 0 # read pairs that have no mutations
+
+        hgvs_output = {} # save all the hgvs in this pair of sam files
+        off_mut = {} # save all the positions that were mapped but outside of the tile
+        row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
+
+        final_pairs = 0
+        off_read = 0
+
+        chunkSize = 1500000  # number of characters in each chunk (you will need to adjust this)
+        chunk1 = deque([""])  # buffered lines from 1st file
+        chunk2 = deque([""])  # buffered lines from 2nd file
+        r1_f = open(self._r1, "r")
+        r2_f = open(self._r2, "r")
+        while chunk1 and chunk2:
+            print(chunk1)
+            print(chunk2)
+            exit(1)
+            line_r1 = chunk1.popleft()
+            if not chunk1:
+                line_r1, *more = (line_r1 + r1_f.read(chunkSize)).split("\n")
+                chunk1.extend(more)
+            line_r2 = chunk2.popleft()
+            if not chunk2:
+                line_r2, *more = (line_r2 + r2_f.read(chunkSize)).split("\n")
+                chunk2.extend(more)
+
+
+
+
 
 # if __name__ == "__main__":
 #

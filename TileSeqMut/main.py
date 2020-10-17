@@ -167,7 +167,9 @@ class fastq2counts(object):
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
             self._log.info(f"Total jobs submitted: {len(job_list)}")
-            finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs"))  # track list of jobs
+            finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs"))  #
+            # track list
+            # of jobs
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")
@@ -216,7 +218,9 @@ class fastq2counts(object):
         # run main.py with -r1 and -r2
 
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
-        mut_counts._merged_main()
+        # mut_counts._merged_main()
+        # testing multicore program
+        mut_counts.test_multi()
 
     def _makejobs(self, sh_output, sam_dir):
         """
