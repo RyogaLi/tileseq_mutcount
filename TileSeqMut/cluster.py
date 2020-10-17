@@ -104,7 +104,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
     return fastq_map, all_job_id
 
 
-def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
+def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger, cores):
     """
     Submit mutation count jobs to BC
 
@@ -116,14 +116,14 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob2","-w", str(mt), "-c", "1", "-m", "15", shfile]
+    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
     # log sample name and job id
     logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
 
-def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
+def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger, cores):
     """
     Submit mutation count jobs to DC
     """
@@ -135,7 +135,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger):
         os.system(f"chmod 755 {shfile}")
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
-    sub_cmd = ["submitjob", "-w", str(mt), "-c", "1", "-m", "15", shfile]
+    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
     # log sample name and job id
@@ -202,8 +202,8 @@ def parse_jobs(job_list, env, logger):
                 elif job_s == "Q":
                     queued.append(job_id)
 
-        logger.info(f"{len(queued)} jobs queued")
-        logger.info(f"{len(running)} jobs running")
+        # logger.info(f"{len(queued)} jobs queued")
+        # logger.info(f"{len(running)} jobs running")
         final_list = list(set(updated_list+running+queued))
         if final_list == []:
             return True
@@ -219,4 +219,4 @@ def parse_jobs(job_list, env, logger):
 if __name__ == "__main__":
     # test job list
     job_list = ["344775", "344777", "344771", "344780"]
-    parse_jobs(job_list)
+    parse_jobs(job_list, "DC", "")

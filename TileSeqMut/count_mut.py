@@ -21,7 +21,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores=16):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -253,7 +253,7 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-    def test_multi(self):
+    def multi_core(self):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
