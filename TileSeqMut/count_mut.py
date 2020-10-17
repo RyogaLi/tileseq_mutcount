@@ -277,15 +277,6 @@ class readSam(object):
         pool = mp.Pool(self._cores)
         jobs = []
 
-        # while chunk1 and chunk2:
-        #     line_r1 = chunk1.popleft()
-        #     if not chunk1:
-        #         line_r1, *more = (line_r1 + r1_f.read(chunkSize)).split("\n")
-        #         chunk1.extend(more)
-        #     line_r2 = chunk2.popleft()
-        #     if not chunk2:
-        #         line_r2, *more = (line_r2 + r2_f.read(chunkSize)).split("\n")
-        #         chunk2.extend(more)
         for line_r1, line_r2 in zip(r1_f, r2_f):
 
             line_r1 = line_r1.split()
