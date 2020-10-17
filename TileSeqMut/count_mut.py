@@ -287,7 +287,7 @@ class readSam(object):
             read_Byte = f1.tell()
             for line1, line2 in zip(f1, f2):
 
-                jobs.append(pool.apply_async(self.process_wrapper, (line1, line2)))
+                jobs.append(pool.apply_async(self.process_wrapper, (line1, line2, )))
                 # read_Byte = f1.tell()
                 # r2_Byte = f1.tell()
         # wait for all jobs to finish
