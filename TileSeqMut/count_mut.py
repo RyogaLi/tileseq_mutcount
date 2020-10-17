@@ -375,9 +375,6 @@ class readSam(object):
         r1_f.close()
         r2_f.close()
 
-        # clean up
-        pool.close()
-
         # wait for all jobs to finish
         for job in jobs:
             hgvs, outside_mut = job.get()
@@ -394,6 +391,8 @@ class readSam(object):
                     if not (i in off_mut):
                         off_mut[i] = 1
 
+        # clean up
+        pool.close()
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
         # write this information to a tmp file
