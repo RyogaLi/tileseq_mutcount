@@ -371,9 +371,7 @@ class readSam(object):
             mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(mut_parser._main, ()))
-            lines +=1
-            if lines > 100:
-                break
+
         r1_f.close()
         r2_f.close()
 
@@ -396,7 +394,37 @@ class readSam(object):
         # clean up
         pool.close()
 
-        print(hgvs_output)
+        # track mutations that are not within the same tile
+        # track sequencing depth for each sample
+        # write this information to a tmp file
+        # merge the tmp file (in main.py)
+        tmp_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_tmp.csv")
+        off_mut = list(set(off_mut))
+        off_mut.sort()
+        f = open(tmp_f, "w")
+        f.write(
+            f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read / read_pair}\n")
+        f.close()
+
+        output_csv = open(self._sample_counts_f, "a")
+        output_csv.write(f"#Raw read depth:{read_pair}\n")
+        output_csv.write(
+            f"#Number of read pairs without mutations:{read_nomut}\n#Number of read pairs did not map to gene:{un_map}\n#Mutation positions outside of the tile:{off_mut}\n#Number of reads outside of the tile:{off_read}\n")
+        output_csv.write(f"#Final read-depth:{read_pair - un_map - off_read}\n")
+        output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
+        output_csv.write(
+            f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
+
+        output_csv.close()
+
+        self._mut_log.info(f"Raw sequencing depth: {read_pair}")
+        self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
+        self._mut_log.info(f"Final read-depth: {read_pair - un_map - off_read}")
+        # convert list to df with one col
+        hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
+        hgvs_df = hgvs_df.reset_index()
+        hgvs_df.columns = ["HGVS", "count"]
+        hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
     def process_wrapper(self, line_r1, line_r2):
         """

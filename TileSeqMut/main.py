@@ -25,7 +25,7 @@ import argparse
 import logging
 import datetime
 import shutil
-# import time
+import time
 
 # pakage modules
 import help_functions
@@ -218,9 +218,15 @@ class fastq2counts(object):
         # run main.py with -r1 and -r2
 
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
-        # mut_counts._merged_main()
+        start = time.time()
+        mut_counts._merged_main()
+        end = time.time()
+        print('Time taken for original program: ', end - start)
         # testing multicore program
+        start = time.time()
         mut_counts.test_multi()
+        end = time.time()
+        print('Time taken for 8 cores program: ', end - start)
 
     def _makejobs(self, sh_output, sam_dir):
         """
