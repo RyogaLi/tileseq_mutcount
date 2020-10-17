@@ -268,11 +268,14 @@ class readSam(object):
         final_pairs = 0
         off_read = 0
 
-        chunkSize = 1500000  # number of characters in each chunk (you will need to adjust this)
+        chunkSize = 1500000  # number of characters in each chunk
         chunk1 = deque([""])  # buffered lines from 1st file
         chunk2 = deque([""])  # buffered lines from 2nd file
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
+        # init objects
+        pool = mp.Pool(self._cores)
+        jobs = []
         while chunk1 and chunk2:
             line_r1 = chunk1.popleft()
             if not chunk1:
@@ -282,6 +285,8 @@ class readSam(object):
             if not chunk2:
                 line_r2, *more = (line_r2 + r2_f.read(chunkSize)).split("\n")
                 chunk2.extend(more)
+
+            jobs.append(pool.apply_async(self.process_wrapper, (line_r1, line_r2)))
             print(chunk1)
             print(chunk2)
             print(line_r2)
@@ -290,7 +295,20 @@ class readSam(object):
         r1_f.close()
         r2_f.close()
 
+        # wait for all jobs to finish
+        for job in jobs:
+            job.get()
+        print(jobs)
+        # clean up
+        pool.close()
 
+    def process_wrapper(self, line_r1, line_r2):
+        """
+
+        """
+        print("process these two lines")
+        print(line_r1, line_r2)
+        return 20
 
 
 # if __name__ == "__main__":
