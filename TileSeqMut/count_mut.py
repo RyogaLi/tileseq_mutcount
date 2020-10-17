@@ -276,6 +276,8 @@ class readSam(object):
         # init objects
         pool = mp.Pool(self._cores)
         jobs = []
+
+        lines = 0
         while chunk1 and chunk2:
             line_r1 = chunk1.popleft()
             if not chunk1:
@@ -351,10 +353,8 @@ class readSam(object):
                 read_nomut += 1
                 # remove reads that have no mutations in MDZ
                 continue
-
             # make the reads in the format of a dictionary
             # columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
-
             # row["mapped_name_r1"] = mapped_name_r1
             row["pos_start_r1"] = pos_start_r1
             row["qual_r1"] = quality_r1
@@ -371,16 +371,32 @@ class readSam(object):
             mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(mut_parser._main, ()))
-            break
+            lines +=1
+            if lines > 100:
+                break
         r1_f.close()
         r2_f.close()
 
         # wait for all jobs to finish
         for job in jobs:
-            print(job.get())
-        print(jobs)
+            hgvs, outside_mut = job.get()
+            if len(hgvs) != 0:
+                final_pairs += 1
+                if hgvs in hgvs_output:
+                    hgvs_output[hgvs] += 1
+                else:
+                    hgvs_output[hgvs] = 1
+                # hgvs_output.append(hgvs)
+            if outside_mut != []:
+                outside_mut = list(set(outside_mut))
+                for i in outside_mut:
+                    if not (i in off_mut):
+                        off_mut[i] = 1
+
         # clean up
         pool.close()
+
+        print(hgvs_output)
 
     def process_wrapper(self, line_r1, line_r2):
         """
