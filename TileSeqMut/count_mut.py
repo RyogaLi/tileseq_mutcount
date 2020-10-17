@@ -210,7 +210,7 @@ class readSam(object):
                 # mut = locate_mut_main()
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
-                hgvs, outside_mut= mut_parser._main()
+                hgvs, outside_mut = mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
                     if hgvs in hgvs_output:
@@ -368,12 +368,15 @@ class readSam(object):
             row["cigar_r2"] = CIGAR_r2
             row["mdz_r2"] = mdz_r2
             row["seq_r2"] = seq_r2
-            mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                              self._tile_ends, self._qual, self._locate_log, self._mutrate)
-            jobs.append(pool.apply_async(mut_parser._main, ()))
+            # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                              # self._tile_ends, self._qual, self._locate_log, self._mutrate)
+            jobs.append(pool.apply_async(self.process_wrapper, (row)))
 
         r1_f.close()
         r2_f.close()
+
+        # clean up
+        pool.close()
 
         # wait for all jobs to finish
         for job in jobs:
@@ -390,9 +393,6 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
-
-        # clean up
-        pool.close()
 
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
@@ -426,31 +426,14 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-    def process_wrapper(self, line_r1, line_r2):
+    def process_wrapper(self, row):
         """
 
         """
-        # print("process these two lines")
-        # print(line_r1, line_r2)
-        # # return 20
-        #
-        # # pass this dictionary to locate mut
-        # # mut = locate_mut_main()
-        # # add mutation to mut list
-        # if len(hgvs) != 0:
-        #     final_pairs += 1
-        #     if hgvs in hgvs_output:
-        #         hgvs_output[hgvs] += 1
-        #     else:
-        #         hgvs_output[hgvs] = 1
-        #     # hgvs_output.append(hgvs)
-        # if outside_mut != []:
-        #     outside_mut = list(set(outside_mut))
-        #     for i in outside_mut:
-        #         if not (i in off_mut):
-        #             off_mut[i] = 1
-
-        pass
+        mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                          self._tile_ends, self._qual, self._locate_log, self._mutrate)
+        hgvs, outside_mut = mut_parser._main()
+        return hgvs, outside_mut
 
 
 # if __name__ == "__main__":

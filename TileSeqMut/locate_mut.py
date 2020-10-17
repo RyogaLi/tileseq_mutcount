@@ -126,6 +126,8 @@ class MutParser(object):
                         final_mut.append(row.snp)
                 elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
                     if r2_basecall == wt or r1_basecall == wt:
+                        print(r1_snp)
+                        print(r2_snp)
                         print(snp_df)
                         print(pos_prob)
                         print(r1_basecall, r2_basecall, wt)
