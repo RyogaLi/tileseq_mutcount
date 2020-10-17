@@ -263,12 +263,16 @@ class readSam(object):
 
         hgvs_output = {} # save all the hgvs in this pair of sam files
         off_mut = {} # save all the positions that were mapped but outside of the tile
+        row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
+
         final_pairs = 0
         off_read = 0
 
         # chunkSize = 1500000  # number of characters in each chunk
         # chunk1 = deque([""])  # buffered lines from 1st file
         # chunk2 = deque([""])  # buffered lines from 2nd file
+        r1_f = open(self._r1, "r")
+        r2_f = open(self._r2, "r")
         # init objects
         pool = mp.Pool(self._cores)
         jobs = []
@@ -282,21 +286,101 @@ class readSam(object):
         #     if not chunk2:
         #         line_r2, *more = (line_r2 + r2_f.read(chunkSize)).split("\n")
         #         chunk2.extend(more)
+        for line_r1, line_r2 in zip(r1_f, r2_f):
 
-        with open(self._r1) as f1, open(self._r2) as f2:
-            read_Byte = f1.tell()
-            for line1, line2 in zip(f1, f2):
+            line_r1 = line_r1.split()
+            line_r2 = line_r2.split()
+            if len(line_r1) <= 1:
+                continue
 
-                jobs.append(pool.apply_async(self.process_wrapper, (line1, line2, )))
-                # read_Byte = f1.tell()
-                # r2_Byte = f1.tell()
+            read_pair += 1  # count how many read pairs in this pair of sam files
+            mapped_name_r1 = line_r1[2]
+            mapped_name_r2 = line_r2[2]
+            if mapped_name_r1 == "*" or mapped_name_r2 == "*":  # if one of the read didn't map to ref
+                un_map += 1
+                continue
+
+            # check if read ID mapped
+            read_name_r1 = line_r1[0]
+            read_name_r2 = line_r2[0]
+            if read_name_r1 != read_name_r2:
+                self._mut_log.error("Read pair IDs did not map, please check fastq files")
+                exit(1)
+
+            # get starting position for r1 and r2
+            pos_start_r1 = line_r1[3]
+            pos_start_r2 = line_r2[3]
+            # record reads that are not mapped to this tile
+            # this is defined as if the read covers at least min_map percent of the tile
+            # the default min_map is 70%
+            # we also assume that the read len is ALWAYS 150
+            r1_end = int(pos_start_r1) + 150
+            # r1_end must cover from start of the tile to 70% of the tile
+            if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
+                off_read += 1
+                continue
+            if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
+                off_read += 1
+                continue
+            # get CIGAR string
+            CIGAR_r1 = line_r1[5]
+            seq_r1 = line_r1[9]
+            quality_r1 = line_r1[10]
+
+            CIGAR_r2 = line_r2[5]
+            seq_r2 = line_r2[9]
+            quality_r2 = line_r2[10]
+
+            mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
+            mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
+
+            if len(mdz_r1) != 0:
+                mdz_r1 = mdz_r1[0].split(":")[-1]
+            else:
+                mdz_r1 = ""
+
+            if len(mdz_r2) != 0:
+                mdz_r2 = mdz_r2[0].split(":")[-1]
+            else:
+                mdz_r2 = ""
+
+            if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and (
+                    (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
+                # if MDZ string only contains numbers
+                # and no insertions shown in CIGAR string
+                # means there is no mutation in this read
+                # if both reads have no mutations in them, skip this pair
+                read_nomut += 1
+                # remove reads that have no mutations in MDZ
+                continue
+            # make the reads in the format of a dictionary
+            # columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
+            # row["mapped_name_r1"] = mapped_name_r1
+            row["pos_start_r1"] = pos_start_r1
+            row["qual_r1"] = quality_r1
+            row["cigar_r1"] = CIGAR_r1
+            row["mdz_r1"] = mdz_r1
+            row["seq_r1"] = seq_r1
+
+            # row["mapped_name_r2"] = mapped_name_r2
+            row["pos_start_r2"] = pos_start_r2
+            row["qual_r2"] = quality_r2
+            row["cigar_r2"] = CIGAR_r2
+            row["mdz_r2"] = mdz_r2
+            row["seq_r2"] = seq_r2
+            # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                              # self._tile_ends, self._qual, self._locate_log, self._mutrate)
+            jobs.append(pool.apply_async(self.process_wrapper, (row)))
+
+        r1_f.close()
+        r2_f.close()
+
+        # clean up
+        pool.close()
+
         # wait for all jobs to finish
         for job in jobs:
-
-            off, nomut, unmap, hgvs, outside_mut = job.get()
-            off_read += off
-            read_nomut += nomut
-            un_map += unmap
+            hgvs, outside_mut = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
                 if hgvs in hgvs_output:
@@ -310,8 +394,6 @@ class readSam(object):
                     if not (i in off_mut):
                         off_mut[i] = 1
 
-        # clean up
-        pool.close()
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
         # write this information to a tmp file
@@ -344,105 +426,14 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-    def process_wrapper(self, line_r1, line_r2):
+    def process_wrapper(self, row):
         """
 
         """
-        # read_pair = 0  # total pairs
-        un_map = 0  # total number of unmapped reads
-        read_nomut = 0  # read pairs that have no mutations
-
-        row = {}  # create a dictionary to save all the reads information to pass on to locate_mut.py
-
-        off_read = 0
-
-        # with open(self._r1, "r") as f1, open(self._r2, "r") as f2:
-        #     f1.seek(line_byte)
-        #     f2.seek(line_byte)
-
-        line_r1 = line_r1.split()
-        line_r2 = line_r2.split()
-
-        if len(line_r1) <= 1:
-            return 0, 0, 0, [], []
-
-        read_pair = 1  # count how many read pairs in this pair of sam files
-        mapped_name_r1 = line_r1[2]
-        mapped_name_r2 = line_r2[2]
-        if mapped_name_r1 == "*" or mapped_name_r2 == "*":  # if one of the read didn't map to ref
-            un_map = 1
-
-        # check if read ID mapped
-        read_name_r1 = line_r1[0]
-        read_name_r2 = line_r2[0]
-        if read_name_r1 != read_name_r2:
-            self._mut_log.error("Read pair IDs did not map, please check fastq files")
-            exit(1)
-
-        # get starting position for r1 and r2
-        pos_start_r1 = line_r1[3]
-        pos_start_r2 = line_r2[3]
-        # record reads that are not mapped to this tile
-        # this is defined as if the read covers at least min_map percent of the tile
-        # the default min_map is 70%
-        # we also assume that the read len is ALWAYS 150
-        r1_end = int(pos_start_r1) + 150
-        # r1_end must cover from start of the tile to 70% of the tile
-        if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
-            off_read = 1
-        if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
-            off_read = 1
-        # get CIGAR string
-        CIGAR_r1 = line_r1[5]
-        seq_r1 = line_r1[9]
-        quality_r1 = line_r1[10]
-
-        CIGAR_r2 = line_r2[5]
-        seq_r2 = line_r2[9]
-        quality_r2 = line_r2[10]
-
-        mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
-        mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
-
-        if len(mdz_r1) != 0:
-            mdz_r1 = mdz_r1[0].split(":")[-1]
-        else:
-            mdz_r1 = ""
-
-        if len(mdz_r2) != 0:
-            mdz_r2 = mdz_r2[0].split(":")[-1]
-        else:
-            mdz_r2 = ""
-
-        if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and (
-                (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
-            # if MDZ string only contains numbers
-            # and no insertions shown in CIGAR string
-            # means there is no mutation in this read
-            # if both reads have no mutations in them, skip this pair
-            read_nomut = 1
-            # remove reads that have no mutations in MDZ
-        # make the reads in the format of a dictionary
-        # columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
-        # row["mapped_name_r1"] = mapped_name_r1
-        row["pos_start_r1"] = pos_start_r1
-        row["qual_r1"] = quality_r1
-        row["cigar_r1"] = CIGAR_r1
-        row["mdz_r1"] = mdz_r1
-        row["seq_r1"] = seq_r1
-
-        # row["mapped_name_r2"] = mapped_name_r2
-        row["pos_start_r2"] = pos_start_r2
-        row["qual_r2"] = quality_r2
-        row["cigar_r2"] = CIGAR_r2
-        row["mdz_r2"] = mdz_r2
-        row["seq_r2"] = seq_r2
-
         mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                      self._tile_ends, self._qual, self._locate_log, self._mutrate)
+                                          self._tile_ends, self._qual, self._locate_log, self._mutrate)
         hgvs, outside_mut = mut_parser._main()
-
-        return off_read, read_nomut, un_map, hgvs, outside_mut
+        return hgvs, outside_mut
 
 
 # if __name__ == "__main__":
