@@ -169,6 +169,7 @@ def parse_jobs(job_list, env, logger):
                 err = qstat_err.split("\n")[:-1]
                 id_regex = re.compile(r"(\d+).bc")
             elif env == "DC":
+                err = qstat_err.split("\n")[:-1]
                 id_regex = re.compile(r"(\d+).dc[0-9]+")
 
             f_id = [] # finished jobs
