@@ -370,13 +370,12 @@ class readSam(object):
             row["seq_r2"] = seq_r2
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
-            jobs.append(pool.apply_async(self.process_wrapper, (row)))
+            jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)))
 
         r1_f.close()
         r2_f.close()
 
-        # clean up
-        pool.close()
 
         # wait for all jobs to finish
         for job in jobs:
@@ -393,6 +392,10 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
+
+
+        # clean up
+        pool.close()
 
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
@@ -426,14 +429,13 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-    def process_wrapper(self, row):
-        """
+def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):
+    """
 
-        """
-        mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                          self._tile_ends, self._qual, self._locate_log, self._mutrate)
-        hgvs, outside_mut = mut_parser._main()
-        return hgvs, outside_mut
+    """
+    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
+    hgvs, outside_mut = mut_parser._main()
+    return hgvs, outside_mut
 
 
 # if __name__ == "__main__":
