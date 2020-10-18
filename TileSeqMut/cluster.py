@@ -203,8 +203,8 @@ def parse_jobs(job_list, env, logger):
                 elif job_s == "Q":
                     queued.append(job_id)
 
-        # logger.info(f"{len(queued)} jobs queued")
-        # logger.info(f"{len(running)} jobs running")
+        logger.info(f"{len(queued)} jobs queued")
+        logger.info(f"{len(running)} jobs running")
         final_list = list(set(updated_list+running+queued))
         if final_list == []:
             return True
