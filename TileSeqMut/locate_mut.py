@@ -10,7 +10,7 @@ import cigar
 import re
 from Bio.Seq import Seq
 
-import posterior
+from TileSeqMut import posterior
 
 class MutParser(object):
 

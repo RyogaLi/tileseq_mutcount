@@ -35,5 +35,5 @@ parser.add_argument("-override", "--sr_Override", action="store_true",
 
 args = parser.parse_args()
 
-print(" **** NOTE: Before you run this pipeline, please check settings.py to update program paths **** ")
+print("TileSeqMut release 0.1.17: Fixed DC job parser")
 main(args)

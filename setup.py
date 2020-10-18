@@ -11,9 +11,17 @@ here = pathlib.Path(__file__).parent.resolve()
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+# python setup.py bdist_wheel --universal
+# testpypi: twine upload --repository testpypi dist/*
+# pip install --index-url https://test.pypi.org/simple/ TileSeqMut==
+
+# pypi: twine upload dist/*
+# pip install TileSeqMut
+
+
 setup(
     name="TileSeqMut",
-    version="0.1.16",
+    version="0.1.21", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",

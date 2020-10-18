@@ -16,8 +16,8 @@ import argparse
 from collections import deque
 
 # modules in package
-import help_functions
-import locate_mut
+from TileSeqMut import help_functions
+from TileSeqMut import locate_mut
 
 class readSam(object):
 
@@ -140,6 +140,8 @@ class readSam(object):
                 read_name_r1 = line_r1[0]
                 read_name_r2 = line_r2[0]
                 if read_name_r1 != read_name_r2:
+                    print(read_name_r1)
+                    print(read_name_r2)
                     self._mut_log.error("Read pair IDs did not map, please check fastq files")
                     exit(1)
 
