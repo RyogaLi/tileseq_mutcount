@@ -223,10 +223,10 @@ class fastq2counts(object):
         # end = time.time()
         # print('Time taken for original program: ', end - start)
         # testing multicore program
-        start = time.time()
+        # start = time.time()
         mut_counts.multi_core()
-        end = time.time()
-        print('Time taken for 8 cores program: ', end - start)
+        # end = time.time()
+        # print('Time taken for 8 cores program: ', end - start)
 
     def _makejobs(self, sh_output, sam_dir):
         """
@@ -517,7 +517,7 @@ if __name__ == "__main__":
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 36h)", default=36)
-    parser.add_argument("-c", type=int, help="Number of cores = 8", default=8)
+    parser.add_argument("-c", type=int, help="Number of cores", default=16)
     ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
     ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
     ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \

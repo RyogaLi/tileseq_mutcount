@@ -283,8 +283,7 @@ class readSam(object):
             line_r2 = line_r2.split()
             if len(line_r1) <= 1:
                 continue
-            print(line_r1)
-            print(line_r2)
+
             read_pair += 1  # count how many read pairs in this pair of sam files
             mapped_name_r1 = line_r1[2]
             mapped_name_r2 = line_r2[2]
@@ -365,6 +364,7 @@ class readSam(object):
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                                self._tile_ends, self._qual, self._locate_log, self._mutrate)))
             row = {} # flush
+
         r1_f.close()
         r2_f.close()
 
@@ -384,7 +384,6 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
-
 
         # clean up
         pool.close()
