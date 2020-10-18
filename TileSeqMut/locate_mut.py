@@ -126,6 +126,11 @@ class MutParser(object):
                         final_mut.append(row.snp)
                 elif pos_prob[r1_basecall] == pos_prob[r2_basecall]:
                     if r2_basecall == wt or r1_basecall == wt:
+                        print(self._reads)
+                        print(r1_snp)
+                        print(r2_snp)
+                        print(snp_df)
+                        print(pos_prob)
                         print(r1_basecall, r2_basecall, wt)
                     if pos_prob[r2_basecall] > self._cutoff:
                         final_mut.append(row.snp)
@@ -354,6 +359,7 @@ class MutParser(object):
 
                 ## validate: if the reference base matches the ref in seq_lookup
                 if cds_ref != mut_change[1]:
+                    print(self._reads)
                     raise ValueError(f"Reference base - pos {tmp_pos}, base {mut_change[1]} does not match the reference provided by user - base {cds_ref}")
                 # track concecutive changes
                 if len(concecutive_snp) == 0:

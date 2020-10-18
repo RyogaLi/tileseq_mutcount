@@ -9,6 +9,8 @@ import re
 import os
 import math
 import logging
+import mmap
+import multiprocessing as mp
 import argparse
 # import datetime
 from collections import deque
@@ -19,7 +21,7 @@ import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir):
+    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -37,6 +39,7 @@ class readSam(object):
         min_cover = self._var["minCover"]
         self._mutrate = self._var["mutRate"]
         self._output_counts_dir = output_dir
+        self._cores = cores
 
         # sample information
         self._sample_id = os.path.basename(sam_r1).split("_")[0]
@@ -103,6 +106,7 @@ class readSam(object):
 
         final_pairs = 0
         off_read = 0
+
         chunkSize = 1500000 # number of characters in each chunk (you will need to adjust this)
         chunk1 = deque([""]) #buffered lines from 1st file
         chunk2 = deque([""]) #buffered lines from 2nd file
@@ -206,7 +210,7 @@ class readSam(object):
                 # mut = locate_mut_main()
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
-                hgvs, outside_mut= mut_parser._main()
+                hgvs, outside_mut = mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
                     if hgvs in hgvs_output:
@@ -248,6 +252,182 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+
+    def multi_core(self):
+        """
+        Read two sam files at the same time, store mutations that passed filter
+        """
+        read_pair = 0 # total pairs
+        un_map = 0 # total number of unmapped reads
+        read_nomut = 0 # read pairs that have no mutations
+
+        hgvs_output = {} # save all the hgvs in this pair of sam files
+        off_mut = {} # save all the positions that were mapped but outside of the tile
+        row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
+
+        final_pairs = 0
+        off_read = 0
+
+        # chunkSize = 1500000  # number of characters in each chunk
+        # chunk1 = deque([""])  # buffered lines from 1st file
+        # chunk2 = deque([""])  # buffered lines from 2nd file
+        r1_f = open(self._r1, "r")
+        r2_f = open(self._r2, "r")
+        # init objects
+        pool = mp.Pool(self._cores)
+        jobs = []
+
+        for line_r1, line_r2 in zip(r1_f, r2_f):
+
+            line_r1 = line_r1.split()
+            line_r2 = line_r2.split()
+            if len(line_r1) <= 1:
+                continue
+
+            read_pair += 1  # count how many read pairs in this pair of sam files
+            mapped_name_r1 = line_r1[2]
+            mapped_name_r2 = line_r2[2]
+            if mapped_name_r1 == "*" or mapped_name_r2 == "*":  # if one of the read didn't map to ref
+                un_map += 1
+                continue
+
+            # check if read ID mapped
+            read_name_r1 = line_r1[0]
+            read_name_r2 = line_r2[0]
+            if read_name_r1 != read_name_r2:
+                self._mut_log.error("Read pair IDs did not map, please check fastq files")
+                exit(1)
+
+            # get starting position for r1 and r2
+            pos_start_r1 = line_r1[3]
+            pos_start_r2 = line_r2[3]
+            # record reads that are not mapped to this tile
+            # this is defined as if the read covers at least min_map percent of the tile
+            # the default min_map is 70%
+            # we also assume that the read len is ALWAYS 150
+            r1_end = int(pos_start_r1) + 150
+            # r1_end must cover from start of the tile to 70% of the tile
+            if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
+                off_read += 1
+                continue
+            if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
+                off_read += 1
+                continue
+            # get CIGAR string
+            CIGAR_r1 = line_r1[5]
+            seq_r1 = line_r1[9]
+            quality_r1 = line_r1[10]
+
+            CIGAR_r2 = line_r2[5]
+            seq_r2 = line_r2[9]
+            quality_r2 = line_r2[10]
+
+            mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
+            mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
+
+            if len(mdz_r1) != 0:
+                mdz_r1 = mdz_r1[0].split(":")[-1]
+            else:
+                mdz_r1 = ""
+
+            if len(mdz_r2) != 0:
+                mdz_r2 = mdz_r2[0].split(":")[-1]
+            else:
+                mdz_r2 = ""
+
+            if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and (
+                    (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
+                # if MDZ string only contains numbers
+                # and no insertions shown in CIGAR string
+                # means there is no mutation in this read
+                # if both reads have no mutations in them, skip this pair
+                read_nomut += 1
+                # remove reads that have no mutations in MDZ
+                continue
+            # make the reads in the format of a dictionary
+            # columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
+            # row["mapped_name_r1"] = mapped_name_r1
+            row["pos_start_r1"] = pos_start_r1
+            row["qual_r1"] = quality_r1
+            row["cigar_r1"] = CIGAR_r1
+            row["mdz_r1"] = mdz_r1
+            row["seq_r1"] = seq_r1
+
+            # row["mapped_name_r2"] = mapped_name_r2
+            row["pos_start_r2"] = pos_start_r2
+            row["qual_r2"] = quality_r2
+            row["cigar_r2"] = CIGAR_r2
+            row["mdz_r2"] = mdz_r2
+            row["seq_r2"] = seq_r2
+            # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                              # self._tile_ends, self._qual, self._locate_log, self._mutrate)
+            jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
+                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)))
+            row = {} # flush
+
+        r1_f.close()
+        r2_f.close()
+
+
+        # wait for all jobs to finish
+        for job in jobs:
+            hgvs, outside_mut = job.get()
+            if len(hgvs) != 0:
+                final_pairs += 1
+                if hgvs in hgvs_output:
+                    hgvs_output[hgvs] += 1
+                else:
+                    hgvs_output[hgvs] = 1
+                # hgvs_output.append(hgvs)
+            if outside_mut != []:
+                outside_mut = list(set(outside_mut))
+                for i in outside_mut:
+                    if not (i in off_mut):
+                        off_mut[i] = 1
+
+        # clean up
+        pool.close()
+
+        # track mutations that are not within the same tile
+        # track sequencing depth for each sample
+        # write this information to a tmp file
+        # merge the tmp file (in main.py)
+        tmp_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_tmp.csv")
+        off_mut = list(set(off_mut))
+        off_mut.sort()
+        f = open(tmp_f, "w")
+        f.write(
+            f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read / read_pair}\n")
+        f.close()
+
+        output_csv = open(self._sample_counts_f, "a")
+        output_csv.write(f"#Raw read depth:{read_pair}\n")
+        output_csv.write(
+            f"#Number of read pairs without mutations:{read_nomut}\n#Number of read pairs did not map to gene:{un_map}\n#Mutation positions outside of the tile:{off_mut}\n#Number of reads outside of the tile:{off_read}\n")
+        output_csv.write(f"#Final read-depth:{read_pair - un_map - off_read}\n")
+        output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
+        output_csv.write(
+            f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
+
+        output_csv.close()
+
+        self._mut_log.info(f"Raw sequencing depth: {read_pair}")
+        self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
+        self._mut_log.info(f"Final read-depth: {read_pair - un_map - off_read}")
+        # convert list to df with one col
+        hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
+        hgvs_df = hgvs_df.reset_index()
+        hgvs_df.columns = ["HGVS", "count"]
+        hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+
+def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):
+    """
+
+    """
+    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
+    hgvs, outside_mut = mut_parser._main()
+    return hgvs, outside_mut
+
 
 # if __name__ == "__main__":
 #

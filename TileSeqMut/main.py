@@ -25,7 +25,7 @@ import argparse
 import logging
 import datetime
 import shutil
-# import time
+import time
 
 # pakage modules
 import help_functions
@@ -167,7 +167,9 @@ class fastq2counts(object):
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
             self._log.info(f"Total jobs submitted: {len(job_list)}")
-            finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs"))  # track list of jobs
+            finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs"))  #
+            # track list
+            # of jobs
 
             if finished:
                 self._log.info(f"Alignment jobs are finished!")
@@ -215,8 +217,16 @@ class fastq2counts(object):
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
 
-        mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output)
-        mut_counts._merged_main()
+        mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c)
+        # start = time.time()
+        # mut_counts._merged_main()
+        # end = time.time()
+        # print('Time taken for original program: ', end - start)
+        # testing multicore program
+        # start = time.time()
+        mut_counts.multi_core()
+        # end = time.time()
+        # print('Time taken for 8 cores program: ', end - start)
 
     def _makejobs(self, sh_output, sam_dir):
         """
@@ -258,18 +268,21 @@ class fastq2counts(object):
 
             if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, sh_output, self._log)
+                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, sh_output, self._log, self._args.c)
             elif self._args.environment == "DC":
                 logging.info("Submitting mutation counts jobs to DC...")
                 # (sample_name, cmd, mt, sh_output_dir, logger)
-                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, sh_output, self._log) # this function will make a sh file for submitting the job
+                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, sh_output, self._log, self._args.c) # this
+                # function
+                # will make a sh file for submitting the job
 
             job_list.append(job_id)
 
         jobs = ",".join(job_list)
         self._log.debug(f"All jobs: {jobs}")
         self._log.info(f"Total jobs running: {len(job_list)}")
-        finished = cluster.parse_jobs(job_list, self._logging.getLogger("track.jobs")) # track list of jobs
+        finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs")) # track
+        # list of jobs
 
         return finished
 
@@ -504,6 +517,7 @@ if __name__ == "__main__":
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 36h)", default=36)
+    parser.add_argument("-c", type=int, help="Number of cores", default=16)
     ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
     ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
     ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
