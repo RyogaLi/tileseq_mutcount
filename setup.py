@@ -18,10 +18,9 @@ with open("README.md", "r") as fh:
 # pypi: twine upload dist/*
 # pip install TileSeqMut
 
-
 setup(
     name="TileSeqMut",
-    version="0.1.21", # CHANGE RELEASE NOTE IN MAIN
+    version="0.2.2", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",

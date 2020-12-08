@@ -4,7 +4,8 @@ targetDir <- "~/lib/bin/"
 #list of scripts to link
 scripts <- c(
 	"csv2json.R","joinCounts.R","runLibraryQC.R",
-	"runScoring.R","runSelectionQC.R","mavevisLocal.R"
+	"calcEnrichment.R","runSelectionQC.R","mavevisLocal.R",
+    "condenseQC.R", "scaleScores.R"
 )
 
 #find scripts folder in the local library installation

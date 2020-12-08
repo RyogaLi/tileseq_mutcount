@@ -97,7 +97,6 @@ class MutParser(object):
             # 1. group mutations by position
             # split snp column into 3
             snp_df[["pos", "ref", "alt"]] = snp_df["snp"].str.split("|", expand=True)
-            #print(snp_df)
             final_mut = []
             for index, row in snp_df.iterrows():
                 pos = int(row["pos"])
@@ -139,20 +138,6 @@ class MutParser(object):
         final_mut = list(set(final_mut))
         final_mut.sort()
         hgvs, outside_mut = self._get_hgvs(final_mut)
-        #if "45T1T0A2T0T5A3C0C8A2A0A1A3C4A0C4A2C2A0G2C1A2G4C0T2A5A4" in self._r1_mdz:
-        #  print(final_mut)
-        #  print(snp_df)
-        #  print(r1_delins)
-        #  print(self._r1_cigar)
-        #  print(self._r1_pos)
-        #  print(self._r1_ref)
-        #  print(self._r1_read)
-        #  print(self._r1_mdz)
-        #  print(self._r2_cigar)
-        #  print(self._r2_pos)
-        #  print(self._r2_ref)
-        #  print(self._r2_read)
-        #  print(self._r2_mdz)
         return hgvs, outside_mut
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -230,7 +215,7 @@ class MutParser(object):
         inserted_pos = 0
         deleted_len = 0
         map_pos = 0 + clip
-        ##read_ref_map = [] # map [ref_pos, ref_base, read_pos, read_base, read_quality_score]
+
         for i in mdz:
             # for each item in the MD:Z string
             # split the item into number and letter
@@ -241,7 +226,6 @@ class MutParser(object):
             map_pos += match_len# update how many bp are mapped
 
             while ins and map_pos >= ins[0]:
-                #map_pos += ins[1]
                 inserted_pos += ins[1]
                 ins = next(iter_ins, None)
 
@@ -250,29 +234,6 @@ class MutParser(object):
                 # this means a single nt change
                 #mut_list.append([str(pos+read_pos-clip),base,read[read_pos+inserted_pos-deleted_len],qual[read_pos+inserted_pos-deleted_len]])
                 snp_list.append(str(pos+read_pos)+"|"+base+"|"+str(read[read_pos+inserted_pos-deleted_len+clip]))
-
-                ## DEBUG ##
-                #if base == str(read[read_pos+inserted_pos-deleted_len+clip]):
-                #     print(snp_list)
-                #     print(delins_list)
-                #     print("map_pos", map_pos)
-                #     print("ins_pos", ins_pos)
-                #     print("ins", ins)
-                #     print("mdz", i)
-                #     print(mdz)
-                #     print(match_len)
-                #     print(read_pos)
-                #     print(inserted_pos)
-                #     print(deleted_len)
-                #     print(read[read_pos+inserted_pos-deleted_len+clip-1], read[read_pos+inserted_pos-deleted_len+clip],read[read_pos+inserted_pos-deleted_len+clip+1])
-                #     ## DEBUG ##
-                #     print(self._r1_ref)
-                #     print(self._r1_read)
-                #     print(self._r1_mdz, self._r1_cigar)
-                #
-                #     print(self._r2_ref)
-                #     print(self._r2_read)
-                #     print(self._r2_mdz, self._r2_cigar)
 
                 map_pos += len(base)
                 read_pos += 1 # adjust read pos with 1bp change (move to the right for 1 pos)
@@ -397,6 +358,7 @@ class MutParser(object):
             joined = ";".join(mutations)
             mutations = f"c.[{joined}]"
         return mutations, outside_mut
+
 
 def snp_to_hgvs(concec_pos, combined_bases, cds):
     """

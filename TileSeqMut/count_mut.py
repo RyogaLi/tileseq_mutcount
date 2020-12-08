@@ -21,7 +21,7 @@ from TileSeqMut import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, args, output_dir, cores):
+    def __init__(self, sam_r1, sam_r2, param, arguments, output_dir, cores):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -62,21 +62,7 @@ class readSam(object):
 
         log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
 
-        logging.basicConfig(filename=log_f,
-                filemode="w",
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                datefmt="%m/%d/%Y %I:%M:%S %p",
-                level = args.log_level)
-
-        # define a Handler which writes INFO messages or higher to the sys.stderr
-        console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
-        # set a format which is simpler for console use
-        formatter = logging.Formatter('%(name)-8s: %(levelname)-4s %(message)s')
-        # tell the handler to use this format
-        console.setFormatter(formatter)
-        # add the handler to the root logger
-        logging.getLogger('').addHandler(console)
+        logging = help_functions.logginginit(arguments.log_level, log_f)
 
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
 
@@ -89,7 +75,10 @@ class readSam(object):
 
         output_csv = open(self._sample_counts_f, "w")
         # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
+                         f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
+                         f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
+                         f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
         output_csv.close()
 
     def _merged_main(self):
@@ -369,7 +358,6 @@ class readSam(object):
 
         r1_f.close()
         r2_f.close()
-
 
         # wait for all jobs to finish
         for job in jobs:

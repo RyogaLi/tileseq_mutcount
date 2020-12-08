@@ -32,8 +32,9 @@ parser.add_argument("-mt", type=int, help="Mutation call time \
     (default = 36h)", default=36)
 parser.add_argument("-override", "--sr_Override", action="store_true",
 					help="Provide this argument when there is only one replicate")
+parser.add_argument("-c", type=int, help="Number of cores", default=16)
 
 args = parser.parse_args()
 
-print("TileSeqMut release 0.1.17: Fixed DC job parser")
+print("TileSeqMut release 0.2.1: Supports multiprocess")
 main(args)

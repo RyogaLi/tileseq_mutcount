@@ -14,6 +14,7 @@ def parse_mut_cluster(mut_cluster, mut_rate):
     """
     pass
 
+
 def bayesian_variant_call(basecall, phred, wt, mut_rate, clusterSize=1):
     """
     basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])

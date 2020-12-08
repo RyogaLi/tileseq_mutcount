@@ -12,6 +12,7 @@ import sys
 import json
 import time
 import itertools
+import logging
 from Bio.Seq import Seq
 
 def downsample(n, r1, r2, output_path):
@@ -143,3 +144,43 @@ def build_lookup(cds_start, cds_end, cds_seq):
     lookup_table["protein_pos"] = list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in protein_pos))
     df = pd.DataFrame(lookup_table)
     return df
+
+
+def logginginit(log_level, log_f):
+    """
+    Init logging in console as well as main log
+    """
+    logging.basicConfig(filename=log_f,
+                        filemode="w",
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                        datefmt="%m/%d/%Y %I:%M:%S %p",
+                        level=log_level)
+
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger('').addHandler(console)
+
+    stderr_logger = logging.getLogger('STDERR')
+    sl = StreamToLogger(stderr_logger, logging.ERROR)
+    sys.stderr = sl
+
+    return logging
+
+class StreamToLogger(object):
+   """
+   Fake file-like stream object that redirects writes to a logger instance.
+   """
+   def __init__(self, logger, log_level=logging.INFO):
+      self.logger = logger
+      self.log_level = log_level
+      self.linebuf = ''
+
+   def write(self, buf):
+      for line in buf.rstrip().splitlines():
+         self.logger.log(self.log_level, line.rstrip())

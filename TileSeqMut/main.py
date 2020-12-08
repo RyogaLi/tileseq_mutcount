@@ -166,12 +166,14 @@ class fastq2counts(object):
                 sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._args.at, self._log)
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
+
             self._log.info(f"Total jobs submitted: {len(job_list)}")
             finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs"))  #
             # track list
             # of jobs
 
             if finished:
+
                 self._log.info(f"Alignment jobs are finished!")
                 self._log.info(f"Merging alignment log files...")
                 # go through alignment output dir and parse all the log files
@@ -213,7 +215,7 @@ class fastq2counts(object):
         3. For each pair of sam files, submit jobs to the cluster
         4. Log to main log
         """
-        self._log.info("Counting mutations")
+        self._log.info("Counting mutations ...")
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
 
@@ -262,9 +264,10 @@ class fastq2counts(object):
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
             if self._args.sr_Override:
-                cmd = f"python {self._main_path} -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+                      f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
             else:
-                cmd = f"python {self._main_path} -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
 
             if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
@@ -325,13 +328,19 @@ class fastq2counts(object):
 
             # output directory is the mut_count dir
             # make folder to store all the sh files
-            if self._args.environment == "BC2" or self._args.environment == "DC" or self._args.environment == "BC":
+            if self._args.environment == "BC2" or self._args.environment == "BC":
                 sh_output = os.path.join(self._output, "BC_mut_sh")
-                self._log.info(f"Mutation count sh files are made in {sh_output}")
-                os.mkdir(sh_output)
+
+            elif self._args.environment == "DC":
+                sh_output = os.path.join(self._output, "DC_mut_sh")
+
             else:
                 self._log.error("Please provide valid environment: BC/BC2/DC")
                 exit(1)
+
+            self._log.info(f"Mutation count sh files are made in {sh_output}")
+
+            os.mkdir(sh_output)
             finished = self._makejobs(sh_output, sam_dir)
 
             if finished:
@@ -367,11 +376,11 @@ def check(args):
     # check if output dir exists
     if not os.path.isdir(args.output):
         print(f"Output directory not found: {args.output}")
-        exit(1)
+        exit(2)
     # check if fastq dir exists
     if args.fastq and not os.path.isdir(args.fastq):
         print(f"Fastq file path not found: {args.fastq}")
-        exit(1)
+        exit(3)
     # try convert csv to json in the same dir as the csv file
     # convert csv file to json
     if args.param.endswith(".csv"):
@@ -384,15 +393,17 @@ def check(args):
         else:
             convert = f"csv2json.R {args.param} -o {param_json}"
         os.system(convert)
+
     # if the file ends with .json, do nothing
     elif args.param.endswith(".json"):
         param_json = args.param
     else:
         print("Please provide valid paramter file format (csv or json)")
-        exit(1)
+        exit(4)
+
     if not os.path.isfile(param_json):
         print("Json file does not exist, check conversion!")
-        exit(1)
+        exit(5)
 
     return param_json
 
@@ -419,7 +430,8 @@ def main(args):
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_json, args.output, follow_symlinks=True)
             # set up loggingthis creates main.log in the mut_count output dir
-            main_log = log(args.output, args.log_level)
+            main_log_f = os.path.join(args.output, "mutcount_main.log")
+            main_log = help_functions.logginginit(args.log_level, main_log_f)
 
             # initialize mutcount object
             mc = fastq2counts(param_path, args.output, main_log, args)
@@ -438,7 +450,8 @@ def main(args):
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
                 param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
-            main_log = log(updated_out, args.log_level)
+            main_log_f = os.path.join(args.output, "mutcount_main.log")
+            main_log = help_functions.logginginit(args.log_level, main_log_f)
             # initialize mutcount object
             mc = fastq2counts(param_path, updated_out, main_log, args)
             mc._init_skip(skip=True)
@@ -454,7 +467,9 @@ def main(args):
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
             param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
-        main_log = log(updated_out, args.log_level)
+
+        main_log_f = os.path.join(args.output, "main.log")
+        main_log = help_functions.logginginit(args.log_level, main_log_f)
 
         # initialize mutcount object
         mc = fastq2counts(param_path, updated_out, main_log, args)
@@ -472,28 +487,28 @@ def write_param(args_log_path, args):
             args_log.write(arg+",")
             args_log.write(f"{getattr(args, arg, 'N/A')}\n")
 
-def log(output_dir, log_level):
-    """
-    Make a logging object which writes to the main.log in output_dir
-    """
-    log_level = log_level.upper()
-    # init main log
-    logging.basicConfig(filename=os.path.join(output_dir, "main.log"),
-                    filemode="a",
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                    datefmt="%m/%d/%Y %I:%M:%S %p",
-                    level = log_level)
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(log_level)
-    # set a format which is simpler for console use
-    formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
-
-    return logging
+# def log(output_dir, log_level):
+#     """
+#     Make a logging object which writes to the main.log in output_dir
+#     """
+#     log_level = log_level.upper()
+#     # init main log
+#     logging.basicConfig(filename=os.path.join(output_dir, "main.log"),
+#                     filemode="a",
+#                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+#                     datefmt="%m/%d/%Y %I:%M:%S %p",
+#                     level = log_level)
+#     # define a Handler which writes INFO messages or higher to the sys.stderr
+#     console = logging.StreamHandler()
+#     console.setLevel(log_level)
+#     # set a format which is simpler for console use
+#     formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
+#     # tell the handler to use this format
+#     console.setFormatter(formatter)
+#     # add the handler to the root logger
+#     logging.getLogger('').addHandler(console)
+#
+#     return logging
 
 
 if __name__ == "__main__":
@@ -503,8 +518,8 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", type=str)
     parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
     parser.add_argument("-p", "--param", help="csv paramter file", type=str, required=True)
-    parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
     parser.add_argument("-n", "--name", help="Name for this run", type=str, required=True)
+    parser.add_argument("--skip_alignment", action="store_true", help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
     parser.add_argument("-r1", help="r1 SAM file", type=str)
     parser.add_argument("-r2", help="r2 SAM file", type=str)
 
