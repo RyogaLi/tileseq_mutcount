@@ -67,6 +67,29 @@ class MutParser(object):
 
         return self
 
+    def _convert_mut(self, mut_list, read):
+        """
+        convert a list of mutations into the input format for posterior function
+        return a df with mutations
+        """
+        if mut_list == []:
+            return pd.DataFrame({}, columns=["m", "read", "pos", "ref", "alt", "qual"])
+        final_mut = []
+        for i in mut_list:
+            mut = i.split("|")
+            if "del" in mut:
+                del_pos = int(mut[0])
+                for base in mut[1]:
+                    m = f"{del_pos}|{base}|del|{mut[-1]}"
+                    del_pos+=1
+                    final_mut.append(m)
+            else:
+                final_mut.append(i)
+        final_df = pd.DataFrame({"m":final_mut})
+        final_df["read"] = read
+        final_df[["pos", "ref", "alt", "qual"]] = final_df["m"].str.split("|", expand=True)
+        return final_df
+
     def _main(self):
         """
         return a list of mutations from paired reads (R1 and R2)
@@ -78,6 +101,10 @@ class MutParser(object):
         r1_snp, r1_delins, r1_map_pos = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read, self._r1_pos, self._r1_qual)
         # parse mutations in R2
         r2_snp, r2_delins, r2_map_pos = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read, self._r2_pos, self._r2_qual)
+
+        final_df_r1 = self._convert_mut(r1_snp + r1_delins, "r1")
+        final_df_r2 = self._convert_mut(r2_snp + r2_delins, "r2")
+
 
         # final list of mutations
         final_mut = []
@@ -115,6 +142,7 @@ class MutParser(object):
                 # pick the one with higher probability
                 # if it is the wt then do nothing
                 # if not, add this mutation to the final list
+                # todo update this to take max from two (less code)
                 if pos_prob[r1_basecall] > pos_prob[r2_basecall]:
                     if r1_basecall == wt: continue
                     if pos_prob[r1_basecall] > self._cutoff:

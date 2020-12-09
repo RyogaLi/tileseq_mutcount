@@ -344,7 +344,7 @@ class fastq2counts(object):
             finished = self._makejobs(sh_output, sam_dir)
 
             if finished:
-                self._log.info(f"Mutaion counting jobs are finished!")
+                self._log.info(f"Mutation counting jobs are finished!")
                 self._log.info("Check mutation counts file ...")
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 self._log.info(f"{len(mutcount_list)} mutation counts file generated")

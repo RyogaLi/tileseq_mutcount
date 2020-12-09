@@ -8,8 +8,7 @@ import logging
 
 import count_mut as cm
 
-###
-# test time
+# test different scripts in the package
 
 class UnitTest(object):
 
@@ -20,7 +19,7 @@ class UnitTest(object):
 
     def _test_count_mut(self):
         """
-        Test count mutation class
+        Test count_mut.py
         """
         # init all the input parameters
         # sam_r1, sam_r2, param, log_level, output_dir
@@ -32,8 +31,8 @@ class UnitTest(object):
         # init read sam
         print("Testing count_mut")
         start = timeit.default_timer()
-        test_readSam = cm.readSam(sam_r1, sam_r2, param, log_level, output_dir)
-        test_readSam._merged_main()
+        test_readSam = cm.readSam(sam_r1, sam_r2, param, log_level, output_dir, 1)
+        test_readSam.multi_core()
         stop = timeit.default_timer()
         # without any processing, simply go through the files as chunks
         # Linear time to read both sam files: 10.06786861596629

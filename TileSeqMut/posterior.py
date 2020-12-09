@@ -1,18 +1,64 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 # This is used to calculate the posterior probability for variants
 # the script is modified from varCallerSnippet.r
 
 import math
+import pandas as pd
 from fractions import Fraction
 
-def parse_mut_cluster(mut_cluster, mut_rate):
+def parse_mut_cluster(mut_cluster, mut_rate, cut_off):
     """
     Parse cluster of mutations
     mut_cluster is a  list of clusters (clustered mutations found in one read pair)
     Mutations are clustered together if they are within
+    @param mut_cluster dictionary where the values are dfs with mutations from both r1 and r2
+    @param mut_rate mut rate defined by user
+    @param cut_off posterior cutoff defined by user
     """
-    pass
+    for c in mut_cluster.keys():
+        mutcall = mut_cluster[c]
+        # each mutcall is a df with columns:
+        # m_r1,read,pos,ref_r1,alt_r1,qual_r1,m_r2,ref_r2,alt_r2,qual_r2
+        c_size = mutcall.shape[0]  # size of the cluster
+        # iterate through the cluster
+        pos_prob = {"m": [], "prob": [], "read": []}
+        for index, row in mutcall.iterrows():
+
+            if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
+                pos = bayesian_variant_call([row["alt_r2"]], [row["qual_r2"]], row["ref_r2"], mut_rate, c_size)
+
+                if pos[next(iter(pos))] > cut_off:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(list(pos.values())[0])
+                    pos_prob["read"].append("r2")
+
+            elif (pd.isnull(row["m_r2"]) or row["alt_r2"] == "N") and not pd.isnull(row["ref_r1"]):
+                pos = bayesian_variant_call([row["alt_r1"]], [row["qual_r1"]], row["ref_r1"], mut_rate, c_size)
+                if pos[next(iter(pos))] > cut_off:
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(list(pos.values())[0])
+                    pos_prob["read"].append("r1")
+            elif (not pd.isnull(row["m_r2"])) and (not pd.isnull(row["ref_r1"])):
+                basecall = [row["alt_r1"], row["alt_r2"]]
+                qual = [row["qual_r1"], row["qual_r2"]]
+                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size)
+                if pos[row["alt_r1"]] > pos[row["alt_r2"]] and pos[row["alt_r1"]] > cut_off:
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(pos[row["alt_r1"]])
+                    pos_prob["read"].append("r1")
+                elif pos[row["alt_r2"]] > pos[row["alt_r1"]] and pos[row["alt_r2"]] > cut_off:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(pos[row["alt_r2"]])
+                    pos_prob["read"].append("r2")
+
+                elif pos[row["alt_r1"]] == pos[row["alt_r2"]] and pos[row["alt_r1"]] > cut_off:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(pos[row["alt_r2"]])
+                    pos_prob["read"].append("-")
+
+        pos_df = pd.DataFrame(pos_prob)
+        return pos_df
 
 
 def bayesian_variant_call(basecall, phred, wt, mut_rate, clusterSize=1):
