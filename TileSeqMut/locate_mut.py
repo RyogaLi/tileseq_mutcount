@@ -94,6 +94,13 @@ class MutParser(object):
         if final_df.pos.duplicated().any():
             self._logging.error(f"duplicated positions presented")
             self._logging.error(final_df)
+            raise DuplicatedMutations()
+
+        # for all the mutations
+        # there shouldn't be any ref == alt
+        same_refalt = final_df[final_df["ref"] == final_df["alt"]]
+        if not same_refalt.empty:
+            raise SameRefandAlt(same_refalt)
 
         return final_df
 
@@ -145,12 +152,6 @@ class MutParser(object):
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
             hgvs, outside_mut, pos_df = [], [], []
-
-        if "277|T|ins|E" in final_mut:
-            print(d)
-            print(merged_df)
-            print(pos_df)
-            print(hgvs)
 
         return hgvs, outside_mut, pos_df
 
@@ -269,23 +270,23 @@ class MutParser(object):
                 read_pos += len(base[1:])
                 map_pos += len(base[1:])
 
-        if "287|T|C|E" in snp_list:
-            print(snp_list, delins_list)
-            print(self._r1_pos,
-            self._r1_cigar,
-            self._r1_readlen,
-            self._r1_ref,
-            self._r1_qual,
-            self._r1_read ,
-            self._r1_mdz)
-
-            print(self._r2_pos,
-                  self._r2_cigar,
-                  self._r2_readlen,
-                  self._r2_ref,
-                  self._r2_qual,
-                  self._r2_read,
-                  self._r2_mdz)
+        # if "287|T|C|E" in snp_list:
+        #     print(snp_list, delins_list)
+        #     print(self._r1_pos,
+        #     self._r1_cigar,
+        #     self._r1_readlen,
+        #     self._r1_ref,
+        #     self._r1_qual,
+        #     self._r1_read ,
+        #     self._r1_mdz)
+        #
+        #     print(self._r2_pos,
+        #           self._r2_cigar,
+        #           self._r2_readlen,
+        #           self._r2_ref,
+        #           self._r2_qual,
+        #           self._r2_read,
+        #           self._r2_mdz)
 
         return snp_list, delins_list
 
@@ -311,6 +312,7 @@ class MutParser(object):
         delins = []
         mutations = []
         for mut in mut_list:
+
             mut_change = mut.split("|")
             tmp_pos = int(mut_change[0]) # template position
 
@@ -318,6 +320,7 @@ class MutParser(object):
             try:
                 cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.values.item()
             except:
+                # this means that the mutation was on the template
                 continue
 
             if cds_pos < self._tile_begins or cds_pos > self._tile_ends:
@@ -328,8 +331,11 @@ class MutParser(object):
             if "N" in mut: # do not consider base N
                 continue
 
+
+
             if ("del" in mut) or ("ins" in mut): # deletion or insertion
                 mut_change[0] = cds_pos
+
                 if delins == []: # nothing is on track
                     delins.append(mut_change)
                 else: # compare bases
@@ -386,6 +392,7 @@ class MutParser(object):
                         concecutive_snp = [cds_pos]
                         combined_snp = mut_change[2]
                         mutations.append(hgvs)
+
         if len(concecutive_snp) !=0:
             hgvs = snp_to_hgvs(concecutive_snp, combined_snp, self._cds)
             mutations.append(hgvs)
@@ -468,6 +475,33 @@ def delins_to_hgvs(cds_seq, delins):
         hgvs = f"{start_pos}_{end_pos}delins{modified}"
         #print("del+ins, ",hgvs)
     return hgvs
+
+class DuplicatedMutations(Exception):
+    """Exception raised when there are two mutations found on the same read at the same positions.
+
+        Attributes:
+            message -- explanation of the error
+        """
+
+    def __init__(self, message="Same position mutated twice in one read!"):
+        self.message = message
+        super().__init__(self.message)
+
+
+class SameRefandAlt(Exception):
+    """Exception raised when reference base and alt base are the same.
+
+        Attributes:
+            message -- explanation of the error
+        """
+
+    def __init__(self, mut_df, message="Same reference base and alt base!"):
+        self.mut = mut_df
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f'{self.mut} -> {self.message}'
 
 if __name__ == "__main__":
 

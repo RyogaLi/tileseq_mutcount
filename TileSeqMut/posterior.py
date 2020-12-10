@@ -44,7 +44,6 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
 
             elif (not pd.isnull(row["m_r2"])) and (not pd.isnull(row["ref_r1"])):
 
-
                 basecall = [row["alt_r1"], row["alt_r2"]]
                 qual = [row["qual_r1"], row["qual_r2"]]
                 pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size)
@@ -79,7 +78,6 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
     return: dictinary with basecall as keys and post prob as values
     """
     # all possible hypo bases
-
     nt = list(set([wt]+basecall))
     # nt = ["A", "G", "C", "T"]
     # convert phred to int scores
@@ -104,9 +102,6 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
         else:
             log_odd += math.log(1-(1-mut_rate) ** clusterSize) - math.log(3) - math.log(1-(1-(1-mut_rate) ** clusterSize)/3)
 
-        # insertion prior
-        # log_odd += math.log(mut_rate) - math.log(4) - math.log(1-(mut_rate/4))
-
         for j in range(len(basecall)):
             if basecall[j] == base:
                 log_odd += (math.log(1-phred[j]) - math.log(phred[j]) + math.log(3))
@@ -118,10 +113,9 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
         post_p.append(logit_value)
 
     prob = dict(zip(nt, post_p))
-
     output = dict(zip(basecall, [prob.get(base) for base in basecall]))
-
     return output
+
 
 if __name__ == "__main__":
     basecall = ["T", "A"]
