@@ -150,15 +150,16 @@ def logginginit(log_level, log_f):
     """
     Init logging in console as well as main log
     """
+    log_level = log_level.upper()
     logging.basicConfig(filename=log_f,
                         filemode="w",
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                         datefmt="%m/%d/%Y %I:%M:%S %p",
                         level=log_level)
 
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    # define a Handler which writes INFO messages or higher to the sys.stdout
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(log_level)
     # set a format which is simpler for console use
     formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
     # tell the handler to use this format
@@ -166,9 +167,9 @@ def logginginit(log_level, log_f):
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
 
-    stderr_logger = logging.getLogger('STDERR')
-    sl = StreamToLogger(stderr_logger, logging.ERROR)
-    sys.stderr = sl
+    # stderr_logger = logging.getLogger('STDERR')
+    # sl = StreamToLogger(stderr_logger, logging.ERROR)
+    # sys.stderr = sl
 
     return logging
 

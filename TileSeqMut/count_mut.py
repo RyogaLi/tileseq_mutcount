@@ -16,8 +16,11 @@ import argparse
 from collections import deque
 
 # modules in package
-from TileSeqMut import help_functions
-from TileSeqMut import locate_mut
+# from TileSeqMut import help_functions
+# from TileSeqMut import locate_mut
+
+import help_functions
+import locate_mut
 
 class readSam(object):
 
@@ -60,14 +63,14 @@ class readSam(object):
 
         self._seq_lookup = help_functions.build_lookup(self._cds_start.values.item(), self._seq.cds_end.values.item(), self._cds_seq)
 
+        # init a new object for logging, log to sample specific file.log
         log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
-
-        logging = help_functions.logginginit(arguments.log_level, log_f)
+        log_object = help_functions.logginginit(arguments.log_level, log_f)
 
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
 
-        self._mut_log = logging.getLogger("count.mut")
-        self._locate_log = logging.getLogger("locate.mut")
+        self._mut_log = log_object.getLogger("count.mut")
+        self._locate_log = log_object.getLogger("locate.mut")
 
         self._mut_log.info(f"Counting mutations in sample-{self._sample_id}")
         self._mut_log.info(f"Sam file input R1:{sam_r1}")
@@ -201,7 +204,7 @@ class readSam(object):
                 # mut = locate_mut_main()
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
-                hgvs, outside_mut = mut_parser._main()
+                hgvs, outside_mut, pos_df = mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
                     if hgvs in hgvs_output:

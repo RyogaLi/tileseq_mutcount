@@ -28,9 +28,14 @@ import shutil
 import time
 
 # pakage modules
-from TileSeqMut import help_functions
-from TileSeqMut import count_mut
-from TileSeqMut import cluster
+# from TileSeqMut import help_functions
+# from TileSeqMut import count_mut
+# from TileSeqMut import cluster
+
+# pakage modules
+import help_functions
+import count_mut
+import cluster
 
 class fastq2counts(object):
     """Main class to read fastq files and output mutation counts."""
@@ -221,12 +226,15 @@ class fastq2counts(object):
 
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c)
         # start = time.time()
-        # mut_counts._merged_main()
+        if self._args.test:
+            # in testing mode, not using muticore
+            mut_counts._merged_main()
         # end = time.time()
         # print('Time taken for original program: ', end - start)
         # testing multicore program
         # start = time.time()
-        mut_counts.multi_core()
+        else:
+            mut_counts.multi_core()
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
@@ -300,7 +308,6 @@ class fastq2counts(object):
                 if "c." in line:
                     mut_n += 1
         return mut_n
-
 
     def _main(self):
         """
@@ -487,29 +494,6 @@ def write_param(args_log_path, args):
             args_log.write(arg+",")
             args_log.write(f"{getattr(args, arg, 'N/A')}\n")
 
-# def log(output_dir, log_level):
-#     """
-#     Make a logging object which writes to the main.log in output_dir
-#     """
-#     log_level = log_level.upper()
-#     # init main log
-#     logging.basicConfig(filename=os.path.join(output_dir, "main.log"),
-#                     filemode="a",
-#                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#                     datefmt="%m/%d/%Y %I:%M:%S %p",
-#                     level = log_level)
-#     # define a Handler which writes INFO messages or higher to the sys.stderr
-#     console = logging.StreamHandler()
-#     console.setLevel(log_level)
-#     # set a format which is simpler for console use
-#     formatter = logging.Formatter('%(asctime)s - %(name)-8s: %(levelname)-4s %(message)s')
-#     # tell the handler to use this format
-#     console.setFormatter(formatter)
-#     # add the handler to the root logger
-#     logging.getLogger('').addHandler(console)
-#
-#     return logging
-
 
 if __name__ == "__main__":
 
@@ -533,6 +517,7 @@ if __name__ == "__main__":
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 36h)", default=36)
     parser.add_argument("-c", type=int, help="Number of cores", default=16)
+    parser.add_argument("-test", action="store_true", help="Turn on testing mode")
     ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
     ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
     ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \

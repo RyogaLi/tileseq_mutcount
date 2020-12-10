@@ -23,11 +23,11 @@ class UnitTest(object):
         """
         # init all the input parameters
         # sam_r1, sam_r2, param, log_level, output_dir
-        sam_r1 = "/home/rothlab1/rli/dev/tilseq_mutcount/output/SUMO_rerun_2020-05-01-15-59-22/sam_files/30_R1_joint.sam"
-        sam_r2 = "/home/rothlab1/rli/dev/tilseq_mutcount/output/SUMO_rerun_2020-05-01-15-59-22/sam_files/30_R2_joint.sam"
-        param = "/home/rothlab1/rli/dev/tilseq_mutcount/output/SUMO_rerun_2020-05-01-15-59-22/SUMO1_parameters.json"
+        sam_r1 = "/Users/roujia/Desktop/SUMO_rerun_2020-05-01-15-59-22/sam_files/30_R1_joint.sam"
+        sam_r2 = "/Users/roujia/Desktop/SUMO_rerun_2020-05-01-15-59-22/sam_files/30_R2_joint.sam"
+        param = "/Users/roujia/Desktop/SUMO_rerun_2020-05-01-15-59-22/SUMO1_parameters.json"
         log_level = "DEBUG"
-        output_dir = "/home/rothlab1/rli/dev/tilseq_mutcount/output/SUMO_rerun_2020-05-01-15-59-22/testdel_2020-07-14-12-43-26_mut_count"
+        output_dir = "/Users/roujia/Desktop/SUMO_rerun_2020-05-01-15-59-22/"
         # init read sam
         print("Testing count_mut")
         start = timeit.default_timer()
