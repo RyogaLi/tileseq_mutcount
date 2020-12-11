@@ -363,8 +363,10 @@ class readSam(object):
         r2_f.close()
 
         # wait for all jobs to finish
+        pos_df = []
+        all_df = []
         for job in jobs:
-            hgvs, outside_mut = job.get()
+            hgvs, outside_mut, mutation_posterior, all_posterior = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
                 if hgvs in hgvs_output:
@@ -377,7 +379,8 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
-
+            pos_df.append(mutation_posterior)
+            all_df.append(all_posterior)
         # clean up
         pool.close()
 
@@ -413,13 +416,23 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
+        pos_df = pd.concat(pos_df)
+        posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
+
+        pos_df.to_csv(posterior_f, index=False)
+
+        all_df = pd.concat(all_df)
+        all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
+        all_df.to_csv(all_f, index=False)
+
+
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):
     """
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
-    hgvs, outside_mut = mut_parser._main()
-    return hgvs, outside_mut
+    hgvs, outside_mut, pos_df, all_df = mut_parser._main()
+    return hgvs, outside_mut, pos_df, all_df
 
 
 # if __name__ == "__main__":

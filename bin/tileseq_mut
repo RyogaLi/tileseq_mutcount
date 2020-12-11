@@ -33,6 +33,7 @@ parser.add_argument("-mt", type=int, help="Mutation call time \
 parser.add_argument("-override", "--sr_Override", action="store_true",
 					help="Provide this argument when there is only one replicate")
 parser.add_argument("-c", type=int, help="Number of cores", default=16)
+parser.add_argument("-test", action="store_true", help="Turn on testing mode")
 
 args = parser.parse_args()
 

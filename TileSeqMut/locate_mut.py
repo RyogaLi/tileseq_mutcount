@@ -145,15 +145,16 @@ class MutParser(object):
         # analyze the dictionary of clusters
         # and get posterior
         # print(d, self._mutrate, self._cutoff)
-        pos_df = posterior.cluster(d, self._mutrate, self._cutoff)
+        pos_df, all_df = posterior.cluster(d, self._mutrate, self._cutoff)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
-            hgvs, outside_mut, pos_df = [], [], []
+            hgvs, outside_mut, pos_df, all_df = [], [], pd.DataFrame({}, columns=["m", "prob", "read"]), \
+                                                pd.DataFrame({},columns=["m", "prob", "read"])
 
-        return hgvs, outside_mut, pos_df
+        return hgvs, outside_mut, pos_df, all_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
@@ -296,11 +297,8 @@ class MutParser(object):
         translate a list of mut to aa changes
         return list of nt changes represent by hgvs strings
         """
-        # there are two types of mutations in mut list
-        # ins del
-
-        # how to track consecutive changes?
-        concecutive_snp = [] # if the snp changes are concecutive, it will be represent as delins
+        # if the snp changes are concecutive, it will be represent as delins
+        concecutive_snp = []
         combined_snp = ""
 
         # track mutation positions that was not within the tiled region
@@ -311,6 +309,7 @@ class MutParser(object):
         # also record any snp that happened in the range
         delins = []
         mutations = []
+
         for mut in mut_list:
 
             mut_change = mut.split("|")
@@ -330,8 +329,6 @@ class MutParser(object):
 
             if "N" in mut: # do not consider base N
                 continue
-
-
 
             if ("del" in mut) or ("ins" in mut): # deletion or insertion
                 mut_change[0] = cds_pos
@@ -406,6 +403,10 @@ class MutParser(object):
         else:
             joined = ";".join(mutations)
             mutations = f"c.[{joined}]"
+
+        # output_df = pd.DataFrame(output_df, columns=["mut", "hgvs"])
+        # print(output_df)
+
         return mutations, outside_mut
 
 
@@ -413,12 +414,18 @@ def snp_to_hgvs(concec_pos, combined_bases, cds):
     """
     helper function to obtain hgvs sstring given a list of positions and a string of bases combined.
 
+    @param concec_pos
+    @param combined_bases
+    @param cds
+
+    @return
     """
     if len(concec_pos) == 1:
         ref_base = cds[concec_pos[0]-1]
         hgvs = f"{concec_pos[0]}{ref_base}>{combined_bases}"
     else:
         hgvs = f"{concec_pos[0]}_{concec_pos[-1]}delins{combined_bases}"
+
     return hgvs
 
 

@@ -9,7 +9,9 @@ import subprocess
 import time
 
 # other modules
-from TileSeqMut import alignment
+# from TileSeqMut import alignment
+
+import alignment
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
@@ -117,11 +119,13 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger, cores):
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
     sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
+    logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
     # log sample name and job id
     logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
+
 
 def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger, cores):
     """
@@ -136,6 +140,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger, cores):
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
     sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
+    logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
     # log sample name and job id
