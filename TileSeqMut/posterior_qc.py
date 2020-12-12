@@ -1,16 +1,51 @@
-#!/usr/bin/env python#VERSION#
-
-# Author: Roujia Li
-# email: Roujia.li@mail.utoronto.ca
+#!/usr/bin/env python3.7
 
 import sys
-sys.path.append('..')
 import os
 import pandas as pd
 from ast import literal_eval
 import seaborn as sns
 import matplotlib.pyplot as plt
+sys.path.append('..')
+
+import help_functions
+
+# Author: Roujia Li
+# email: Roujia.li@mail.utoronto.ca
+
 # QC script for posteriors
+
+class PosteriorQC(object):
+
+    def __init__(self, mut_count_dir, param_json):
+        """
+        @param mut_count_dir: Directory ends with _mut_count
+        @param param_json: Json parameter sheet
+        """
+        self._project, self._seq, self._cds_seq, self._tile_map, \
+        self._region_map, self._samples, self._var = help_functions.parse_json(param_json)
+
+        self._mut_dir = mut_count_dir
+
+    def plot_counts(self, df):
+        """
+        @param df: all_df or pos_df
+        """
+        pass
+
+    def runQC(self):
+        """
+        Run posterior QC, generate posterior QC plots in a subdir
+        """
+        # list all the prob files in the _mut_count dir
+        for f in os.listdir(self._mut_dir):
+            full_f_path = os.path.join(self._mut_dir, f)
+            if "posprob.csv" in f:
+
+                prob_filtered = pd.read_csv(full_f_path)
+
+
+
 
 def read_pos_file(pos_file, all_file):
     """
@@ -70,6 +105,9 @@ def read_pos_file(pos_file, all_file):
     plt.close()
 
 if __name__ == '__main__':
-    all_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/80_posprob_all.csv"
-    pos_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/80_posprob.csv"
+    all_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/56_posprob_all.csv"
+    pos_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/56_posprob.csv"
+
+    # all_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/56_posprob_all.csv"
+    # pos_file = "/Users/roujia/Desktop/200819_WAS_QC_all_2020-08-19-13-11-35/56_posprob.csv"
     read_pos_file(pos_file, all_file)

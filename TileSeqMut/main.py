@@ -234,6 +234,7 @@ class fastq2counts(object):
         # testing multicore program
         # start = time.time()
         else:
+            self._log.info("Running multi-core analysis ... ")
             mut_counts.multi_core()
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)

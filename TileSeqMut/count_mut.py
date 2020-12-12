@@ -251,13 +251,13 @@ class readSam(object):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
-        read_pair = 0 # total pairs
-        un_map = 0 # total number of unmapped reads
-        read_nomut = 0 # read pairs that have no mutations
+        read_pair = 0  # total pairs
+        un_map = 0  # total number of unmapped reads
+        read_nomut = 0  # read pairs that have no mutations
 
-        hgvs_output = {} # save all the hgvs in this pair of sam files
-        off_mut = {} # save all the positions that were mapped but outside of the tile
-        row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
+        hgvs_output = {}  # save all the hgvs in this pair of sam files
+        off_mut = {}  # save all the positions that were mapped but outside of the tile
+        row = {}  # create a dictionary to save all the reads information to pass on to locate_mut.py
 
         final_pairs = 0
         off_read = 0
@@ -388,13 +388,14 @@ class readSam(object):
         # track sequencing depth for each sample
         # write this information to a tmp file
         # merge the tmp file (in main.py)
-        tmp_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_tmp.csv")
-        off_mut = list(set(off_mut))
-        off_mut.sort()
-        f = open(tmp_f, "w")
-        f.write(
-            f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read / read_pair}\n")
-        f.close()
+
+        # tmp_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_tmp.csv")
+        # off_mut = list(set(off_mut))
+        # off_mut.sort()
+        # f = open(tmp_f, "w")
+        # f.write(
+        #     f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read / read_pair}\n")
+        # f.close()
 
         output_csv = open(self._sample_counts_f, "a")
         output_csv.write(f"#Raw read depth:{read_pair}\n")

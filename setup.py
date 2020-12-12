@@ -51,7 +51,7 @@ setup(
 		'Programming Language :: Python :: 3.8',
 	],
 	packages=find_packages(),  # Optional
-	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'cigar'],
+	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'cigar', 'matplotlib'],
     python_requires='>=3.6',
 
 	# # To provide executable scripts, use entry points in preference to the
