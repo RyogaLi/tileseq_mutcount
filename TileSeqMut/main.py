@@ -227,6 +227,7 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c)
         # start = time.time()
         if self._args.test:
+            self._log.info("Testing... ")
             # in testing mode, not using muticore
             mut_counts._merged_main()
         # end = time.time()
