@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
@@ -20,7 +20,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.2.2", # CHANGE RELEASE NOTE IN MAIN
+    version="0.2.700", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",
@@ -46,13 +46,12 @@ setup(
 		# Specify the Python versions you support here. In particular, ensure
 		# that you indicate you support Python 3. These classifiers are *not*
 		# checked by 'pip install'. See instead 'python_requires' below.
-		'Programming Language :: Python :: 3.6',
 		'Programming Language :: Python :: 3.7',
 		'Programming Language :: Python :: 3.8',
 	],
 	packages=find_packages(),  # Optional
-	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'cigar', 'matplotlib'],
-    python_requires='>=3.6',
+	install_requires=['pandas', 'seaborn', 'numpy', 'biopython'],
+    python_requires='>=3.7',
 
 	# # To provide executable scripts, use entry points in preference to the
 	# # "scripts" keyword. Entry points provide cross-platform support and allow

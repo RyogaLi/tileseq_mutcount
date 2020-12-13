@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 # Main script for sequencing analysis
 # Input of this script:
@@ -28,14 +28,14 @@ import shutil
 import time
 
 # pakage modules
-# from TileSeqMut import help_functions
-# from TileSeqMut import count_mut
-# from TileSeqMut import cluster
+from TileSeqMut import help_functions
+from TileSeqMut import count_mut
+from TileSeqMut import cluster
 
 # pakage modules
-import help_functions
-import count_mut
-import cluster
+# import help_functions
+# import count_mut
+# import cluster
 
 class fastq2counts(object):
     """Main class to read fastq files and output mutation counts."""

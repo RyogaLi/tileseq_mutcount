@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 # Helper functions
 # 1. downsample fastq files into n reads

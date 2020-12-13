@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 # The functions in this script is used to manage submitting jobs to different clusters
 # This script is called by main.py
@@ -9,9 +9,9 @@ import subprocess
 import time
 
 # other modules
-# from TileSeqMut import alignment
+from TileSeqMut import alignment
 
-import alignment
+# import alignment
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """

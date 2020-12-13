@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 ## Read sam file (R1 and R2)
 # count mutations in sam files
@@ -16,11 +16,11 @@ import argparse
 from collections import deque
 
 # modules in package
-# from TileSeqMut import help_functions
-# from TileSeqMut import locate_mut
+from TileSeqMut import help_functions
+from TileSeqMut import locate_mut
 
-import help_functions
-import locate_mut
+# import help_functions
+# import locate_mut
 
 class readSam(object):
 
@@ -49,7 +49,6 @@ class readSam(object):
         self._sample_info = self._samples[self._samples["Sample ID"] == self._sample_id]
 
         # tile information
-        # if one sample is with two tiles 
         self._sample_tile = self._sample_info["Tile ID"].values[0]
         self._tile_begins = (self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["Start AA"].values[0] *3)-2 # beginning position of this tile (cds position)
         self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
@@ -417,14 +416,18 @@ class readSam(object):
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
-        pos_df = pd.concat(pos_df)
-        posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
+        self._mut_log.info(f"Reading posterior dfs ...")
 
-        pos_df.to_csv(posterior_f, index=False)
+        # pos_df = pd.concat(pos_df)
+        posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
+        for df in pos_df:
+            df.to_csv(posterior_f, mode='a', header=False, index=False)
 
         all_df = pd.concat(all_df)
         all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
-        all_df.to_csv(all_f, index=False)
+        for df in pos_df:
+            df.to_csv(all_df, mode='a', header=False, index=False)
+        self._mut_log.info(f"Posterior df saved to files ... {all_f} and {posterior_f}")
 
 
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):

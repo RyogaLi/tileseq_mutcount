@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 #  What does this script do?
 # This script takes a pair of read (R1 and R2) in the format of dataframe row
@@ -6,12 +6,11 @@
 
 
 import pandas as pd
-import cigar
 import re
 from Bio.Seq import Seq
 
-# from TileSeqMut import posterior
-import posterior
+from TileSeqMut import posterior
+# import posterior
 
 class MutParser(object):
 
@@ -50,8 +49,10 @@ class MutParser(object):
         # get information for R1
         # where the mapping starts
         self._r1_pos = int(self._reads["pos_start_r1"])
-        self._r1_cigar = list(cigar.Cigar(self._reads["cigar_r1"]).items())
-        self._r1_readlen = sum([i[0] for i in self._r1_cigar])
+        # self._r1_cigar = list(cigar.Cigar(self._reads["cigar_r1"]).items())
+        r1_cigar = [i for i in re.split("([\d]+\S)", self._reads["cigar_r1"]) if i != ""]
+        self._r1_cigar = [(re.split(r"([\d]+)", i)[1], re.split(r"([\d]+)", i)[2]) for i in r1_cigar]
+        self._r1_readlen = sum([int(i[0]) for i in self._r1_cigar])
         self._r1_ref = self._seq[int(self._r1_pos)-1:int(self._r1_pos)+len(self._reads["seq_r1"])]
         self._r1_qual = self._reads["qual_r1"]
         self._r1_read = self._reads["seq_r1"]
@@ -59,8 +60,10 @@ class MutParser(object):
 
         # get the ref sequence for R2
         self._r2_pos = int(self._reads["pos_start_r2"])
-        self._r2_cigar = list(cigar.Cigar(self._reads["cigar_r2"]).items())
-        self._r2_readlen = sum([i[0] for i in self._r2_cigar])
+        # self._r2_cigar = list(cigar.Cigar(self._reads["cigar_r2"]).items())
+        r2_cigar = [i for i in re.split("([\d]+\S)", self._reads["cigar_r2"]) if i != ""]
+        self._r2_cigar = [(re.split(r"([\d]+)", i)[1], re.split(r"([\d]+)", i)[2]) for i in r2_cigar]
+        self._r2_readlen = sum([int(i[0]) for i in self._r2_cigar])
         self._r2_ref = self._seq[int(self._r2_pos)-1:int(self._r2_pos)+len(self._reads["seq_r2"])]
         self._r2_qual = self._reads["qual_r2"]
         self._r2_read = self._reads["seq_r2"]
@@ -167,7 +170,7 @@ class MutParser(object):
         # check starting point of the sequence
         # remove soft clipped bases and adjust for position
         if cigar[0][1] == "S": # soft clip occurs in the beginning of a read
-            clip += cigar[0][0]
+            clip += int(cigar[0][0])
 
         # convert mdz string into a list
         mdz = re.findall('.*?[.ATCG]+', mdz_raw)

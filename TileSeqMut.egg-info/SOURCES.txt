@@ -10,6 +10,7 @@ TileSeqMut/locate_mut.py
 TileSeqMut/main.py
 TileSeqMut/mergeruns.py
 TileSeqMut/posterior.py
+TileSeqMut/posterior_qc.py
 TileSeqMut/process.py
 TileSeqMut.egg-info/PKG-INFO
 TileSeqMut.egg-info/SOURCES.txt

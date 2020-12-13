@@ -43,27 +43,26 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
                 qual = [row["qual_r1"], row["qual_r2"]]
                 pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size)
 
-            if pos != {} and len(pos.keys()) == 1:
+            if r == "r1":
+                all_prob["m"].append(row["m_r1"])
+                all_prob["prob"].append(list(pos.values())[0])
+                all_prob["read"].append("r1")
 
-                if r == "r1":
-                    all_prob["m"].append(row["m_r1"])
-                    all_prob["prob"].append(list(pos.values())[0])
-                    all_prob["read"].append("r1")
+                if pos[next(iter(pos))] > cut_off:
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(list(pos.values())[0])
+                    pos_prob["read"].append("r1")
+            elif r == "r2":
+                all_prob["m"].append(row["m_r2"])
+                all_prob["prob"].append(list(pos.values())[0])
+                all_prob["read"].append("r2")
 
-                    if pos[next(iter(pos))] > cut_off:
-                        pos_prob["m"].append(row["m_r1"])
-                        pos_prob["prob"].append(list(pos.values())[0])
-                        pos_prob["read"].append("r1")
-                elif r == "r2":
-                    all_prob["m"].append(row["m_r2"])
-                    all_prob["prob"].append(list(pos.values())[0])
-                    all_prob["read"].append("r2")
+                if pos[next(iter(pos))] > cut_off:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(list(pos.values())[0])
+                    pos_prob["read"].append("r2")
 
-                    if pos[next(iter(pos))] > cut_off:
-                        pos_prob["m"].append(row["m_r2"])
-                        pos_prob["prob"].append(list(pos.values())[0])
-                        pos_prob["read"].append("r2")
-            elif pos != {} and len(pos.keys()) > 1:
+            elif r == "":
                 all_prob["m"].append(row["m_r1"])
                 all_prob["prob"].append((pos[row["alt_r1"]], pos[row["alt_r2"]]))
                 all_prob["read"].append(("r1", "r2"))
