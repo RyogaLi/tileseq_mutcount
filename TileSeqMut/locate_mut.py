@@ -146,20 +146,38 @@ class MutParser(object):
         # analyze the dictionary of clusters
         # and get posterior
         # print(d, self._mutrate, self._cutoff)
-        pos_df, all_df = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1, map_pos_r2, self._mutrate,
+        pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
+                                                                 map_pos_r2, self._mutrate,
                                            self._cutoff)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
+
+        final_r1_cluster = list(set(clustered_r1.m.tolist()))
+        final_r1_cluster.sort()
+        final_r2_cluster = list(set(clustered_r2.m.tolist()))
+        final_r2_cluster.sort()
+
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
-            hgvs, outside_mut, all_df = [], [], pd.DataFrame({},columns=["m", "prob", "read"])
+            hgvs, outside_mut = [], []
+
+        if final_r1_cluster != []:
+            hgvs_r1_clusters, outside_mut_r1 = self._get_hgvs(final_r1_cluster)
+        else:
+            hgvs_r1_clusters, outside_mut_r1 = [], []
+
+        if final_r2_cluster != []:
+            hgvs_r2_clusters, outside_mut_r2 = self._get_hgvs(final_r1_cluster)
+        else:
+            hgvs_r2_clusters, outside_mut_r2 = [], []
+
         if "c.463T>G" in hgvs:
             print(merged_df)
             # print(pos_df)
             print(all_df)
 
-        return hgvs, outside_mut, pos_df, all_df
+        return hgvs, outside_mut, all_df, hgvs_r1_clusters, outside_mut_r1, hgvs_r2_clusters, outside_mut_r2
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """

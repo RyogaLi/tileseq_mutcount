@@ -67,6 +67,8 @@ class readSam(object):
         log_object = help_functions.logginginit(arguments.log_level, log_f)
 
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
+        self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
+        self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
 
         self._mut_log = log_object.getLogger("count.mut")
         self._locate_log = log_object.getLogger("locate.mut")
@@ -255,10 +257,14 @@ class readSam(object):
         read_nomut = 0  # read pairs that have no mutations
 
         hgvs_output = {}  # save all the hgvs in this pair of sam files
+        r1_pop_hgvs = {}  # save all the hgvs that are 2/3nt changes based only on R1
+        r2_pop_hgvs = {}  # save all the hgvs that are 2/3nt changes based only on R2
         off_mut = {}  # save all the positions that were mapped but outside of the tile
         row = {}  # create a dictionary to save all the reads information to pass on to locate_mut.py
 
         final_pairs = 0
+        r1_popmut = 0
+        r2_popmut = 0
         off_read = 0
 
         # chunkSize = 1500000  # number of characters in each chunk
@@ -363,8 +369,10 @@ class readSam(object):
         self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
         # wait for all jobs to finish
         all_df = []
+        clustered_r1_joined = []
+        clustered_r2_joined = []
         for job in jobs:
-            hgvs, outside_mut, all_posterior = job.get()
+            hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
                 if hgvs in hgvs_output:
@@ -372,12 +380,28 @@ class readSam(object):
                 else:
                     hgvs_output[hgvs] = 1
                 # hgvs_output.append(hgvs)
+
+            if len(hgvs_r1_clusters) != 0:
+                r1_popmut += 1
+                if hgvs_r1_clusters in r1_pop_hgvs:
+                    r1_pop_hgvs[hgvs_r1_clusters] += 1
+                else:
+                    r1_pop_hgvs[hgvs_r1_clusters] = 1
+
+            if len(hgvs_r2_clusters) != 0:
+                r2_popmut += 1
+                if hgvs_r2_clusters in r2_pop_hgvs:
+                    r2_pop_hgvs[hgvs_r2_clusters] += 1
+                else:
+                    r2_pop_hgvs[hgvs_r2_clusters] = 1
+
             if outside_mut != []:
                 outside_mut = list(set(outside_mut))
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
             all_df.append(all_posterior)
+
         # clean up
         pool.close()
         self._mut_log.info("Pool closed")
@@ -413,6 +437,16 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+
+        r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
+        r1_df = r1_df.reset_index()
+        r1_df.columns = ["HGVS", "count"]
+        r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
+
+        r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
+        r2_df = r2_df.reset_index()
+        r2_df.columns = ["HGVS", "count"]
+        r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
         #
         # self._mut_log.info(f"Reading posterior filtered dfs ...")
         #
