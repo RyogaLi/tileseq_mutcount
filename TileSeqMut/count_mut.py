@@ -85,6 +85,23 @@ class readSam(object):
                          f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
         output_csv.close()
 
+        output_csv = open(self._sample_counts_r1_f, "w")
+        # write log information to counts output
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
+                         f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
+                         f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
+                         f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
+        output_csv.close()
+
+        output_csv = open(self._sample_counts_r2_f, "w")
+        # write log information to counts output
+        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
+                         f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
+                         f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
+                         f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
+        output_csv.close()
+
+
     def _merged_main(self):
         """
         Read two sam files at the same time, store mutations that passed filter
