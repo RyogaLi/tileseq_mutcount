@@ -115,13 +115,11 @@ class MutParser(object):
         self._get_seq()
 
         # parse mutations in R1
-        r1_snp, r1_delins = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read,
-                                                 self._r1_pos,
-                                     self._r1_qual)
+        r1_snp, r1_delins, map_pos_r1 = self._parse_cigar_mdz(self._r1_cigar, self._r1_mdz, self._r1_ref, self._r1_read,
+                                                 self._r1_pos,self._r1_qual)
         # parse mutations in R2
-        r2_snp, r2_delins = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read,
-                                                  self._r2_pos,
-                                     self._r2_qual)
+        r2_snp, r2_delins, map_pos_r2 = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read,
+                                                  self._r2_pos,self._r2_qual)
 
         final_df_r1 = self._convert_mut(r1_snp, "r1")
         final_df_r2 = self._convert_mut(r2_snp, "r2")
@@ -148,14 +146,18 @@ class MutParser(object):
         # analyze the dictionary of clusters
         # and get posterior
         # print(d, self._mutrate, self._cutoff)
-        pos_df, all_df = posterior.cluster(d, self._mutrate, self._cutoff)
+        pos_df, all_df = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1, map_pos_r2, self._mutrate,
+                                           self._cutoff)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
-            hgvs, outside_mut, pos_df, all_df = [], [], pd.DataFrame({}, columns=["m", "prob", "read"]), \
-                                                pd.DataFrame({},columns=["m", "prob", "read"])
+            hgvs, outside_mut, all_df = [], [], pd.DataFrame({},columns=["m", "prob", "read"])
+        if "c.463T>G" in hgvs:
+            print(merged_df)
+            # print(pos_df)
+            print(all_df)
 
         return hgvs, outside_mut, pos_df, all_df
 
@@ -292,7 +294,7 @@ class MutParser(object):
         #           self._r2_read,
         #           self._r2_mdz)
 
-        return snp_list, delins_list
+        return snp_list, delins_list, pos_map
 
     def _get_hgvs(self, mut_list):
         """
@@ -485,6 +487,7 @@ def delins_to_hgvs(cds_seq, delins):
         hgvs = f"{start_pos}_{end_pos}delins{modified}"
         #print("del+ins, ",hgvs)
     return hgvs
+
 
 class DuplicatedMutations(Exception):
     """Exception raised when there are two mutations found on the same read at the same positions.

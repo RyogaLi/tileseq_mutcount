@@ -203,7 +203,7 @@ class readSam(object):
                 # mut = locate_mut_main()
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
-                hgvs, outside_mut, pos_df = mut_parser._main()
+                hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
                     if hgvs in hgvs_output:
@@ -269,7 +269,7 @@ class readSam(object):
         # init objects
         pool = mp.Pool(self._cores)
         jobs = []
-
+        self._mut_log.info("Start reading SAM files")
         for line_r1, line_r2 in zip(r1_f, r2_f):
 
             line_r1 = line_r1.split()
@@ -360,12 +360,11 @@ class readSam(object):
 
         r1_f.close()
         r2_f.close()
-
+        self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
         # wait for all jobs to finish
-        pos_df = []
         all_df = []
         for job in jobs:
-            hgvs, outside_mut, mutation_posterior, all_posterior = job.get()
+            hgvs, outside_mut, all_posterior = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
                 if hgvs in hgvs_output:
@@ -378,11 +377,10 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
-            pos_df.append(mutation_posterior)
             all_df.append(all_posterior)
         # clean up
         pool.close()
-
+        self._mut_log.info("Pool closed")
         # track mutations that are not within the same tile
         # track sequencing depth for each sample
         # write this information to a tmp file
@@ -415,19 +413,20 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+        #
+        # self._mut_log.info(f"Reading posterior filtered dfs ...")
+        #
+        # # pos_df = pd.concat(pos_df)
+        # posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
+        # for df in pos_df:
+        #     df.to_csv(posterior_f, mode='a', header=False, index=False)
 
-        self._mut_log.info(f"Reading posterior dfs ...")
-
-        # pos_df = pd.concat(pos_df)
-        posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
-        for df in pos_df:
-            df.to_csv(posterior_f, mode='a', header=False, index=False)
-
-        all_df = pd.concat(all_df)
+        self._mut_log.info(f"Reading posterior unfiltered dfs ...")
+        # all_df = pd.concat(all_df)
         all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
-        for df in pos_df:
-            df.to_csv(all_df, mode='a', header=False, index=False)
-        self._mut_log.info(f"Posterior df saved to files ... {all_f} and {posterior_f}")
+        for df in all_df:
+            df.to_csv(all_f, mode='a', header=False, index=False)
+        self._mut_log.info(f"Posterior df saved to files ... {all_f}")
 
 
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):

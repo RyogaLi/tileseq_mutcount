@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: TileSeqMut
-Version: 0.2.600
+Version: 0.2.832
 Summary: Analysis scripts for TileSeq sequencing data
 Home-page: https://github.com/RyogaLi/tilseq_mutcount
 Author: ROUJIA LI
@@ -175,8 +175,7 @@ Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Build Tools
 Classifier: License :: OSI Approved :: MIT License
-Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
-Requires-Python: >=3.6
+Requires-Python: >=3.7
 Description-Content-Type: text/markdown

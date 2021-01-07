@@ -8,7 +8,8 @@ import pandas as pd
 import numpy as np
 from fractions import Fraction
 
-def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
+def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
+                        r2_mappos: dict, mut_rate: float, cut_off: float):
     """
     Parse cluster of mutations
     mut_cluster is a  list of clusters (clustered mutations found in one read pair)
@@ -18,7 +19,7 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
     @param cut_off posterior cutoff defined by user
     """
     pos_prob = {"m": [], "prob": [], "read": []}
-    all_prob = {"m": [], "prob": [], "read": []}
+    all_prob = {"m": [], "prob": [], "read": [], "pass":[]}
     for c in mut_cluster.keys():
         mutcall = mut_cluster[c]
         # each mutcall is a df with columns:
@@ -27,14 +28,59 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
         # iterate through the clusters
         pos = {}
         r = ""
+
         for index, row in mutcall.iterrows():
 
             if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
-                pos = bayesian_variant_call([row["alt_r2"]], [row["qual_r2"]], row["ref_r2"], mut_rate, c_size)
+
+                if r1_mappos.get(int(row["pos"])) is None:
+                    continue
+                # get R1 wt qual with map pos and qual str
+                r1_qual_base = r1_qual[r1_mappos[int(row["pos"])]]
+                pos = bayesian_variant_call([row["ref_r2"], row["alt_r2"]], [r1_qual_base, row["qual_r2"]],
+                                            row["ref_r2"], mut_rate, c_size)
+
+                all_prob["m"].append(row["m_r2"])
+                all_prob["prob"].append(pos[row["alt_r2"]])
+                all_prob["read"].append("r2")
+
+                if pos[row["ref_r2"]] > pos[row["alt_r2"]]:
+                    all_prob["pass"].append(-1)
+                    continue
+                if pos[row["alt_r1"]] > cut_off:
+                    all_prob["pass"].append(1)
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(pos[row["alt_r2"]])
+                    pos_prob["read"].append("r2")
+                else:
+                    all_prob["pass"].append(-1)
                 r = "r2"
 
             elif (pd.isnull(row["m_r2"]) or row["alt_r2"] == "N") and not pd.isnull(row["ref_r1"]):
-                pos = bayesian_variant_call([row["alt_r1"]], [row["qual_r1"]], row["ref_r1"], mut_rate, c_size)
+
+                if r2_mappos.get(int(row["pos"])) is None:
+                    continue
+                # get R1 wt qual with map pos and qual str
+                r2_qual_base = r2_qual[r2_mappos[int(row["pos"])]]
+
+                pos = bayesian_variant_call([row["alt_r1"], row["ref_r1"]], [row["qual_r1"], r2_qual_base],
+                                            row["ref_r1"],
+                                            mut_rate,
+                                            c_size)
+                all_prob["m"].append(row["m_r1"])
+                all_prob["prob"].append(pos[row["alt_r1"]])
+                all_prob["read"].append("r1")
+
+                if pos[row["ref_r1"]] > pos[row["alt_r1"]]:
+                    all_prob["pass"].append(-1)
+                    continue
+                if pos[row["alt_r2"]] > cut_off:
+                    all_prob["pass"].append(1)
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(pos[row["alt_r1"]])
+                    pos_prob["read"].append("r1")
+                else:
+                    all_prob["pass"].append(-1)
                 r = "r1"
 
             elif (not pd.isnull(row["m_r2"])) and (not pd.isnull(row["ref_r1"])):
@@ -42,31 +88,12 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
                 basecall = [row["alt_r1"], row["alt_r2"]]
                 qual = [row["qual_r1"], row["qual_r2"]]
                 pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size)
-
-            if r == "r1":
-                all_prob["m"].append(row["m_r1"])
-                all_prob["prob"].append(list(pos.values())[0])
-                all_prob["read"].append("r1")
-
-                if pos[next(iter(pos))] > cut_off:
-                    pos_prob["m"].append(row["m_r1"])
-                    pos_prob["prob"].append(list(pos.values())[0])
-                    pos_prob["read"].append("r1")
-            elif r == "r2":
-                all_prob["m"].append(row["m_r2"])
-                all_prob["prob"].append(list(pos.values())[0])
-                all_prob["read"].append("r2")
-
-                if pos[next(iter(pos))] > cut_off:
-                    pos_prob["m"].append(row["m_r2"])
-                    pos_prob["prob"].append(list(pos.values())[0])
-                    pos_prob["read"].append("r2")
-
-            elif r == "":
                 all_prob["m"].append(row["m_r1"])
                 all_prob["prob"].append((pos[row["alt_r1"]], pos[row["alt_r2"]]))
                 all_prob["read"].append(("r1", "r2"))
-
+                all_prob["pass"].append("-")
+                # if (pos[row["ref_r1"]] > pos[row["alt_r1"]]) and (pos[row["ref_r2"]] > pos[row["alt_r2"]]): continue
+            if r == "":
                 if pos[row["alt_r1"]] > pos[row["alt_r2"]] and pos[row["alt_r1"]] > cut_off:
                     pos_prob["m"].append(row["m_r1"])
                     pos_prob["prob"].append(pos[row["alt_r1"]])
@@ -81,11 +108,11 @@ def cluster(mut_cluster:dict, mut_rate:float, cut_off:float):
                     pos_prob["m"].append(row["m_r1"])
                     pos_prob["prob"].append((pos[row["alt_r1"]], pos[row["alt_r2"]]))
                     pos_prob["read"].append(("r1", "r2"))
+
                 # print(pos_prob)
     # print(pos_prob)
-    pos_df = pd.DataFrame(pos_prob)
     all_df = pd.DataFrame(all_prob)
-    return pos_df, all_df
+    return all_df
 
 
 def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
@@ -133,6 +160,7 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
 
     prob = dict(zip(nt, post_p))
     output = dict(zip(basecall, [prob.get(base) for base in basecall]))
+
     return output
 
 

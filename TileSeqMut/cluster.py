@@ -118,7 +118,7 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger, cores):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
+    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "25", shfile]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
