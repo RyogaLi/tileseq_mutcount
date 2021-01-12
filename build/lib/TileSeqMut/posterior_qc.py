@@ -1,19 +1,22 @@
 #!/usr/bin/env python3.7
-
+import math
 import sys
 import os
 import pandas as pd
+import numpy as np
 import argparse
 from ast import literal_eval
+from matplotlib_venn import venn2
 from matplotlib import rc
 
 import seaborn as sns
+import warnings
 from scipy import stats
 import matplotlib.pyplot as plt
 sys.path.append('..')
 # from TileSeqMut import help_functions
 import help_functions
-
+warnings.simplefilter(action='ignore')
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
 
@@ -55,63 +58,173 @@ class PosteriorQC(object):
         @param row: row of dataframe contains path to prob files and sample info
         """
         # load prob_df
-        print(row)
         fig_title = f"{row['Condition']}_tile{row['Tile ID']}_rep{row['Replicate']}_t{row['Time point']}"
-        prob_df = pd.read_csv(row.prob, names=["mut", "prob", "read"], header=None)
+        # prob_df = pd.read_csv(row.prob, names=["mut", "prob", "read"], header=None)
         # print(prob_df)
         # self._plot_prob(prob_df)
         # self._plot_marginal(prob_df)
-        all_prob_df = pd.read_csv(row.prob_all, names=["mut", "prob", "read"], header=None)
-        self._plot_prob(all_prob_df, fig_title)
-        # self._calculate_frequency(all_prob_df)
+        sns.set(font_scale=1.3)
+        sns.set_style("whitegrid")
+        fig, axes = plt.subplots(3, 2, figsize=(16, 18))
+        all_prob_df = pd.read_csv(row.prob_all, names=["mut", "prob", "read", "pass"], header=None)
+        pop_r1_df = pd.read_csv(row.popmut_r1, skiprows=9)
+        pop_r2_df = pd.read_csv(row.popmut_r2, skiprows=9)
+        self._plot_prob(all_prob_df, fig_title, fig, axes)
+        self._plot_r1r2_popmut(pop_r1_df, pop_r2_df, fig_title, fig, axes)
+        # plt.tight_layout(pad=0.6)
+        fig.suptitle(fig_title, fontweight='bold')
+        fig.tight_layout(pad=1)
+        plt.savefig(os.path.join(self._output, f"{fig_title}.png"), format="png")
+        plt.close()
+        # exit()
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}.png'
         # self._plot_counts(prob_df, plot_name)
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}_all.png'
         # self._plot_counts(prob_df, plot_name)
 
-    def _plot_prob(self, df, fig_title):
+    def _plot_prob(self, df, fig_title, fig, axes):
         """
         Plot probability of read 1 and read 2
         """
+
         # mutations only on read 1
         read1_only = df.loc[df["read"] == "r1"]
+
         # mutations only on read 2
         read2_only = df.loc[df["read"] == "r2"]
+
+        read1_only.prob = read1_only.prob.astype(float)
+        read2_only.prob = read2_only.prob.astype(float)
+        read1_only_marginal = self._calculate_frequency(read1_only)
+        read2_only_marginal = self._calculate_frequency(read2_only)
+
+        map_r1 = {"1": "R1_Passed", "-1": "R1_Discarded"}
+        map_r2 = {"1": "R2_Passed", "-1": "R2_Discarded"}
+
+        read1_only = read1_only.replace({"pass": map_r1})
+        read2_only = read2_only.replace({"pass": map_r2})
+
+        top90_cut = np.log(0.9)
+        top50_cut = np.log(0.5)
+        # plot counts vs avg prob
+
+        sns.scatterplot(read1_only_marginal["marginal_freq"], np.log(read1_only_marginal["prob"]),
+                        label="Read 1", ax=axes[0][1], alpha=0.7)
+        sns.scatterplot(read2_only_marginal["marginal_freq"], np.log(read2_only_marginal["prob"]),
+                        label="Read 2", ax=axes[0][1], alpha=0.7)
+        max_x = max(read1_only_marginal["marginal_freq"].max(), read2_only_marginal["marginal_freq"].max())
+        # max_x = math.floor(max_x*10)/10
+
+        axes[0][1].axhline(top90_cut, ls='--', alpha=.7, color="#FA5D5D")
+        axes[0][1].axhline(top50_cut, ls='--', alpha=.7, color="#FA5D5D")
+
+        axes[0][1].text((max_x/3)*2, top50_cut-0.38, "posterior = 0.5", fontsize=10, color="grey")
+        axes[0][1].text((max_x/3)*2, top90_cut-0.38, "posterior = 0.9", fontsize=10, color="grey")
+
+        axes[0][1].set_ylabel("Average posterior prob. (log)")
+        axes[0][1].set_xlabel("Marginal frequency")
+        axes[0][1].set_title("Mutations found only on R1 or R2")
+
+        # axes[0][0].get_legend().remove()
+        # plt.show()
+
+        # plt.close()
+        # plot marginal
+        # sns.scatterplot(read1_only_marginal.index, read1_only_marginal.marginal_freq, s=20, ax=axes[0][0],
+        #                 label="Read 1", linewidth=0.000001, alpha = 0.6)
+        # sns.scatterplot(read2_only_marginal.index, read2_only_marginal.marginal_freq, s=20, ax=axes[0][0],
+        #                 label="Read 2", linewidth=0.000001, alpha = 0.6)
+        #
+        # axes[0][0].set_title("Marginal frequencies of mutations found only on R1 or R2")
+        # axes[0][0].set_xlabel("Unique variants")
+        # axes[0][0].set_ylabel("Marginal Frequency")
+
+        # plt.title(fig_title)
+        # plt.savefig(os.path.join(self._output, f"{fig_title}_marginal_r1r2.pdf"))
+        # plt.close()
         # mutations found on both reads
         both_read = df.loc[(df["read"] != "r1") & (df["read"] != "r2")]
         both_read['read'] = [literal_eval(x) for x in both_read['read']]
         both_read['prob'] = [literal_eval(x) for x in both_read['prob']]
         both_read[["prob_r1", "prob_r2"]] = pd.DataFrame(both_read['prob'].tolist(), index=both_read.index)
         both_read[["label_r1", "label_r2"]] = pd.DataFrame(both_read['read'].tolist(), index=both_read.index)
+        both_read["pass"] = "Discarded"
+        both_read["label"] = "both"
+        both_read.loc[(both_read.prob_r1 > 0.5) & (both_read.prob_r2 > 0.5), "pass"] = "Passed"
+        read1_only["log_prob"] = np.log(read1_only.prob)
+        read2_only["log_prob"] = np.log(read2_only.prob)
 
-        read1_only.prob = read1_only.prob.astype(float)
-        read2_only.prob = read2_only.prob.astype(float)
         read1_only = read1_only.sort_values(by="prob", ascending=False).reset_index()
         read2_only = read2_only.sort_values(by="prob", ascending=False).reset_index()
+        read1_only["label"] = "r1_only"
+        read2_only["label"] = "r2_only"
 
         read1_only["perc"] = read1_only.index / (read1_only.shape[0] - 1)
         read2_only["perc"] = read2_only.index / (read2_only.shape[0] - 1)
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13,7))
-        sns.scatterplot(read1_only.perc, read1_only.prob, label="Read 1", ax=ax1, s=7)
-        sns.scatterplot(read2_only.perc, read2_only.prob, label="Read 2", ax=ax1, s=7)
+        total_both = both_read[["label", "pass"]].value_counts().to_frame()
+        total_r1 = read1_only[["label", "pass"]].value_counts().to_frame()
+        total_r2 = read2_only[["label", "pass"]].value_counts().to_frame()
+        bar_plot_df = pd.concat([total_both, total_r2, total_r1]).reset_index()
+        bar_plot_df.columns = ["label", "pass", "count"]
+
+        map = {"R1_Passed": "Passed", "R1_Discarded": "Discarded", "R2_Passed": "Passed", "R2_Discarded": "Discarded"}
+        bar_plot_df = bar_plot_df.replace({"pass": map})
+        print(bar_plot_df)
+        g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0])
+        for p in g.patches:
+            height = p.get_height()
+            if math.isnan(height):
+                height=0
+            g.text(p.get_x() + p.get_width() / 2.,
+                    height + 3,
+                    int(height),
+                    ha="center")
+        handles, labels = axes[0][0].get_legend_handles_labels()
+        axes[0][0].legend(handles=handles, labels=labels)
+        axes[0][0].set_xlabel("")
+        axes[0][0].set_title("Number of variants found")
+
+        # join r1 and r2
+        join_R1R2 = [read1_only, read2_only]
+        join_R1R2_df = pd.concat(join_R1R2)
+
+        # Create an array with the colors you want to use
+        colors = ["#6BA3F2", "#3866A6"]
+        # Set your custom color palette
+        customPalette = sns.set_palette(sns.color_palette(colors))
+        #
+        colors = ["#F2C46B", "#A67B28"]
+        customPalette2 = sns.set_palette(sns.color_palette(colors))
+        color_dict = {"R1_Passed": "#6BA3F2", "R1_Discarded": "#3866A6", "R2_Passed": "#F2C46B",
+                      "R2_Discarded":"#A67B28"}
+        sns.scatterplot(x="perc", y="log_prob", hue="pass", palette=color_dict, data=join_R1R2_df,
+                        ax=axes[1][0], s=20, style="pass", linewidth=0.000001, alpha = 0.7)
+        handles, labels = axes[1][0].get_legend_handles_labels()
+        axes[1][0].legend(handles=handles, labels=labels)
+        # sns.scatterplot(x="perc", y="log_prob", hue="pass", palette=color_dict, data=read2_only,
+        #                 ax=axes[1][0], s=20, style="pass", linewidth=0.000001, alpha = 0.7)
+        # sns.scatterplot(x="perc", y="prob", hue="pass", data=read2_only , label=f"Read 2: n = {read2_only.shape[0]}",
+        #                 ax=ax1, s=20)
+        axes[1][0].axhline(top90_cut, ls='--', alpha=.7, color="#FA5D5D")
+        axes[1][0].axhline(top50_cut, ls='--', alpha=.7, color="#FA5D5D")
+
+        axes[1][0].text(0.6666, top50_cut-0.38, "posterior = 0.5", fontsize=10, color="grey")
+        axes[1][0].text(0.6666, top90_cut-0.38, "posterior = 0.9", fontsize=10, color="grey")
 
         # plot prob correlation of r1 and r2
-        sns.scatterplot(both_read.prob_r1, both_read.prob_r2, s=7, ax=ax2, color="black")
+        sns.scatterplot(np.log(both_read.prob_r1), np.log(both_read.prob_r2), s=10, ax=axes[1][1], color="black")
         pcc = stats.pearsonr(both_read.prob_r1, both_read.prob_r2)[0]
-        ax1.set_title("Posterior prob of mutations found only on Read 1/Read 2")
-        ax1.set_ylabel("Posterior prob", fontsize=12)
-        ax1.set_xlabel("Perc. of mutations", fontsize=12)
+        axes[1][0].set_title("Posterior prob of mutations only found on R1 or R2")
+        axes[1][0].set_ylabel("Posterior prob (log)")
+        axes[1][0].set_xlabel("Proportion of mutations")
 
-        ax2.set_title("Corr of posterior prob of mutations found on both reads")
-        ax2.text(0, 1, f"PCC: {float('{:.4f}'.format(pcc))}")
-        ax2.set_ylabel("Posterior prob (Read 1)", fontsize=12)
-        ax2.set_xlabel("Posterior prob (Read 2)", fontsize=12)
+        axes[1][1].set_title("Corr. of posterior prob of mutations found on both reads")
+        axes[1][1].text(-3, -1, f"PCC: {float('{:.4f}'.format(pcc))}")
+        axes[1][1].set_ylabel("Posterior prob (Read 1)")
+        axes[1][1].set_xlabel("Posterior prob (Read 2)")
 
-        fig.suptitle(fig_title, fontsize=16)
-        plt.tight_layout()
-        plt.savefig(os.path.join(self._output, f"{fig_title}.png"))
-        plt.close()
+        # exit()
 
         # # make plot for mutation on r1 only and r2 only vs all
         # n_r1 = read1_only.mut.value_counts().to_frame().reset_index()
@@ -128,6 +241,61 @@ class PosteriorQC(object):
         # plt.show()
         # plt.close()
         # exit()
+
+    def _plot_r1r2_popmut(self, df_r1, df_r2, fig_title, fig, axes):
+        """
+        For R1 and R2, plot the distribution of popcode mutations based on the margional frequency
+        """
+        # print(df_r1)
+        # print(df_r2)
+        if df_r1.empty:
+            df_r1 = pd.DataFrame({}, columns=["HGVS", "count"])
+        if df_r2.empty:
+            df_r2 = pd.DataFrame({}, columns=["HGVS", "count"])
+        total_r1 = df_r1["count"].sum()
+        df_r1["marginal freq"] = df_r1["count"] / total_r1
+        total_r2 = df_r2["count"].sum()
+        df_r2["marginal freq"] = df_r2["count"] / total_r2
+
+        # sort by freq
+        # df_r1 = df_r1.sort_values(by="marginal freq", ascending=False)
+        # df_r2 = df_r2.sort_values(by="marginal freq", ascending=False)
+        #
+        # sns.scatterplot(df_r1["HGVS"], df_r1["marginal freq"], ax = axes[2][0])
+        # sns.scatterplot(df_r2["HGVS"], df_r2["marginal freq"], ax = axes[2][1])
+        # axes[2][0].set_xticklabels("")
+        # axes[2][1].set_xticklabels("")
+        # axes[2][0].set_facecolor('white')
+        # axes[2][1].set_facecolor('white')
+
+        # get union set of hgvs
+        all_hgvs = set(df_r1["HGVS"].tolist()+df_r2["HGVS"].tolist())
+        intersect  = [value for value in df_r1["HGVS"].tolist() if value in df_r2["HGVS"].tolist()]
+
+        unique_r1 = df_r1.loc[~df_r1.HGVS.isin(df_r2)].dropna()
+        unique_r2 = df_r2.loc[~df_r2.HGVS.isin(df_r1)].dropna()
+
+        # sort by freq
+        unique_r1 = unique_r1.sort_values(by="marginal freq", ascending=False)
+        unique_r2 = unique_r2.sort_values(by="marginal freq", ascending=False)
+
+        venn2([set(unique_r1.HGVS.tolist()), set(unique_r2.HGVS.tolist())], set_labels = ('Read 1', 'Read 2'),
+              ax = axes[2][0])
+        j_dist = len(intersect)/len(all_hgvs)
+        axes[2][0].text(-0.6, .6, f"Jaccard Index: {round(j_dist, 2)}")
+
+        # sns.scatterplot(unique_r1["HGVS"], unique_r1["marginal freq"], ax = axes[2][0])
+        # sns.scatterplot(unique_r2["HGVS"], unique_r2["marginal freq"], ax = axes[2][1])
+        # axes[2][0].set_xticklabels("")
+        # axes[2][1].set_xticklabels("")
+        #
+        # axes[2][0].set_facecolor('white')
+        # axes[2][1].set_facecolor('white')
+        #
+        # print(fig_title)
+        # print(len(all_hgvs))
+        # print(len(intersect))
+        # print(len(intersect)/len(all_hgvs))
 
 
     def _plot_marginal(self, df):
@@ -157,7 +325,6 @@ class PosteriorQC(object):
         sns.violinplot(x = "read", y="marginal_freq", data=marginal_concat)
         plt.show()
         plt.close()
-        exit()
 
     def _calculate_frequency(self, df):
         """
@@ -169,6 +336,8 @@ class PosteriorQC(object):
         mut_counts.columns = ["mut", "count"]
         total_mut = mut_counts["count"].sum()
         mut_counts["marginal_freq"] = mut_counts["count"] / total_mut
+        avg_prob = df.groupby(['mut'])['prob'].mean().to_frame().reset_index()
+        mut_counts = pd.merge(mut_counts, avg_prob, how="left", on="mut")
         return mut_counts
 
     def _plot_counts(self, df, f_name):
@@ -208,15 +377,20 @@ class PosteriorQC(object):
         # join samples table into one col with _ delim
         for sample in self._samples["Sample ID"].tolist():
             # filtered prob df
-            filtered_prob_f = os.path.join(self._mut_dir, f"{sample}_posprob.csv")
-            if not os.path.isfile(filtered_prob_f):
-                raise FileNotFoundError(f"{sample}_posprob.csv")
+            # filtered_prob_f = os.path.join(self._mut_dir, f"{sample}_posprob.csv")
+            # if not os.path.isfile(filtered_prob_f):
+            #     raise FileNotFoundError(f"{sample}_posprob.csv")
             all_prob_f = os.path.join(self._mut_dir, f"{sample}_posprob_all.csv")
             if not os.path.isfile(all_prob_f):
-                raise FileNotFoundError(f"{sample}_posprob_all.csv")
-            f_table.append([sample, filtered_prob_f, all_prob_f])
+                # raise FileNotFoundError(f"{sample}_posprob_all.csv")
+                print(f"{sample}_posprob_all.csv")
+                continue
 
-        f_df = pd.DataFrame(f_table, columns=["Sample ID", "prob", "prob_all"])
+            pop_r1_f = os.path.join(self._mut_dir, f"counts_sample_{sample}_r1.csv")
+            pop_r2_f = os.path.join(self._mut_dir, f"counts_sample_{sample}_r2.csv")
+            f_table.append([sample, all_prob_f, pop_r1_f, pop_r2_f])
+
+        f_df = pd.DataFrame(f_table, columns=["Sample ID", "prob_all", "popmut_r1", "popmut_r2"])
         # merge this to sample df
         merge_file_samples = pd.merge(self._samples, f_df, on="Sample ID", how="left")
 

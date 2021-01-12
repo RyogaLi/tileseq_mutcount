@@ -159,7 +159,13 @@ class fastq2counts(object):
                 # make sh files to submit to BC
                 self._log.info("Submitting alignment jobs to BC/BC2...")
                 # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
-                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._args.at, self._log)
+                if  self._args.rc:
+                    rc = True
+                else:
+                    rc = False
+                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(),
+                                                            ref_path, sam_output, sh_output, self._args.at,
+                                                            self._log, rc)
                 self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
             elif self._args.environment == "DC":
@@ -168,7 +174,13 @@ class fastq2counts(object):
                 os.system("mkdir "+sh_output)
 
                 self._log.info("Submitting alignment jobs to DC...")
-                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(), ref_path, sam_output, sh_output, self._args.at, self._log)
+                if  self._args.rc:
+                    rc = True
+                else:
+                    rc = False
+                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(),
+                                                           ref_path, sam_output, sh_output,
+                                                           self._args.at, self._log, rc)
                 self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
 
@@ -520,6 +532,7 @@ if __name__ == "__main__":
         (default = 36h)", default=36)
     parser.add_argument("-c", type=int, help="Number of cores", default=16)
     parser.add_argument("-test", action="store_true", help="Turn on testing mode")
+    parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
     ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
     ##    filtering mutations (default = 0.99)", type=float, default = 0.99)
     ##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \

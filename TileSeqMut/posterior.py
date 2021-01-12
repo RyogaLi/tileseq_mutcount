@@ -53,13 +53,13 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
                 all_prob["prob"].append(pos[row["alt_r2"]])
                 all_prob["read"].append("r2")
 
-                if pos[row["ref_r2"]] > pos[row["alt_r2"]]:
-                    # this means that wt has higher pos-prob, then we dump this mutation
-                    all_prob["pass"].append(-1)
+                # if pos[row["ref_r2"]] > pos[row["alt_r2"]]:
+                #     # this means that wt has higher pos-prob, then we dump this mutation
+                #     all_prob["pass"].append(-1)
 
                 # if we only consider the probability of mutation that we got from r2
                 # check if this is greater than the probability cutoff
-                if pos[row["ref_r2"]] > cut_off and c_size > 1:
+                if pos[row["alt_r2"]] > cut_off and c_size > 1:
                     # add this information to tmp prob df
                     tmp_cluster_mut["m"].append(row["m_r2"])
                     tmp_cluster_mut["prob"].append(pos[row["alt_r2"]])
@@ -73,6 +73,7 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
                     pos_prob["read"].append("r2")
                 else:
                     all_prob["pass"].append(-1)
+
                 r = "r2"
 
             elif (pd.isnull(row["m_r2"]) or row["alt_r2"] == "N") and not pd.isnull(row["ref_r1"]):
@@ -90,12 +91,12 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
                 all_prob["prob"].append(pos[row["alt_r1"]])
                 all_prob["read"].append("r1")
 
-                if pos[row["ref_r1"]] > pos[row["alt_r1"]]:
-                    all_prob["pass"].append(-1)
+                # if pos[row["ref_r1"]] > pos[row["alt_r1"]]:
+                #     all_prob["pass"].append(-1)
 
                 # if we only consider the probability of mutation that we got from r2
                 # check if this is greater than the probability cutoff
-                if pos[row["ref_r1"]] > cut_off and c_size > 1:
+                if pos[row["alt_r1"]] > cut_off and c_size > 1:
                     # add this information to tmp prob df
                     tmp_cluster_mut["m"].append(row["m_r1"])
                     tmp_cluster_mut["prob"].append(pos[row["alt_r1"]])
@@ -123,14 +124,14 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
 
                 # if we only consider the probability of mutation that we got from r1
                 # check if this is greater than the probability cutoff
-                if pos[row["ref_r1"]] > cut_off and c_size > 1:
+                if pos[row["alt_r1"]] > cut_off and c_size > 1:
                     # add this information to tmp prob df
                     tmp_cluster_mut["m"].append(row["m_r1"])
                     tmp_cluster_mut["prob"].append(pos[row["alt_r1"]])
                     tmp_cluster_mut["read"].append("r1")
                 # if we only consider the probability of mutation that we got from r2
                 # check if this is greater than the probability cutoff
-                if pos[row["ref_r2"]] > cut_off and c_size > 1:
+                if pos[row["alt_r2"]] > cut_off and c_size > 1:
                     # add this information to tmp prob df
                     tmp_cluster_mut["m"].append(row["m_r2"])
                     tmp_cluster_mut["prob"].append(pos[row["alt_r2"]])

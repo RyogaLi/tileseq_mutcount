@@ -44,7 +44,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
         os.system(sub_cmd)
         #break
 
-def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
+def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
     """
     submit jobs to BC/BC2
     return a df with columns: [R1, R2, r1_sam, r2_sam]
@@ -61,7 +61,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile)
+        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc)
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         # create log file for alignment
@@ -75,7 +75,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
 
     return fastq_map, all_job_id
 
-def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging):
+def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
     """
     submit jobs to BC/BC2
     return a df with columns: [R1, R2, r1_sam, r2_sam]
@@ -92,7 +92,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile)
+        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc)
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         # create log file for alignment
@@ -139,7 +139,7 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger, cores):
         os.system(f"chmod 755 {shfile}")
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
-    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "15", shfile]
+    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "25", shfile]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()

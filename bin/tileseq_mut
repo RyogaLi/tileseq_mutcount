@@ -34,8 +34,9 @@ parser.add_argument("-override", "--sr_Override", action="store_true",
 					help="Provide this argument when there is only one replicate")
 parser.add_argument("-c", type=int, help="Number of cores", default=16)
 parser.add_argument("-test", action="store_true", help="Turn on testing mode")
+parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
 args = parser.parse_args()
 
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.2.831")
+print("TileSeqMut release 0.3.3: Added option to detect RC aligned reads in fastq files")
 main(args)

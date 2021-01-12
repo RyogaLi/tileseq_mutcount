@@ -386,8 +386,7 @@ class readSam(object):
         self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
         # wait for all jobs to finish
         all_df = []
-        clustered_r1_joined = []
-        clustered_r2_joined = []
+
         for job in jobs:
             hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = job.get()
             if len(hgvs) != 0:
@@ -457,12 +456,14 @@ class readSam(object):
 
         r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
         r1_df = r1_df.reset_index()
-        r1_df.columns = ["HGVS", "count"]
+        if not r1_df.empty:
+            r1_df.columns = ["HGVS", "count"]
         r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
 
         r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
         r2_df = r2_df.reset_index()
-        r2_df.columns = ["HGVS", "count"]
+        if not r2_df.empty:
+            r2_df.columns = ["HGVS", "count"]
         r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
         #
         # self._mut_log.info(f"Reading posterior filtered dfs ...")
@@ -485,8 +486,8 @@ def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual,
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
-    hgvs, outside_mut, pos_df, all_df = mut_parser._main()
-    return hgvs, outside_mut, pos_df, all_df
+    hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
+    return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 
 
 # if __name__ == "__main__":

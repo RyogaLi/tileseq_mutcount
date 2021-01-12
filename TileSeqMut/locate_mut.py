@@ -177,7 +177,7 @@ class MutParser(object):
             # print(pos_df)
             print(all_df)
 
-        return hgvs, outside_mut, all_df, hgvs_r1_clusters, outside_mut_r1, hgvs_r2_clusters, outside_mut_r2
+        return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
