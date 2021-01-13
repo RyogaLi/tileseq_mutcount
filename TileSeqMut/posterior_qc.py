@@ -101,6 +101,8 @@ class PosteriorQC(object):
         read2_only.prob = read2_only.prob.astype(float)
         read1_only_marginal = self._calculate_frequency(read1_only)
         read2_only_marginal = self._calculate_frequency(read2_only)
+        print(read1_only_marginal)
+        print(read2_only_marginal)
 
         map_r1 = {"1": "R1_Passed", "-1": "R1_Discarded"}
         map_r2 = {"1": "R2_Passed", "-1": "R2_Discarded"}
@@ -166,15 +168,29 @@ class PosteriorQC(object):
         read1_only["perc"] = read1_only.index / (read1_only.shape[0] - 1)
         read2_only["perc"] = read2_only.index / (read2_only.shape[0] - 1)
 
-        total_both = both_read[["label", "pass"]].value_counts().to_frame()
-        total_r1 = read1_only[["label", "pass"]].value_counts().to_frame()
-        total_r2 = read2_only[["label", "pass"]].value_counts().to_frame()
+        # unique variants r1 only
+        unique_r1_only = read1_only.drop_duplicates(subset=["mut"])
+        # unique variants r2 only
+        unique_r2_only = read2_only.drop_duplicates(subset=["mut"])
+        # unique variants both
+        unique_both = both_read.drop_duplicates(subset=["mut"])
+
+        print(read1_only.shape, read2_only.shape, both_read.shape)
+
+        print(unique_r1_only.shape, unique_r2_only.shape, unique_both.shape)
+
+
+        total_both = unique_both[["label", "pass"]].value_counts().to_frame()
+        total_r1 = unique_r1_only[["label", "pass"]].value_counts().to_frame()
+        total_r2 = unique_r2_only[["label", "pass"]].value_counts().to_frame()
         bar_plot_df = pd.concat([total_both, total_r2, total_r1]).reset_index()
         bar_plot_df.columns = ["label", "pass", "count"]
 
         map = {"R1_Passed": "Passed", "R1_Discarded": "Discarded", "R2_Passed": "Passed", "R2_Discarded": "Discarded"}
+        color_dict = {"Passed": "#45736A", "Discarded": "#D94E4E"}
+
         bar_plot_df = bar_plot_df.replace({"pass": map})
-        g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0])
+        g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0], palette=color_dict)
         for p in g.patches:
             height = p.get_height()
             if math.isnan(height):
@@ -186,7 +202,7 @@ class PosteriorQC(object):
         handles, labels = axes[0][0].get_legend_handles_labels()
         axes[0][0].legend(handles=handles, labels=labels)
         axes[0][0].set_xlabel("")
-        axes[0][0].set_title("Number of variants found")
+        axes[0][0].set_title("Number of unique mutations (SNV) found")
 
         # join r1 and r2
         join_R1R2 = [read1_only, read2_only]
@@ -423,6 +439,7 @@ class PosteriorQC(object):
             #     pdf.image(image, 2, 25, 200, 245)
             pdf.output(f"{self._output}/{c}_posteriorQC.pdf", "F")
         os.system(f"rm {self._output}/*.png")
+        self._logger.info("Posterior QC completed.")
 
 
 if __name__ == '__main__':
