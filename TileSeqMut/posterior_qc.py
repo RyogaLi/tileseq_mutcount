@@ -16,8 +16,8 @@ import warnings
 from scipy import stats
 import matplotlib.pyplot as plt
 sys.path.append('..')
-# from TileSeqMut import help_functions
-import help_functions
+from TileSeqMut import help_functions
+# import help_functions
 warnings.simplefilter(action='ignore')
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca

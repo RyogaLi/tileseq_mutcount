@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.7
+import glob
 import math
 import sys
 import os
@@ -7,6 +8,7 @@ import numpy as np
 import argparse
 from ast import literal_eval
 from matplotlib_venn import venn2
+from fpdf import FPDF
 from matplotlib import rc
 
 import seaborn as sns
@@ -14,8 +16,8 @@ import warnings
 from scipy import stats
 import matplotlib.pyplot as plt
 sys.path.append('..')
-# from TileSeqMut import help_functions
-import help_functions
+from TileSeqMut import help_functions
+# import help_functions
 warnings.simplefilter(action='ignore')
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
@@ -53,7 +55,7 @@ class PosteriorQC(object):
         self._logger.info(f"Reading parameters from {os.path.abspath(param_json)}")
         self._logger.info(f"Saving output plots to {os.path.abspath(self._output)}")
 
-    def prob_analysis(self, row):
+    def prob_analysis(self, row, pdf):
         """
         @param row: row of dataframe contains path to prob files and sample info
         """
@@ -63,9 +65,10 @@ class PosteriorQC(object):
         # print(prob_df)
         # self._plot_prob(prob_df)
         # self._plot_marginal(prob_df)
-        sns.set(font_scale=1.3)
+        sns.set(font_scale=1.7)
         sns.set_style("whitegrid")
         fig, axes = plt.subplots(3, 2, figsize=(16, 18))
+        axes[-1, -1].axis('off')
         all_prob_df = pd.read_csv(row.prob_all, names=["mut", "prob", "read", "pass"], header=None)
         pop_r1_df = pd.read_csv(row.popmut_r1, skiprows=9)
         pop_r2_df = pd.read_csv(row.popmut_r2, skiprows=9)
@@ -76,7 +79,8 @@ class PosteriorQC(object):
         fig.tight_layout(pad=1)
         plt.savefig(os.path.join(self._output, f"{fig_title}.png"), format="png")
         plt.close()
-        # exit()
+        pdf.add_page()
+        pdf.image(os.path.join(self._output, f"{fig_title}.png"), 2, 25, 200, 235)
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}.png'
         # self._plot_counts(prob_df, plot_name)
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}_all.png'
@@ -97,6 +101,8 @@ class PosteriorQC(object):
         read2_only.prob = read2_only.prob.astype(float)
         read1_only_marginal = self._calculate_frequency(read1_only)
         read2_only_marginal = self._calculate_frequency(read2_only)
+        print(read1_only_marginal)
+        print(read2_only_marginal)
 
         map_r1 = {"1": "R1_Passed", "-1": "R1_Discarded"}
         map_r2 = {"1": "R2_Passed", "-1": "R2_Discarded"}
@@ -162,16 +168,29 @@ class PosteriorQC(object):
         read1_only["perc"] = read1_only.index / (read1_only.shape[0] - 1)
         read2_only["perc"] = read2_only.index / (read2_only.shape[0] - 1)
 
-        total_both = both_read[["label", "pass"]].value_counts().to_frame()
-        total_r1 = read1_only[["label", "pass"]].value_counts().to_frame()
-        total_r2 = read2_only[["label", "pass"]].value_counts().to_frame()
+        # unique variants r1 only
+        unique_r1_only = read1_only.drop_duplicates(subset=["mut"])
+        # unique variants r2 only
+        unique_r2_only = read2_only.drop_duplicates(subset=["mut"])
+        # unique variants both
+        unique_both = both_read.drop_duplicates(subset=["mut"])
+
+        print(read1_only.shape, read2_only.shape, both_read.shape)
+
+        print(unique_r1_only.shape, unique_r2_only.shape, unique_both.shape)
+
+
+        total_both = unique_both[["label", "pass"]].value_counts().to_frame()
+        total_r1 = unique_r1_only[["label", "pass"]].value_counts().to_frame()
+        total_r2 = unique_r2_only[["label", "pass"]].value_counts().to_frame()
         bar_plot_df = pd.concat([total_both, total_r2, total_r1]).reset_index()
         bar_plot_df.columns = ["label", "pass", "count"]
 
         map = {"R1_Passed": "Passed", "R1_Discarded": "Discarded", "R2_Passed": "Passed", "R2_Discarded": "Discarded"}
+        color_dict = {"Passed": "#45736A", "Discarded": "#D94E4E"}
+
         bar_plot_df = bar_plot_df.replace({"pass": map})
-        print(bar_plot_df)
-        g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0])
+        g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0], palette=color_dict)
         for p in g.patches:
             height = p.get_height()
             if math.isnan(height):
@@ -183,7 +202,7 @@ class PosteriorQC(object):
         handles, labels = axes[0][0].get_legend_handles_labels()
         axes[0][0].legend(handles=handles, labels=labels)
         axes[0][0].set_xlabel("")
-        axes[0][0].set_title("Number of variants found")
+        axes[0][0].set_title("Number of unique mutations (SNV) found")
 
         # join r1 and r2
         join_R1R2 = [read1_only, read2_only]
@@ -221,8 +240,8 @@ class PosteriorQC(object):
 
         axes[1][1].set_title("Corr. of posterior prob of mutations found on both reads")
         axes[1][1].text(-3, -1, f"PCC: {float('{:.4f}'.format(pcc))}")
-        axes[1][1].set_ylabel("Posterior prob (Read 1)")
-        axes[1][1].set_xlabel("Posterior prob (Read 2)")
+        axes[1][1].set_ylabel("Posterior prob (log) (Read 1)")
+        axes[1][1].set_xlabel("Posterior prob (log) (Read 2)")
 
         # exit()
 
@@ -279,10 +298,15 @@ class PosteriorQC(object):
         unique_r1 = unique_r1.sort_values(by="marginal freq", ascending=False)
         unique_r2 = unique_r2.sort_values(by="marginal freq", ascending=False)
 
-        venn2([set(unique_r1.HGVS.tolist()), set(unique_r2.HGVS.tolist())], set_labels = ('Read 1', 'Read 2'),
-              ax = axes[2][0])
-        j_dist = len(intersect)/len(all_hgvs)
-        axes[2][0].text(-0.6, .6, f"Jaccard Index: {round(j_dist, 2)}")
+        if len(all_hgvs) != 0:
+            j_dist = len(intersect) / len(all_hgvs)
+            venn2([set(unique_r1.HGVS.tolist()), set(unique_r2.HGVS.tolist())], set_labels=('Read 1', 'Read 2'),
+                  ax=axes[2][0])
+            axes[2][0].set_title("Unique 2/3nt changes in R1 or R2 (passed threshold cutoff)")
+            axes[2][0].text(.5, .6, f"Jaccard Index: {round(j_dist, 2)}")
+
+        else: # no 2/3nt changes found on either reads
+            axes[2][0].axis("off")
 
         # sns.scatterplot(unique_r1["HGVS"], unique_r1["marginal freq"], ax = axes[2][0])
         # sns.scatterplot(unique_r2["HGVS"], unique_r2["marginal freq"], ax = axes[2][1])
@@ -397,7 +421,6 @@ class PosteriorQC(object):
         # go through each condition to make QC plots
         conditions = list(set(merge_file_samples["Condition"]))
         for c in conditions:
-            print(c)
             # get number of subplots we have to make for this condition
             # fig, axes = plt.subplots(4, 2, figsize=(13, 30))
             c_df = merge_file_samples.loc[merge_file_samples["Condition"] == c]
@@ -405,8 +428,18 @@ class PosteriorQC(object):
             c_df = c_df.sort_values(by="Tile ID")
             # print(c_df["Sample ID"])
             # exit()
-            c_df.apply(lambda x: self.prob_analysis(x), axis=1)
-
+            pdf = FPDF('P', 'mm', 'A4')
+            c_df.apply(lambda x: self.prob_analysis(x, pdf), axis=1)
+            #
+            # # merge all the files for this condition
+            # c_list = glob.glob(f"{self._output}/{c}*")
+            # c_list.sort()
+            # for image in c_list:
+            #     pdf.add_page()
+            #     pdf.image(image, 2, 25, 200, 245)
+            pdf.output(f"{self._output}/{c}_posteriorQC.pdf", "F")
+        os.system(f"rm {self._output}/*.png")
+        self._logger.info("Posterior QC completed.")
 
 
 if __name__ == '__main__':

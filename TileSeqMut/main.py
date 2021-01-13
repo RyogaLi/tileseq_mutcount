@@ -529,7 +529,7 @@ if __name__ == "__main__":
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
-        (default = 36h)", default=36)
+        (default = 48h)", default=48)
     parser.add_argument("-c", type=int, help="Number of cores", default=16)
     parser.add_argument("-test", action="store_true", help="Turn on testing mode")
     parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")

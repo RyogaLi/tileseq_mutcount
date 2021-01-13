@@ -29,7 +29,7 @@ parser.add_argument("-env", "--environment", help="The cluster used to \
 parser.add_argument("-at", type=int, help="Alignment time \
     (default = 8h)", default=8)
 parser.add_argument("-mt", type=int, help="Mutation call time \
-    (default = 36h)", default=36)
+    (default = 48h)", default=48)
 parser.add_argument("-override", "--sr_Override", action="store_true",
 					help="Provide this argument when there is only one replicate")
 parser.add_argument("-c", type=int, help="Number of cores", default=16)

@@ -20,7 +20,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.3.4", # CHANGE RELEASE NOTE IN MAIN
+    version="0.3.5", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scripts for TileSeq sequencing data",
@@ -50,7 +50,7 @@ setup(
 		'Programming Language :: Python :: 3.8',
 	],
 	packages=find_packages(),  # Optional
-	install_requires=['pandas', 'seaborn', 'numpy', 'biopython'],
+	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'fpdf'],
     python_requires='>=3.7',
 
 	# # To provide executable scripts, use entry points in preference to the

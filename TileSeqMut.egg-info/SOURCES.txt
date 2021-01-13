@@ -18,4 +18,5 @@ TileSeqMut.egg-info/dependency_links.txt
 TileSeqMut.egg-info/requires.txt
 TileSeqMut.egg-info/top_level.txt
 bin/mergeRuns
+bin/posterior_QC
 bin/tileseq_mut

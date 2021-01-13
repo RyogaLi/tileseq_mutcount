@@ -107,6 +107,7 @@ def merge_main(args):
 
 	# make a json file with merged sample names (copy the other information from old json files)
 	new_paramsheet = ""
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='TileSeq mutation counts')
 	# user input arguments
