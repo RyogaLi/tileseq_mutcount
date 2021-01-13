@@ -1,3 +1,4 @@
 01/13/2021 03:36:46 PM - posteriorQC - INFO - Reading files from /Users/roujia/Desktop/testdata_tileseq/LPL1124_v032_2021-01-11-17-24-52_mut_count
 01/13/2021 03:36:46 PM - posteriorQC - INFO - Reading parameters from /Users/roujia/Desktop/testdata_tileseq/LPL1124_v032_2021-01-11-17-24-52_mut_count/201124_LPL_QC.json
 01/13/2021 03:36:46 PM - posteriorQC - INFO - Saving output plots to /Users/roujia/Desktop/testdata_tileseq/LPL1124_v032_2021-01-11-17-24-52_mut_count/posterior_qc
+01/13/2021 03:44:24 PM - posteriorQC - INFO - Posterior QC completed.

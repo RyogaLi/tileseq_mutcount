@@ -38,5 +38,5 @@ parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
 args = parser.parse_args()
 
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.3.3: Added option to detect RC aligned reads in fastq files")
+print("TileSeqMut release 0.3.4: Added Posterior QC")
 main(args)

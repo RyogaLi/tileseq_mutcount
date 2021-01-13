@@ -1,0 +1,21 @@
+#!/usr/bin/env python3.7
+
+# Author: Roujia Li
+# email: Roujia.li@mail.utoronto.ca
+
+import argparse
+
+from TileSeqMut.posterior_qc import PosteriorQC
+
+parser = argparse.ArgumentParser(description='TileSeq mutation posterior QC, this will generate posterior_QC folder '
+                                             'in *_mut_count')
+# user input arguments
+parser.add_argument("-i", "--input", help="Path to folder that contains mutation counts (*_mut_count)", type=str,
+                    required=True)
+parser.add_argument("-p", "--param", help="json paramter file", type=str, required=True)
+
+args = parser.parse_args()
+
+p_qc = PosteriorQC(args.input, args.param)
+p_qc.runQC()
+
