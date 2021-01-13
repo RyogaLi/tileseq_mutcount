@@ -1,0 +1,42 @@
+#!python
+
+# Author: Roujia Li
+# email: Roujia.li@mail.utoronto.ca
+
+from TileSeqMut.main import main
+import argparse
+
+parser = argparse.ArgumentParser(description='TileSeq mutation counts')
+# user input arguments
+parser.add_argument("-f", "--fastq", help="Path to all fastq files you want to analyze", type=str)
+parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
+parser.add_argument("-p", "--param", help="csv paramter file", type=str, required=True)
+parser.add_argument("--skip_alignment", action="store_true",
+					help="skip alignment for this analysis, ONLY submit jobs for counting mutations in existing output folder")
+parser.add_argument("-n", "--name", help="Name for this run", type=str, required=True)
+parser.add_argument("-r1", help="r1 SAM file", type=str)
+parser.add_argument("-r2", help="r2 SAM file", type=str)
+
+# user input arguments with default values set
+parser.add_argument("-log", "--log_level", help="set log level: debug, \
+    info, warning, error, critical. (default = debug)", type=str, default="debug")
+parser.add_argument("-env", "--environment", help="The cluster used to \
+    run this script (default = DC)", type=str, default="DC")
+##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
+##    filtering mutations (default = 0.99)", type=float, default = 0.99)
+##parser.add_argument("-min", "--min_cover", help="Minimal percentage required to \
+##    cover the tile (default = 0.4)", type=float, default=0.6)
+parser.add_argument("-at", type=int, help="Alignment time \
+    (default = 8h)", default=8)
+parser.add_argument("-mt", type=int, help="Mutation call time \
+    (default = 48h)", default=48)
+parser.add_argument("-override", "--sr_Override", action="store_true",
+					help="Provide this argument when there is only one replicate")
+parser.add_argument("-c", type=int, help="Number of cores", default=16)
+parser.add_argument("-test", action="store_true", help="Turn on testing mode")
+parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
+args = parser.parse_args()
+
+# print("TileSeqMut release 0.2.1: Supports multiprocess")
+print("TileSeqMut release 0.3.8: Added Posterior QC")
+main(args)
