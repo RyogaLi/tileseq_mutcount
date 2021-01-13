@@ -9,6 +9,8 @@ import argparse
 from ast import literal_eval
 from matplotlib_venn import venn2
 from fpdf import FPDF
+import progressbar
+
 from matplotlib import rc
 
 import seaborn as sns
@@ -54,8 +56,9 @@ class PosteriorQC(object):
         self._logger.info(f"Reading files from {os.path.abspath(self._mut_dir)}")
         self._logger.info(f"Reading parameters from {os.path.abspath(param_json)}")
         self._logger.info(f"Saving output plots to {os.path.abspath(self._output)}")
+        self._i = 0
 
-    def prob_analysis(self, row, pdf):
+    def prob_analysis(self, row, pdf, bar):
         """
         @param row: row of dataframe contains path to prob files and sample info
         """
@@ -81,6 +84,10 @@ class PosteriorQC(object):
         plt.close()
         pdf.add_page()
         pdf.image(os.path.join(self._output, f"{fig_title}.png"), 2, 25, 200, 235)
+        bar.update(self._i + 1)
+        self._i +=1
+        # self._logger.info(f"Processed sample {fig_title}")
+
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}.png'
         # self._plot_counts(prob_df, plot_name)
         # plot_name = f'Tile{row["Tile ID"]}_{row["Condition"]}_t{row["Time point"]}_rep{row["Replicate"]}_all.png'
@@ -127,7 +134,7 @@ class PosteriorQC(object):
 
         axes[0][1].set_ylabel("Average posterior prob. (log)")
         axes[0][1].set_xlabel("Marginal frequency")
-        axes[0][1].set_title("Mutations found only on R1 or R2")
+        axes[0][1].set_title("SNVs found only on R1 or R2")
 
         # axes[0][0].get_legend().remove()
         # plt.show()
@@ -200,7 +207,7 @@ class PosteriorQC(object):
         handles, labels = axes[0][0].get_legend_handles_labels()
         axes[0][0].legend(handles=handles, labels=labels)
         axes[0][0].set_xlabel("")
-        axes[0][0].set_title("Number of unique mutations (SNV) found")
+        axes[0][0].set_title("Number of unique mutations (SNVs) found")
 
         # join r1 and r2
         join_R1R2 = [read1_only, read2_only]
@@ -232,11 +239,11 @@ class PosteriorQC(object):
         # plot prob correlation of r1 and r2
         sns.scatterplot(np.log(both_read.prob_r1), np.log(both_read.prob_r2), s=10, ax=axes[1][1], color="black")
         pcc = stats.pearsonr(both_read.prob_r1, both_read.prob_r2)[0]
-        axes[1][0].set_title("Posterior prob of mutations only found on R1 or R2")
+        axes[1][0].set_title("Posterior prob of SNVs only found on R1 or R2")
         axes[1][0].set_ylabel("Posterior prob (log)")
-        axes[1][0].set_xlabel("Proportion of mutations")
+        axes[1][0].set_xlabel("Proportion of SNVs")
 
-        axes[1][1].set_title("Corr. of posterior prob of mutations found on both reads")
+        axes[1][1].set_title("Corr. of posterior prob of SNVs found on both reads")
         axes[1][1].text(-3, -1, f"PCC: {float('{:.4f}'.format(pcc))}")
         axes[1][1].set_ylabel("Posterior prob (log) (Read 1)")
         axes[1][1].set_xlabel("Posterior prob (log) (Read 2)")
@@ -418,6 +425,11 @@ class PosteriorQC(object):
 
         # go through each condition to make QC plots
         conditions = list(set(merge_file_samples["Condition"]))
+        total_sample = merge_file_samples.shape[0]
+        self._logger.info(f"Total sampels = {total_sample}")
+        bar = progressbar.ProgressBar(maxval=total_sample, widgets=[progressbar.Bar('=', '[', ']'), ' ',
+                                                                    progressbar.Percentage()])
+        bar.start()
         for c in conditions:
             # get number of subplots we have to make for this condition
             # fig, axes = plt.subplots(4, 2, figsize=(13, 30))
@@ -427,7 +439,7 @@ class PosteriorQC(object):
             # print(c_df["Sample ID"])
             # exit()
             pdf = FPDF('P', 'mm', 'A4')
-            c_df.apply(lambda x: self.prob_analysis(x, pdf), axis=1)
+            c_df.apply(lambda x: self.prob_analysis(x, pdf, bar), axis=1)
             #
             # # merge all the files for this condition
             # c_list = glob.glob(f"{self._output}/{c}*")
@@ -435,7 +447,9 @@ class PosteriorQC(object):
             # for image in c_list:
             #     pdf.add_page()
             #     pdf.image(image, 2, 25, 200, 245)
+
             pdf.output(f"{self._output}/{c}_posteriorQC.pdf", "F")
+        bar.finish()
         os.system(f"rm {self._output}/*.png")
         self._logger.info("Posterior QC completed.")
 

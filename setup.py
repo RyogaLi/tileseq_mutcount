@@ -50,7 +50,7 @@ setup(
 		'Programming Language :: Python :: 3.8',
 	],
 	packages=find_packages(),  # Optional
-	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'fpdf'],
+	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'fpdf', 'progressbar'],
     python_requires='>=3.7',
 
 	# # To provide executable scripts, use entry points in preference to the
