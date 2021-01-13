@@ -101,8 +101,6 @@ class PosteriorQC(object):
         read2_only.prob = read2_only.prob.astype(float)
         read1_only_marginal = self._calculate_frequency(read1_only)
         read2_only_marginal = self._calculate_frequency(read2_only)
-        print(read1_only_marginal)
-        print(read2_only_marginal)
 
         map_r1 = {"1": "R1_Passed", "-1": "R1_Discarded"}
         map_r2 = {"1": "R2_Passed", "-1": "R2_Discarded"}
@@ -174,10 +172,10 @@ class PosteriorQC(object):
         unique_r2_only = read2_only.drop_duplicates(subset=["mut"])
         # unique variants both
         unique_both = both_read.drop_duplicates(subset=["mut"])
-
-        print(read1_only.shape, read2_only.shape, both_read.shape)
-
-        print(unique_r1_only.shape, unique_r2_only.shape, unique_both.shape)
+        #
+        # print(read1_only.shape, read2_only.shape, both_read.shape)
+        #
+        # print(unique_r1_only.shape, unique_r2_only.shape, unique_both.shape)
 
 
         total_both = unique_both[["label", "pass"]].value_counts().to_frame()
