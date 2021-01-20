@@ -18,8 +18,8 @@ import warnings
 from scipy import stats
 import matplotlib.pyplot as plt
 sys.path.append('..')
-# from TileSeqMut import help_functions
-import help_functions
+from TileSeqMut import help_functions
+# import help_functions
 warnings.simplefilter(action='ignore')
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
@@ -417,7 +417,7 @@ class PosteriorQC(object):
             all_prob_f = os.path.join(self._mut_dir, f"{sample}_posprob_all.csv")
             if not os.path.isfile(all_prob_f):
                 # raise FileNotFoundError(f"{sample}_posprob_all.csv")
-                print(f"{sample}_posprob_all.csv")
+                self._logger(f"Posterior probability files not found for {sample}_posprob_all.csv")
                 continue
 
             pop_r1_f = os.path.join(self._mut_dir, f"counts_sample_{sample}_r1.csv")
