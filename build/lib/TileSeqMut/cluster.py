@@ -66,7 +66,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob2", "-w", str(time), "-c", "3", str(shfile), "2>", sam_log_f]
+        sub_cmd = ["submitjob2", "-w", str(time), "-c", "1", str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
@@ -97,7 +97,7 @@ def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output,
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob","-w", str(time),"-c", "3", str(shfile), "2>", sam_log_f]
+        sub_cmd = ["submitjob","-w", str(time),"-c", "1", str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
         all_job_id.append(job_id)

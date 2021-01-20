@@ -19,7 +19,7 @@ parser.add_argument("-r2", help="r2 SAM file", type=str)
 
 # user input arguments with default values set
 parser.add_argument("-log", "--log_level", help="set log level: debug, \
-    info, warning, error, critical. (default = debug)", type=str, default="debug")
+    info, warning, error, critical. (default = info)", type=str, default="info")
 parser.add_argument("-env", "--environment", help="The cluster used to \
     run this script (default = DC)", type=str, default="DC")
 ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
@@ -38,5 +38,5 @@ parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
 args = parser.parse_args()
 
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.3.8: Added Posterior QC")
+print("TileSeqMut release 0.3.901: Added random ds")
 main(args)

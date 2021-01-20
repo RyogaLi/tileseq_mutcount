@@ -102,9 +102,10 @@ class fastq2counts(object):
         # also check if any fastq file is empty
         fastq_sample_id = [os.path.basename(i).split("_")[0] for i in self._fastq_list]
         fastq_sample_id = list(set(fastq_sample_id))
-
+        self._log.debug(f"Fastq sample ID in input folder: {fastq_sample_id}")
         # validation
         # check if input fastq files contains all the samples in paramter file
+        self._log.debug(f"Sample names in parameter sheet: {set(self._sample_names)}")
         if set(self._sample_names).issubset(fastq_sample_id):
             self._log.info("All samples found")
             self._log.info(f"In total there are {len(list(set(self._sample_names)))} samples in the csv file")
@@ -113,8 +114,8 @@ class fastq2counts(object):
             test= list(np.setdiff1d(self._sample_names,fastq_sample_id))
             join_list = ",".join(test)
             self._log.error("fastq files do not match input samples.")
-            self._log.error(f"Fastq files not found for {join_list}")
-            exit(1)
+            self._log.error(f"Fastq files not found for sample {join_list}")
+            raise FileNotFoundError()
 
         # create mappving for R1 and R2 for each sample
         # ONLY samples provided in the parameter files will be analyzed
@@ -523,7 +524,7 @@ if __name__ == "__main__":
 
     # user input arguments with default values set
     parser.add_argument("-log", "--log_level", help="set log level: debug, \
-        info, warning, error, critical. (default = debug)", type=str, default="debug")
+        info, warning, error, critical. (default = info)", type=str, default="info")
     parser.add_argument("-env", "--environment", help= "The cluster used to \
         run this script (default = DC)",type=str, default="DC")
     parser.add_argument("-at", type = int, help="Alignment time \

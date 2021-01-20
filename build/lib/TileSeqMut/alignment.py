@@ -36,11 +36,11 @@ def align_main(ref, r1, r2, sam_path, shfile, rc=False):
     r2_sam_file = os.path.join(sam_path, os.path.basename(r2).replace(".fastq.gz", ".sam"))
 
     if not rc: # do not need to check for reverse complement
-        r1_cmd = f"bowtie2 -p 3 --no-head --norc --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}"
-        r2_cmd = f"bowtie2 -p 3 --no-head --nofw --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}"
+        r1_cmd = f"bowtie2 --no-head --norc --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}"
+        r2_cmd = f"bowtie2 --no-head --nofw --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}"
     else:
-        r1_cmd = f"bowtie2 -p 3 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}"
-        r2_cmd = f"bowtie2 -p 3 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}"
+        r1_cmd = f"bowtie2 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}"
+        r2_cmd = f"bowtie2 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}"
 
     with open(shfile, "w") as f:
         f.write(r1_cmd + "\n")

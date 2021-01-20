@@ -3,3 +3,4 @@ seaborn
 numpy
 biopython
 fpdf
+progressbar

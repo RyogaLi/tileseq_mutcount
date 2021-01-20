@@ -18,16 +18,17 @@ with open("README.md", "r") as fh:
 # pypi: twine upload dist/*
 # pip install TileSeqMut
 
+
 setup(
     name="TileSeqMut",
-    version="0.3.8", # CHANGE RELEASE NOTE IN MAIN
+    version="0.4.13", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
-    description="Analysis scripts for TileSeq sequencing data",
+    description="Analysis scriptsTileSeqMut for TileSeq sequencing data",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/RyogaLi/tilseq_mutcount",
-	scripts=['bin/tileseq_mut', 'bin/mergeRuns', 'bin/posterior_QC'],
+	scripts=['bin/tileseq_mut', 'bin/mergeRuns', 'bin/posterior_QC', 'bin/random_ds'],
 	# For a list of valid classifiers, see https://pypi.org/classifiers/
 	classifiers=[  # Optional
 		# How mature is this project? Common values are

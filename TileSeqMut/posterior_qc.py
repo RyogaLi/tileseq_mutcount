@@ -18,8 +18,8 @@ import warnings
 from scipy import stats
 import matplotlib.pyplot as plt
 sys.path.append('..')
-from TileSeqMut import help_functions
-# import help_functions
+# from TileSeqMut import help_functions
+import help_functions
 warnings.simplefilter(action='ignore')
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
@@ -82,9 +82,11 @@ class PosteriorQC(object):
         fig.tight_layout(pad=1)
         plt.savefig(os.path.join(self._output, f"{fig_title}.png"), format="png")
         plt.close()
+        self._logger.debug("plot closed")
         pdf.add_page()
         pdf.image(os.path.join(self._output, f"{fig_title}.png"), 2, 25, 200, 235)
         bar.update(self._i + 1)
+        self._logger.debug("added to pdf")
         self._i +=1
         # self._logger.info(f"Processed sample {fig_title}")
 
@@ -106,15 +108,16 @@ class PosteriorQC(object):
 
         read1_only.prob = read1_only.prob.astype(float)
         read2_only.prob = read2_only.prob.astype(float)
+        # self._logger.info("Calculating frequencies..")
         read1_only_marginal = self._calculate_frequency(read1_only)
         read2_only_marginal = self._calculate_frequency(read2_only)
-
+        # self._logger.info("Finished calc frequencies..")
         map_r1 = {"1": "R1_Passed", "-1": "R1_Discarded"}
         map_r2 = {"1": "R2_Passed", "-1": "R2_Discarded"}
 
         read1_only = read1_only.replace({"pass": map_r1})
         read2_only = read2_only.replace({"pass": map_r2})
-
+        # self._logger.info("Finished mapping values..")
         top90_cut = np.log(0.9)
         top50_cut = np.log(0.5)
         # plot counts vs avg prob
@@ -134,7 +137,7 @@ class PosteriorQC(object):
 
         axes[0][1].set_ylabel("Average posterior prob. (log)")
         axes[0][1].set_xlabel("Marginal frequency")
-        axes[0][1].set_title("SNVs found only on R1 or R2")
+        axes[0][1].set_title("mutations found only on R1 or R2")
 
         # axes[0][0].get_legend().remove()
         # plt.show()
@@ -154,9 +157,11 @@ class PosteriorQC(object):
         # plt.savefig(os.path.join(self._output, f"{fig_title}_marginal_r1r2.pdf"))
         # plt.close()
         # mutations found on both reads
+        # self._logger.info("Reading both read mutations..")
         both_read = df.loc[(df["read"] != "r1") & (df["read"] != "r2")]
         both_read['read'] = [literal_eval(x) for x in both_read['read']]
         both_read['prob'] = [literal_eval(x) for x in both_read['prob']]
+
         both_read[["prob_r1", "prob_r2"]] = pd.DataFrame(both_read['prob'].tolist(), index=both_read.index)
         both_read[["label_r1", "label_r2"]] = pd.DataFrame(both_read['read'].tolist(), index=both_read.index)
         both_read["pass"] = "Discarded"
@@ -164,37 +169,58 @@ class PosteriorQC(object):
         both_read.loc[(both_read.prob_r1 > 0.5) & (both_read.prob_r2 > 0.5), "pass"] = "Passed"
         read1_only["log_prob"] = np.log(read1_only.prob)
         read2_only["log_prob"] = np.log(read2_only.prob)
-
+        # self._logger.info("started sorting...")
         read1_only = read1_only.sort_values(by="prob", ascending=False).reset_index()
         read2_only = read2_only.sort_values(by="prob", ascending=False).reset_index()
+        # self._logger.info("finished sorting...")
         read1_only["label"] = "r1_only"
         read2_only["label"] = "r2_only"
 
         read1_only["perc"] = read1_only.index / (read1_only.shape[0] - 1)
         read2_only["perc"] = read2_only.index / (read2_only.shape[0] - 1)
-
         # unique variants r1 only
         unique_r1_only = read1_only.drop_duplicates(subset=["mut"])
         # unique variants r2 only
         unique_r2_only = read2_only.drop_duplicates(subset=["mut"])
         # unique variants both
         unique_both = both_read.drop_duplicates(subset=["mut"])
-        #
-        # print(read1_only.shape, read2_only.shape, both_read.shape)
-        #
-        # print(unique_r1_only.shape, unique_r2_only.shape, unique_both.shape)
 
+        unique_r1_only[['pos', 'ref', 'alt', 'qual']] = unique_r1_only['mut'].str.split('|', expand=True)
+        unique_r2_only[['pos', 'ref', 'alt', 'qual']] = unique_r2_only['mut'].str.split('|', expand=True)
+        unique_both[['pos', 'ref', 'alt', 'qual']] = unique_both['mut'].str.split('|', expand=True)
 
+        # print(unique_r1_only.columns)
+        # unique variants r1 only
+        unique_r1_only = unique_r1_only.drop_duplicates(subset=['pos', 'ref', 'alt'])
+        # unique variants r2 only
+        unique_r2_only = unique_r2_only.drop_duplicates(subset=['pos', 'ref', 'alt'])
+        # unique variants both
+        unique_both = unique_both.drop_duplicates(subset=['pos', 'ref', 'alt'])
+
+        unique_r1_only["type"] = "SNP"
+        unique_r1_only.loc[(unique_r1_only["alt"].str.contains("ins")) | (unique_r1_only["alt"].str.contains("ins")),
+                        "type"] = "INDEL"
+
+        unique_r2_only["type"] = "SNP"
+        unique_r2_only.loc[(unique_r2_only["alt"].str.contains("ins")) | (unique_r2_only["alt"].str.contains(
+            "ins")), "type"] = "INDEL"
+
+        unique_both["type"] = "SNP"
+        unique_both.loc[(unique_r1_only["alt"].str.contains("ins")) | (unique_both["alt"].str.contains(
+            "ins")), "type"] = "INDEL"
+
+        # self._logger.info("value counts...")
         total_both = unique_both[["label", "pass"]].value_counts().to_frame()
         total_r1 = unique_r1_only[["label", "pass"]].value_counts().to_frame()
         total_r2 = unique_r2_only[["label", "pass"]].value_counts().to_frame()
         bar_plot_df = pd.concat([total_both, total_r2, total_r1]).reset_index()
         bar_plot_df.columns = ["label", "pass", "count"]
+        # self._logger.info("Finished value counts...")
 
         map = {"R1_Passed": "Passed", "R1_Discarded": "Discarded", "R2_Passed": "Passed", "R2_Discarded": "Discarded"}
+        bar_plot_df = bar_plot_df.replace({"pass": map})
         color_dict = {"Passed": "#45736A", "Discarded": "#D94E4E"}
 
-        bar_plot_df = bar_plot_df.replace({"pass": map})
         g = sns.barplot(x="label", y="count", hue="pass", data=bar_plot_df, ax=axes[0][0], palette=color_dict)
         for p in g.patches:
             height = p.get_height()
@@ -207,12 +233,13 @@ class PosteriorQC(object):
         handles, labels = axes[0][0].get_legend_handles_labels()
         axes[0][0].legend(handles=handles, labels=labels)
         axes[0][0].set_xlabel("")
-        axes[0][0].set_title("Number of unique mutations (SNVs) found")
+        axes[0][0].set_title("Number of unique mutations found")
 
+        # self._logger.info("Join R1 and R2 2/3nt...")
         # join r1 and r2
         join_R1R2 = [read1_only, read2_only]
         join_R1R2_df = pd.concat(join_R1R2)
-
+        # self._logger.info("Joined R1 and R2 2/3nt...")
         # Create an array with the colors you want to use
         colors = ["#6BA3F2", "#3866A6"]
         # Set your custom color palette
@@ -235,20 +262,22 @@ class PosteriorQC(object):
 
         axes[1][0].text(0.6666, top50_cut-0.38, "posterior = 0.5", fontsize=10, color="grey")
         axes[1][0].text(0.6666, top90_cut-0.38, "posterior = 0.9", fontsize=10, color="grey")
+        axes[1][0].set_title("Posterior prob of mutations only found on R1 or R2")
+        axes[1][0].set_ylabel("Posterior prob (log)")
+        axes[1][0].set_xlabel("Cumulative proportion of mutations")
 
-        # plot prob correlation of r1 and r2
+        # self._logger.info("plotted plot 3...")
+
+
+        # # plot prob correlation of r1 and r2
         sns.scatterplot(np.log(both_read.prob_r1), np.log(both_read.prob_r2), s=10, ax=axes[1][1], color="black")
         pcc = stats.pearsonr(both_read.prob_r1, both_read.prob_r2)[0]
-        axes[1][0].set_title("Posterior prob of SNVs only found on R1 or R2")
-        axes[1][0].set_ylabel("Posterior prob (log)")
-        axes[1][0].set_xlabel("Proportion of SNVs")
-
-        axes[1][1].set_title("Corr. of posterior prob of SNVs found on both reads")
+        axes[1][1].set_title("Corr. of posterior prob of mutations found on both reads")
         axes[1][1].text(-3, -1, f"PCC: {float('{:.4f}'.format(pcc))}")
         axes[1][1].set_ylabel("Posterior prob (log) (Read 1)")
         axes[1][1].set_xlabel("Posterior prob (log) (Read 2)")
 
-        # exit()
+        # self._logger.info("plotted plot 4...")
 
         # # make plot for mutation on r1 only and r2 only vs all
         # n_r1 = read1_only.mut.value_counts().to_frame().reset_index()
@@ -281,17 +310,6 @@ class PosteriorQC(object):
         total_r2 = df_r2["count"].sum()
         df_r2["marginal freq"] = df_r2["count"] / total_r2
 
-        # sort by freq
-        # df_r1 = df_r1.sort_values(by="marginal freq", ascending=False)
-        # df_r2 = df_r2.sort_values(by="marginal freq", ascending=False)
-        #
-        # sns.scatterplot(df_r1["HGVS"], df_r1["marginal freq"], ax = axes[2][0])
-        # sns.scatterplot(df_r2["HGVS"], df_r2["marginal freq"], ax = axes[2][1])
-        # axes[2][0].set_xticklabels("")
-        # axes[2][1].set_xticklabels("")
-        # axes[2][0].set_facecolor('white')
-        # axes[2][1].set_facecolor('white')
-
         # get union set of hgvs
         all_hgvs = set(df_r1["HGVS"].tolist()+df_r2["HGVS"].tolist())
         intersect  = [value for value in df_r1["HGVS"].tolist() if value in df_r2["HGVS"].tolist()]
@@ -307,24 +325,11 @@ class PosteriorQC(object):
             j_dist = len(intersect) / len(all_hgvs)
             venn2([set(unique_r1.HGVS.tolist()), set(unique_r2.HGVS.tolist())], set_labels=('Read 1', 'Read 2'),
                   ax=axes[2][0])
-            axes[2][0].set_title("Unique 2/3nt changes in R1 or R2 (passed threshold cutoff)")
+            axes[2][0].set_title("Unique 2/3nt changes in R1 oCBSr R2 (passed threshold cutoff)")
             axes[2][0].text(.5, .6, f"Jaccard Index: {round(j_dist, 2)}")
 
         else: # no 2/3nt changes found on either reads
             axes[2][0].axis("off")
-
-        # sns.scatterplot(unique_r1["HGVS"], unique_r1["marginal freq"], ax = axes[2][0])
-        # sns.scatterplot(unique_r2["HGVS"], unique_r2["marginal freq"], ax = axes[2][1])
-        # axes[2][0].set_xticklabels("")
-        # axes[2][1].set_xticklabels("")
-        #
-        # axes[2][0].set_facecolor('white')
-        # axes[2][1].set_facecolor('white')
-        #
-        # print(fig_title)
-        # print(len(all_hgvs))
-        # print(len(intersect))
-        # print(len(intersect)/len(all_hgvs))
 
 
     def _plot_marginal(self, df):
@@ -449,6 +454,7 @@ class PosteriorQC(object):
             #     pdf.image(image, 2, 25, 200, 245)
 
             pdf.output(f"{self._output}/{c}_posteriorQC.pdf", "F")
+
         bar.finish()
         os.system(f"rm {self._output}/*.png")
         self._logger.info("Posterior QC completed.")

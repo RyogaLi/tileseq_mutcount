@@ -12,6 +12,7 @@ TileSeqMut/mergeruns.py
 TileSeqMut/posterior.py
 TileSeqMut/posterior_qc.py
 TileSeqMut/process.py
+TileSeqMut/random_ds.py
 TileSeqMut.egg-info/PKG-INFO
 TileSeqMut.egg-info/SOURCES.txt
 TileSeqMut.egg-info/dependency_links.txt
@@ -19,4 +20,5 @@ TileSeqMut.egg-info/requires.txt
 TileSeqMut.egg-info/top_level.txt
 bin/mergeRuns
 bin/posterior_QC
+bin/random_ds
 bin/tileseq_mut
