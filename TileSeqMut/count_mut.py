@@ -70,6 +70,7 @@ class readSam(object):
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
 
+        self._base = arguments.base
         self._mut_log = log_object.getLogger("count.mut")
         self._locate_log = log_object.getLogger("locate.mut")
 
@@ -221,7 +222,9 @@ class readSam(object):
                 # pass this dictionary to locate mut
                 # mut = locate_mut_main()
                 # add mutation to mut list
-                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
+                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
+                                                  self._tile_begins, self._tile_ends, self._qual,
+                                                  self._locate_log, self._mutrate, self._base)
                 hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1

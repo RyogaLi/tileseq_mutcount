@@ -532,6 +532,7 @@ if __name__ == "__main__":
     parser.add_argument("-mt", type = int, help="Mutation call time \
         (default = 48h)", default=48)
     parser.add_argument("-c", type=int, help="Number of cores", default=16)
+    parser.add_argument("-b", "--base", help="ASCII code base", default=33)
     parser.add_argument("-test", action="store_true", help="Turn on testing mode")
     parser.add_argument("-rc", action="store_true", help="Turn on detect rc mode")
     ##parser.add_argument("-qual", "--quality", help="Posterior threshold for \
