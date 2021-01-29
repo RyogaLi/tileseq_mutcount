@@ -14,7 +14,7 @@ from TileSeqMut import posterior
 
 class MutParser(object):
 
-    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate):
+    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate, base):
         """
         row: input row includes both reads from sam file
         full_seq: full sequence (including cds and padding sequence)
@@ -40,6 +40,9 @@ class MutParser(object):
 
         # logger
         self._logging = logging
+
+        #
+        self._base = base
 
     def _get_seq(self):
         """
@@ -147,8 +150,7 @@ class MutParser(object):
         # and get posterior
         # print(d, self._mutrate, self._cutoff)
         pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
-                                                                 map_pos_r2, self._mutrate,
-                                           self._cutoff)
+                                                                 map_pos_r2, self._mutrate, self._cutoff, self._base)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
 

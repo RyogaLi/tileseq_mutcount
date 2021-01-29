@@ -9,7 +9,7 @@ import numpy as np
 from fractions import Fraction
 
 def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
-                        r2_mappos: dict, mut_rate: float, cut_off: float):
+                        r2_mappos: dict, mut_rate: float, cut_off: float, base):
     """
     Parse cluster of mutations
     mut_cluster is a  list of clusters (clustered mutations found in one read pair)
@@ -46,7 +46,7 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
                 r1_qual_base = r1_qual[r1_mappos[int(row["pos"])]]
                 # calculate posterior prob
                 pos = bayesian_variant_call([row["ref_r2"], row["alt_r2"]], [r1_qual_base, row["qual_r2"]],
-                                            row["ref_r2"], mut_rate, c_size)
+                                            row["ref_r2"], mut_rate, base, c_size)
 
                 # add this information to all prob df
                 all_prob["m"].append(row["m_r2"])
@@ -86,7 +86,7 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
                 pos = bayesian_variant_call([row["alt_r1"], row["ref_r1"]], [row["qual_r1"], r2_qual_base],
                                             row["ref_r1"],
                                             mut_rate,
-                                            c_size)
+                                            base, c_size)
                 all_prob["m"].append(row["m_r1"])
                 all_prob["prob"].append(pos[row["alt_r1"]])
                 all_prob["read"].append("r1")
@@ -116,7 +116,7 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
 
                 basecall = [row["alt_r1"], row["alt_r2"]]
                 qual = [row["qual_r1"], row["qual_r2"]]
-                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, c_size)
+                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, base, c_size)
                 all_prob["m"].append(row["m_r1"])
                 all_prob["prob"].append((pos[row["alt_r1"]], pos[row["alt_r2"]]))
                 all_prob["read"].append(("r1", "r2"))
@@ -174,7 +174,7 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
     return pos_df, all_df, clustered_r1_mut, clustered_r2_mut
 
 
-def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
+def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1):
     """
     @param basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])
     @param phred: phred score for the base calls (in letters) ["!", "J"]
@@ -191,9 +191,9 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, clusterSize=1):
     phred = []
     for i in qual:
         if len(i) == 1:
-            phred.append(10 ** (-(ord(i) - 33) / 10))
+            phred.append(10 ** (-(ord(i) - int(base)) / 10))
         else:
-            all_phred = [10 ** (-(ord(j) - 33) / 10) for j in i.split(",")]
+            all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
 
     # phred = [10**(-(ord(i) - 33) / 10) for i in phred]

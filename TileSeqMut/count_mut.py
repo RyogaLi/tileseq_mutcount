@@ -300,7 +300,8 @@ class readSam(object):
 
             line_r1 = line_r1.split()
             line_r2 = line_r2.split()
-            if len(line_r1) <= 1:
+            if len(line_r1) < 9 or len(line_r2) < 9:
+                # the read has no sequence
                 continue
 
             read_pair += 1  # count how many read pairs in this pair of sam files
@@ -332,6 +333,7 @@ class readSam(object):
             if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
                 off_read += 1
                 continue
+
             # get CIGAR string
             CIGAR_r1 = line_r1[5]
             seq_r1 = line_r1[9]
@@ -381,7 +383,8 @@ class readSam(object):
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)))
+                                               self._tile_ends, self._qual, self._locate_log, self._mutrate,
+                                                           self._base)))
             row = {} # flush
 
         r1_f.close()
@@ -484,11 +487,12 @@ class readSam(object):
         self._mut_log.info(f"Posterior df saved to files ... {all_f}")
 
 
-def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):
+def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base):
     """
 
     """
-    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
+    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
+                                      mutrate, base)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 

@@ -191,9 +191,9 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1):
     phred = []
     for i in qual:
         if len(i) == 1:
-            phred.append(10 ** (-(ord(i) - base) / 10))
+            phred.append(10 ** (-(ord(i) - int(base)) / 10))
         else:
-            all_phred = [10 ** (-(ord(j) - base) / 10) for j in i.split(",")]
+            all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
 
     # phred = [10**(-(ord(i) - 33) / 10) for i in phred]

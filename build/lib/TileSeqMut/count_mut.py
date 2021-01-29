@@ -70,6 +70,7 @@ class readSam(object):
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
 
+        self._base = arguments.base
         self._mut_log = log_object.getLogger("count.mut")
         self._locate_log = log_object.getLogger("locate.mut")
 
@@ -221,7 +222,9 @@ class readSam(object):
                 # pass this dictionary to locate mut
                 # mut = locate_mut_main()
                 # add mutation to mut list
-                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins, self._tile_ends, self._qual, self._locate_log, self._mutrate)
+                mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
+                                                  self._tile_begins, self._tile_ends, self._qual,
+                                                  self._locate_log, self._mutrate, self._base)
                 hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
@@ -378,7 +381,8 @@ class readSam(object):
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                               self._tile_ends, self._qual, self._locate_log, self._mutrate)))
+                                               self._tile_ends, self._qual, self._locate_log, self._mutrate,
+                                                           self._base)))
             row = {} # flush
 
         r1_f.close()
@@ -481,11 +485,12 @@ class readSam(object):
         self._mut_log.info(f"Posterior df saved to files ... {all_f}")
 
 
-def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate):
+def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base):
     """
 
     """
-    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate)
+    mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
+                                      mutrate, base)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 
