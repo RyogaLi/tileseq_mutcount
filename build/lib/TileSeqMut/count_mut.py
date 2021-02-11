@@ -24,7 +24,7 @@ from TileSeqMut import locate_mut
 
 class readSam(object):
 
-    def __init__(self, sam_r1, sam_r2, param, arguments, output_dir, cores):
+    def __init__(self, sam_r1, sam_r2, param, arguments, output_dir, cores, loggerobj):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
@@ -63,17 +63,17 @@ class readSam(object):
         self._seq_lookup = help_functions.build_lookup(self._cds_start.values.item(), self._seq.cds_end.values.item(), self._cds_seq)
 
         # init a new object for logging, log to sample specific file.log
-        log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
-        log_object = help_functions.logginginit(arguments.log_level, log_f)
+        # log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
+        # log_object = help_functions.logginginit(arguments.log_level, log_f)
 
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
 
         self._base = arguments.base
-        self._mut_log = log_object.getLogger("count.mut")
-        self._locate_log = log_object.getLogger("locate.mut")
-
+        # self._mut_log = log_object.getLogger("count.mut")
+        # self._locate_log = log_object.getLogger("locate.mut")
+        self._mut_log = loggerobj
         self._mut_log.info(f"Counting mutations in sample-{self._sample_id}")
         self._mut_log.info(f"Sam file input R1:{sam_r1}")
         self._mut_log.info(f"Sam file input R2:{sam_r2}")
@@ -224,7 +224,7 @@ class readSam(object):
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
                                                   self._tile_begins, self._tile_ends, self._qual,
-                                                  self._locate_log, self._mutrate, self._base)
+                                                  self._mut_log, self._mutrate, self._base)
                 hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
@@ -302,6 +302,7 @@ class readSam(object):
             line_r2 = line_r2.split()
             if len(line_r1) < 9 or len(line_r2) < 9:
                 # the read has no sequence
+                self._mut_log.warning("Missing fields in read!")
                 continue
 
             read_pair += 1  # count how many read pairs in this pair of sam files
@@ -382,7 +383,7 @@ class readSam(object):
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                               self._tile_ends, self._qual, self._locate_log, self._mutrate,
+                                               self._tile_ends, self._qual, self._mut_log, self._mutrate,
                                                            self._base)))
             row = {} # flush
 

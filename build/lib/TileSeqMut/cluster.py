@@ -117,7 +117,7 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger, cores):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "25", shfile]
+    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", "25", shfile, "&>>", log_f]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
@@ -133,12 +133,13 @@ def mut_count_sh_dc(sample_name, cmd, mt, sh_output_dir, logger, cores):
     # go through files df and submit jobs for each pair of sam files
     # counting mutations in raw sam output files
     shfile = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.sh")
+    log_f = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.log")
     with open(shfile, "w") as sh:
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
-    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "25", shfile]
+    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", "25", shfile, "&>>", log_f]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
@@ -156,13 +157,8 @@ def parse_jobs(job_list, env, logger):
     """
     qstat_cmd = ["qstat"] + job_list
     job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        qstat_out = job.stdout.decode("utf-8")
-        qstat_err = job.stderr.decode("utf-8")
-    except:
-        print(job.stderr)
-        print(job.stdout)
-        exit()
+    qstat_out = job.stdout.decode("utf-8", errors="replace")
+    qstat_err = job.stderr.decode("utf-8", errors="replace")
 
     f_id = []
     updated_list = []
@@ -188,7 +184,7 @@ def parse_jobs(job_list, env, logger):
                     job_id = match.group(1)
                     f_id.append(job_id)
                 except:
-                    print(i)
+                    logger.warning(i)
                     continue
             err_id = set(f_id)
             updated_list = [x for x in job_list if x not in err_id]
@@ -219,12 +215,12 @@ def parse_jobs(job_list, env, logger):
             return True
         else:
             # check in 10min
-            time.sleep(5)
+            time.sleep(600)
             job_list = final_list
             qstat_cmd = ["qstat"] + job_list
             job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            qstat_out = job.stdout.decode("utf-8")
-            qstat_err = job.stderr.decode("utf-8")
+            qstat_out = job.stdout.decode("utf-8", errors="replace")
+            qstat_err = job.stderr.decode("utf-8", errors="replace")
 
 if __name__ == "__main__":
     # test job list

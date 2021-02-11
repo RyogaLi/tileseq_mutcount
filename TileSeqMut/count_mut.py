@@ -224,7 +224,7 @@ class readSam(object):
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
                                                   self._tile_begins, self._tile_ends, self._qual,
-                                                  self._locate_log, self._mutrate, self._base)
+                                                  self._mut_log, self._mutrate, self._base)
                 hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
@@ -383,7 +383,7 @@ class readSam(object):
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                               self._tile_ends, self._qual, self._locate_log, self._mutrate,
+                                               self._tile_ends, self._qual, self._mut_log, self._mutrate,
                                                            self._base)))
             row = {} # flush
 

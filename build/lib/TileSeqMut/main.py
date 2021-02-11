@@ -236,8 +236,8 @@ class fastq2counts(object):
         self._log.info("Counting mutations ...")
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
-
-        mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c)
+        logger_mut = self._logging.getLogger("count.mut.log")
+        mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         # start = time.time()
         if self._args.test:
             self._log.info("Testing... ")
@@ -270,6 +270,7 @@ class fastq2counts(object):
         for i in self._sample_names:
             sam_f_r1 = glob.glob(f"{sam_dir}{i}_*R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_*R2_*.sam")
+            mut_log_file = os.path.join(self._output)
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
                 self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
                 exit(1)
@@ -349,12 +350,12 @@ class fastq2counts(object):
                 os.makedirs(self._output)
 
             # output directory is the mut_count dir
-            # make folder to store all the sh files
+            # make folder to store all the sh files as well as all the log files
             if self._args.environment == "BC2" or self._args.environment == "BC":
-                sh_output = os.path.join(self._output, "BC_mut_sh")
+                sh_output = os.path.join(self._output, "BC_jobs")
 
             elif self._args.environment == "DC":
-                sh_output = os.path.join(self._output, "DC_mut_sh")
+                sh_output = os.path.join(self._output, "DC_jobs")
 
             else:
                 self._log.error("Please provide valid environment: BC/BC2/DC")
