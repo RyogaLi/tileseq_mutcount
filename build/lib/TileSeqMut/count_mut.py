@@ -265,7 +265,10 @@ class readSam(object):
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()
-        hgvs_df.columns = ["HGVS", "count"]
+        if not hgvs_df.empty:
+            hgvs_df.columns = ["HGVS", "count"]
+        else:
+            hgvs_df = pd.DataFrame({}, columns=["HGVS", "count"])
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
     def multi_core(self):
@@ -457,7 +460,8 @@ class readSam(object):
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()
-        hgvs_df.columns = ["HGVS", "count"]
+        if not hgvs_df.empty:
+            hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
 
         r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")

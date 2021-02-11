@@ -113,6 +113,7 @@ def mut_count_sh_bc(sample_name, cmd, mt, sh_output_dir,logger, cores):
     # go through files df and submit jobs for each pair of sam files
     # counting mutations in raw sam output files
     shfile = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.sh")
+    log_f = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.log")
     with open(shfile, "w") as sh:
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")

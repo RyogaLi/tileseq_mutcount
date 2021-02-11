@@ -40,5 +40,5 @@ args = parser.parse_args()
 
 main(args)
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.4.15: Updated posterior QC")
+print("TileSeqMut release 0.4.201: stable release")
 main(args)
