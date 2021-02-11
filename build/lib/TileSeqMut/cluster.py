@@ -11,8 +11,6 @@ import time
 # other modules
 from TileSeqMut import alignment
 
-# import alignment
-
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
     fastq_map: df contains paths to fastq files and downsamled fastq files
@@ -74,6 +72,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         logging.info(f"{sample_name}: job id - {job_id}")
 
     return fastq_map, all_job_id
+
 
 def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
     """
@@ -157,8 +156,13 @@ def parse_jobs(job_list, env, logger):
     """
     qstat_cmd = ["qstat"] + job_list
     job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    qstat_out = job.stdout.decode("utf-8")
-    qstat_err = job.stderr.decode("utf-8")
+    try:
+        qstat_out = job.stdout.decode("utf-8")
+        qstat_err = job.stderr.decode("utf-8")
+    except:
+        print(job.stderr)
+        print(job.stdout)
+        exit()
 
     f_id = []
     updated_list = []
@@ -215,7 +219,7 @@ def parse_jobs(job_list, env, logger):
             return True
         else:
             # check in 10min
-            time.sleep(600)
+            time.sleep(5)
             job_list = final_list
             qstat_cmd = ["qstat"] + job_list
             job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

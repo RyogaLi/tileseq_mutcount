@@ -300,7 +300,8 @@ class readSam(object):
 
             line_r1 = line_r1.split()
             line_r2 = line_r2.split()
-            if len(line_r1) <= 1:
+            if len(line_r1) < 9 or len(line_r2) < 9:
+                # the read has no sequence
                 continue
 
             read_pair += 1  # count how many read pairs in this pair of sam files
@@ -332,6 +333,7 @@ class readSam(object):
             if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
                 off_read += 1
                 continue
+
             # get CIGAR string
             CIGAR_r1 = line_r1[5]
             seq_r1 = line_r1[9]
@@ -354,8 +356,7 @@ class readSam(object):
             else:
                 mdz_r2 = ""
 
-            if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and (
-                    (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
+            if (not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1) and ("D" not in CIGAR_r2) and (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2) and ("D" not in CIGAR_r2):
                 # if MDZ string only contains numbers
                 # and no insertions shown in CIGAR string
                 # means there is no mutation in this read

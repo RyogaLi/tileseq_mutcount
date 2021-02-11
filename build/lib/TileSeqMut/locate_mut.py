@@ -40,8 +40,6 @@ class MutParser(object):
 
         # logger
         self._logging = logging
-
-        #
         self._base = base
 
     def _get_seq(self):
@@ -173,11 +171,6 @@ class MutParser(object):
             hgvs_r2_clusters, outside_mut_r2 = self._get_hgvs(final_r1_cluster)
         else:
             hgvs_r2_clusters, outside_mut_r2 = [], []
-
-        if "c.463T>G" in hgvs:
-            print(merged_df)
-            # print(pos_df)
-            print(all_df)
 
         return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 

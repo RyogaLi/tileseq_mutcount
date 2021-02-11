@@ -356,8 +356,7 @@ class readSam(object):
             else:
                 mdz_r2 = ""
 
-            if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and (
-                    (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
+            if (not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1) and ("D" not in CIGAR_r2) and (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2) and ("D" not in CIGAR_r2):
                 # if MDZ string only contains numbers
                 # and no insertions shown in CIGAR string
                 # means there is no mutation in this read
