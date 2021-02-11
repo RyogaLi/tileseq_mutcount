@@ -156,13 +156,8 @@ def parse_jobs(job_list, env, logger):
     """
     qstat_cmd = ["qstat"] + job_list
     job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        qstat_out = job.stdout.decode("utf-8")
-        qstat_err = job.stderr.decode("utf-8")
-    except:
-        print(job.stderr)
-        print(job.stdout)
-        exit()
+    qstat_out = job.stdout.decode("utf-8", errors="replace")
+    qstat_err = job.stderr.decode("utf-8", errors="replace")
 
     f_id = []
     updated_list = []
@@ -188,7 +183,7 @@ def parse_jobs(job_list, env, logger):
                     job_id = match.group(1)
                     f_id.append(job_id)
                 except:
-                    print(i)
+                    logger.warning(i)
                     continue
             err_id = set(f_id)
             updated_list = [x for x in job_list if x not in err_id]
@@ -219,12 +214,12 @@ def parse_jobs(job_list, env, logger):
             return True
         else:
             # check in 10min
-            time.sleep(5)
+            time.sleep(600)
             job_list = final_list
             qstat_cmd = ["qstat"] + job_list
             job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            qstat_out = job.stdout.decode("utf-8")
-            qstat_err = job.stderr.decode("utf-8")
+            qstat_out = job.stdout.decode("utf-8", errors="replace")
+            qstat_err = job.stderr.decode("utf-8", errors="replace")
 
 if __name__ == "__main__":
     # test job list
