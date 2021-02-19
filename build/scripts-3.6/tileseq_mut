@@ -37,8 +37,6 @@ parser.add_argument("-override", "--sr_Override", action="store_true",
                     help="Provide this argument when there is only one replicate")
 
 args = parser.parse_args()
-
-main(args)
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.4.201: stable release")
+print("TileSeqMut release 0.4.205: stable release")
 main(args)

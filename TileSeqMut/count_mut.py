@@ -463,19 +463,22 @@ class readSam(object):
         if not hgvs_df.empty:
             hgvs_df.columns = ["HGVS", "count"]
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+        del hgvs_df
 
         r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
         r1_df = r1_df.reset_index()
         if not r1_df.empty:
             r1_df.columns = ["HGVS", "count"]
         r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
+        del r1_f
 
         r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
         r2_df = r2_df.reset_index()
         if not r2_df.empty:
             r2_df.columns = ["HGVS", "count"]
         r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
-        #
+
+        del r2_f
         # self._mut_log.info(f"Reading posterior filtered dfs ...")
         #
         # # pos_df = pd.concat(pos_df)
@@ -489,7 +492,7 @@ class readSam(object):
         for df in all_df:
             df.to_csv(all_f, mode='a', header=False, index=False)
         self._mut_log.info(f"Posterior df saved to files ... {all_f}")
-
+        del all_f
 
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base):
     """
