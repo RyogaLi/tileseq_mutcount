@@ -295,11 +295,13 @@ class fastq2counts(object):
 
             if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, sh_output, self._log, self._args.c)
+                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                                 self._args.c)
             elif self._args.environment == "DC":
                 logging.info("Submitting mutation counts jobs to DC...")
                 # (sample_name, cmd, mt, sh_output_dir, logger)
-                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, sh_output, self._log, self._args.c) # this
+                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                                 self._args.c) # this
                 # function
                 # will make a sh file for submitting the job
 
@@ -532,7 +534,9 @@ if __name__ == "__main__":
     parser.add_argument("-at", type = int, help="Alignment time \
         (default = 8h)", default=8)
     parser.add_argument("-mt", type = int, help="Mutation call time \
-        (default = 48h)", default=48)
+        (default = 36h)", default=36)
+    parser.add_argument("-mm", type=int, help="Mutation call request memory \
+            (default = 15GB)", default=15)
     parser.add_argument("-c", type=int, help="Number of cores", default=16)
     parser.add_argument("-b", "--base", help="ASCII code base", default=33)
     parser.add_argument("-test", action="store_true", help="Turn on testing mode")
@@ -541,6 +545,9 @@ if __name__ == "__main__":
                                                          "performed on all the reads that are aligned (BE CAREFUL!)")
 
     parser.add_argument("-override", "--sr_Override", action="store_true", help="Provide this argument when there is only one replicate")
+    parser.add_argument("--posteriorQC", action="store_true", help="Turn on posterior QC mode, this requires more "
+                                                                   "memory and runtime, please change the variable "
+                                                                   "accordingly")
 
     args = parser.parse_args()
 

@@ -14,7 +14,8 @@ from TileSeqMut import posterior
 
 class MutParser(object):
 
-    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate, base):
+    def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate, base,
+                 posteriorQC):
         """
         row: input row includes both reads from sam file
         full_seq: full sequence (including cds and padding sequence)
@@ -41,6 +42,7 @@ class MutParser(object):
         # logger
         self._logging = logging
         self._base = base
+        self._posteriorQC = posteriorQC
 
     def _get_seq(self):
         """
@@ -148,29 +150,29 @@ class MutParser(object):
         # and get posterior
         # print(d, self._mutrate, self._cutoff)
         pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
-                                                                 map_pos_r2, self._mutrate, self._cutoff, self._base)
+                                                                 map_pos_r2, self._mutrate, self._cutoff, self._base,
+                                                                       self._posteriorQC)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
+        hgvs_r1_clusters, outside_mut_r1 = [], []
+        hgvs_r2_clusters, outside_mut_r2 = [], []
+        if not clustered_r1.empty:
+            final_r1_cluster = list(set(clustered_r1.m.tolist()))
+            final_r1_cluster.sort()
+            final_r2_cluster = list(set(clustered_r2.m.tolist()))
+            final_r2_cluster.sort()
 
-        final_r1_cluster = list(set(clustered_r1.m.tolist()))
-        final_r1_cluster.sort()
-        final_r2_cluster = list(set(clustered_r2.m.tolist()))
-        final_r2_cluster.sort()
+            if final_r1_cluster != []:
+                hgvs_r1_clusters, outside_mut_r1 = self._get_hgvs(final_r1_cluster)
+
+            if final_r2_cluster != []:
+                hgvs_r2_clusters, outside_mut_r2 = self._get_hgvs(final_r1_cluster)
+
 
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
             hgvs, outside_mut = [], []
-
-        if final_r1_cluster != []:
-            hgvs_r1_clusters, outside_mut_r1 = self._get_hgvs(final_r1_cluster)
-        else:
-            hgvs_r1_clusters, outside_mut_r1 = [], []
-
-        if final_r2_cluster != []:
-            hgvs_r2_clusters, outside_mut_r2 = self._get_hgvs(final_r1_cluster)
-        else:
-            hgvs_r2_clusters, outside_mut_r2 = [], []
 
         return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 

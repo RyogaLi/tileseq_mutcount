@@ -71,6 +71,7 @@ class readSam(object):
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
 
         self._base = arguments.base
+        self._posteriorQC = arguments.posteriorQC
         # self._mut_log = log_object.getLogger("count.mut")
         # self._locate_log = log_object.getLogger("locate.mut")
         self._mut_log = loggerobj
@@ -86,21 +87,22 @@ class readSam(object):
                          f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
         output_csv.close()
 
-        output_csv = open(self._sample_counts_r1_f, "w")
-        # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
-                         f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
-                         f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
-                         f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
-        output_csv.close()
+        if self._posteriorQC:
+            output_csv = open(self._sample_counts_r1_f, "w")
+            # write log information to counts output
+            output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
+                             f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
+                             f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
+                             f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
+            output_csv.close()
 
-        output_csv = open(self._sample_counts_r2_f, "w")
-        # write log information to counts output
-        output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
-                         f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
-                         f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
-                         f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
-        output_csv.close()
+            output_csv = open(self._sample_counts_r2_f, "w")
+            # write log information to counts output
+            output_csv.write(f"#Sample:{self._sample_id}\n#Tile:{self._sample_tile}\n#Tile Starts:{self._tile_begins}\n"
+                             f"#Tile Ends:{self._tile_ends}\n#Condition:{self._sample_condition}\n"
+                             f"#Replicate:{self._sample_rep}\n#Timepoint:{self._sample_tp}\n"
+                             f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
+            output_csv.close()
 
 
     def _merged_main(self):
@@ -224,7 +226,7 @@ class readSam(object):
                 # add mutation to mut list
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
                                                   self._tile_begins, self._tile_ends, self._qual,
-                                                  self._mut_log, self._mutrate, self._base)
+                                                  self._mut_log, self._mutrate, self._base, self._posteriorQC)
                 hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
                 if len(hgvs) !=0:
                     final_pairs +=1
@@ -387,7 +389,7 @@ class readSam(object):
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                                self._tile_ends, self._qual, self._mut_log, self._mutrate,
-                                                           self._base)))
+                                                           self._base, self._posteriorQC)))
             row = {} # flush
 
         r1_f.close()
@@ -400,11 +402,10 @@ class readSam(object):
             hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
-                if hgvs in hgvs_output:
+                if hgvs_output.get(hgvs, -1) != -1:
                     hgvs_output[hgvs] += 1
                 else:
                     hgvs_output[hgvs] = 1
-                # hgvs_output.append(hgvs)
 
             if len(hgvs_r1_clusters) != 0:
                 r1_popmut += 1
@@ -425,7 +426,8 @@ class readSam(object):
                 for i in outside_mut:
                     if not (i in off_mut):
                         off_mut[i] = 1
-            all_df.append(all_posterior)
+            if not all_posterior.empty:
+                all_df.append(all_posterior)
 
         # clean up
         pool.close()
@@ -465,41 +467,35 @@ class readSam(object):
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
         del hgvs_df
 
-        r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
-        r1_df = r1_df.reset_index()
-        if not r1_df.empty:
-            r1_df.columns = ["HGVS", "count"]
-        r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
-        del r1_f
+        if self._posteriorQC:
+            r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
+            r1_df = r1_df.reset_index()
+            if not r1_df.empty:
+                r1_df.columns = ["HGVS", "count"]
+            r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
+            del r1_f
 
-        r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
-        r2_df = r2_df.reset_index()
-        if not r2_df.empty:
-            r2_df.columns = ["HGVS", "count"]
-        r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
+            r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
+            r2_df = r2_df.reset_index()
+            if not r2_df.empty:
+                r2_df.columns = ["HGVS", "count"]
+            r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
+            del r2_f
 
-        del r2_f
-        # self._mut_log.info(f"Reading posterior filtered dfs ...")
-        #
-        # # pos_df = pd.concat(pos_df)
-        # posterior_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob.csv")
-        # for df in pos_df:
-        #     df.to_csv(posterior_f, mode='a', header=False, index=False)
+            self._mut_log.info(f"Reading posterior unfiltered dfs ...")
+            all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
+            for df in all_df:
+                df.to_csv(all_f, mode='a', header=False, index=False)
+            self._mut_log.info(f"Posterior df saved to files ... {all_f}")
+            del all_df
 
-        self._mut_log.info(f"Reading posterior unfiltered dfs ...")
-        # all_df = pd.concat(all_df)
-        all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
-        for df in all_df:
-            df.to_csv(all_f, mode='a', header=False, index=False)
-        self._mut_log.info(f"Posterior df saved to files ... {all_f}")
-        del all_f
-
-def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base):
+def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base,
+                    posteriorQC):
     """
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
-                                      mutrate, base)
+                                      mutrate, base, posteriorQC)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
 

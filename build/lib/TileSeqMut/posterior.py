@@ -9,7 +9,7 @@ import numpy as np
 from fractions import Fraction
 
 def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
-                        r2_mappos: dict, mut_rate: float, cut_off: float, base):
+                        r2_mappos: dict, mut_rate: float, cut_off: float, base: int, posteriorQC: bool):
     """
     Parse cluster of mutations
     mut_cluster is a  list of clusters (clustered mutations found in one read pair)
@@ -18,8 +18,93 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
     @param mut_rate mut rate defined by user
     @param cut_off posterior cutoff defined by user
     """
+    if posteriorQC:
+        pos_df, all_df, clustered_r1_mut, clustered_r2_mut = call_prob_withposterior(mut_cluster, r1_mappos,
+                                                                                     r2_mappos, r1_qual, r2_qual,
+                                                                                     mut_rate, base, cut_off)
+    else:
+        pos_df, all_df, clustered_r1_mut, clustered_r2_mut = call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual,
+                                                                       r2_qual, mut_rate, base, cut_off)
+
+    return pos_df, all_df, clustered_r1_mut, clustered_r2_mut
+
+
+def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off):
+
     pos_prob = {"m": [], "prob": [], "read": []}
-    all_prob = {"m": [], "prob": [], "read": [], "pass":[]}
+
+    for c in mut_cluster.keys():
+        mutcall = mut_cluster[c]
+        # each mutcall is a df with columns:
+        # m_r1,read,pos,ref_r1,alt_r1,qual_r1,m_r2,ref_r2,alt_r2,qual_r2
+        c_size = mutcall.shape[0]  # size of the cluster
+        # iterate through the clusters
+        for index, row in mutcall.iterrows():
+
+            if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
+
+                if r1_mappos.get(int(row["pos"])) is None:
+                    continue
+
+                # get R1 wt qual with map pos and qual str
+                r1_qual_base = r1_qual[r1_mappos[int(row["pos"])]]
+                # calculate posterior prob
+                pos = bayesian_variant_call([row["ref_r2"], row["alt_r2"]], [r1_qual_base, row["qual_r2"]],
+                                            row["ref_r2"], mut_rate, base, c_size)
+
+
+                if pos[row["alt_r2"]] > cut_off and pos[row["ref_r2"]] <= pos[row["alt_r2"]]:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(pos[row["alt_r2"]])
+                    pos_prob["read"].append("r2")
+
+            elif (pd.isnull(row["m_r2"]) or row["alt_r2"] == "N") and not pd.isnull(row["ref_r1"]):
+
+                if r2_mappos.get(int(row["pos"])) is None:
+                    continue
+                # get R1 wt qual with map pos and qual str
+                r2_qual_base = r2_qual[r2_mappos[int(row["pos"])]]
+
+                pos = bayesian_variant_call([row["alt_r1"], row["ref_r1"]], [row["qual_r1"], r2_qual_base],
+                                            row["ref_r1"],
+                                            mut_rate,
+                                            base, c_size)
+                if pos[row["alt_r1"]] > cut_off and pos[row["ref_r1"]] <= pos[row["alt_r1"]]:
+
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(pos[row["alt_r1"]])
+                    pos_prob["read"].append("r1")
+
+            elif (not pd.isnull(row["m_r2"])) and (not pd.isnull(row["ref_r1"])):
+
+                basecall = [row["alt_r1"], row["alt_r2"]]
+                qual = [row["qual_r1"], row["qual_r2"]]
+                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, base, c_size)
+
+                # if (pos[row["ref_r1"]] > pos[row["alt_r1"]]) and (pos[row["ref_r2"]] > pos[row["alt_r2"]]): continue
+
+                if pos[row["alt_r1"]] > pos[row["alt_r2"]] and pos[row["alt_r1"]] > cut_off:
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append(pos[row["alt_r1"]])
+                    pos_prob["read"].append("r1")
+
+                elif pos[row["alt_r2"]] > pos[row["alt_r1"]] and pos[row["alt_r2"]] > cut_off:
+                    pos_prob["m"].append(row["m_r2"])
+                    pos_prob["prob"].append(pos[row["alt_r2"]])
+                    pos_prob["read"].append("r2")
+
+                elif pos[row["alt_r1"]] == pos[row["alt_r2"]] and pos[row["alt_r1"]] > cut_off:
+                    pos_prob["m"].append(row["m_r1"])
+                    pos_prob["prob"].append((pos[row["alt_r1"]], pos[row["alt_r2"]]))
+                    pos_prob["read"].append(("r1", "r2"))
+    pos_df = pd.DataFrame(pos_prob)
+    return pos_df, pd.DataFrame({}), pd.DataFrame({}), pd.DataFrame({})
+
+
+def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off):
+
+    pos_prob = {"m": [], "prob": [], "read": []}
+    all_prob = {"m": [], "prob": [], "read": [], "pass": []}
 
     # this is used to record 2/3nt changes on r1 or r2
     clustered_r1_mut = [pd.DataFrame({"m": [], "prob": [], "read": []})]

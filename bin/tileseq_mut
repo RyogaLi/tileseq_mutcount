@@ -25,7 +25,9 @@ parser.add_argument("-env", "--environment", help="The cluster used to \
 parser.add_argument("-at", type=int, help="Alignment time \
     (default = 8h)", default=8)
 parser.add_argument("-mt", type=int, help="Mutation call time \
-    (default = 48h)", default=48)
+    (default = 36h)", default=36)
+parser.add_argument("-mm", type=int, help="Mutation call request memory \
+        (default = 15GB)", default=15)
 parser.add_argument("-c", type=int, help="Number of cores", default=16)
 parser.add_argument("-b", "--base", help="ASCII code base", default=33)
 parser.add_argument("-test", action="store_true", help="Turn on testing mode")
@@ -35,8 +37,11 @@ parser.add_argument("-rc", action="store_true", help="Turn on rc mode, both dire
 
 parser.add_argument("-override", "--sr_Override", action="store_true",
                     help="Provide this argument when there is only one replicate")
+parser.add_argument("--posteriorQC", action="store_true", help="Turn on posterior QC mode, this requires more "
+                                                               "memory and runtime, please change the variable "
+                                                               "accordingly")
 
 args = parser.parse_args()
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.4.205: stable release")
+print("TileSeqMut release 0.4.216: stable release")
 main(args)
