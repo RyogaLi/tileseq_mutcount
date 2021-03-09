@@ -305,8 +305,10 @@ class readSam(object):
 
             line_r1 = line_r1.split()
             line_r2 = line_r2.split()
-            if len(line_r1) < 9 or len(line_r2) < 9:
+            if len(line_r1) < 11 or len(line_r2) < 11:
                 # the read has no sequence
+                self._mut_log.warning(line_r1)
+                self._mut_log.warning(line_r2)
                 self._mut_log.warning("Missing fields in read!")
                 continue
 

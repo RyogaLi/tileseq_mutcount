@@ -53,6 +53,7 @@ class fastq2counts(object):
         self._param_json = param_path  # parameter json file
 
         self._args = args  # user input arguments
+        self._args.environment = self._args.environment.upper()
 
         if self._args.fastq:
             self._fastq_list = glob.glob(self._args.fastq+"/*.fastq.gz")
@@ -67,7 +68,7 @@ class fastq2counts(object):
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
         self._log = self._logging.getLogger("main.log")
-
+        self._log.debug(self._args.environment)
 
     def _init_skip(self, skip, r1=None, r2=None):
         """
@@ -136,11 +137,13 @@ class fastq2counts(object):
         # make folder to store ref
         ref_path = os.path.join(self._output, "ref/")
         os.system("mkdir "+ ref_path)
-
+        rc = False
+        if self._args.rc:
+            rc = True
         # GURU
         if self._args.environment == "GURU":
             # make sh files to submit to GURU
-            sh_output = os.path.join(self._output, "GURU_sh")
+            sh_output = os.path.join(self._output, "GURU_jobs")
             os.system("mkdir "+sh_output)
 
             # for each pair of fastq files, submit jobs to run alignment
@@ -151,77 +154,90 @@ class fastq2counts(object):
             logging.info("Alignment jobs are submitted to GURU..")
 
             # wait for alignment to finish and call mutations
+        elif self._args.environment == "GALEN":
+            # make sh files to submit to GURU
+            sh_output = os.path.join(self._output, "GALEN_jobs")
+            os.system("mkdir "+sh_output)
 
-        elif self._args.environment == "BC2" or self._args.environment == "DC" or self._args.environment == "BC":
-            if self._args.environment == "BC2" or self._args.environment == "BC":
-                # make sh files to submit to BC
-                sh_output = os.path.join(self._output, "BC_aln_sh")
-                os.system("mkdir " + sh_output)
-                # make sh files to submit to BC
-                self._log.info("Submitting alignment jobs to BC/BC2...")
-                # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
-                if  self._args.rc:
-                    rc = True
-                else:
-                    rc = False
-                sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(),
-                                                            ref_path, sam_output, sh_output, self._args.at,
-                                                            self._log, rc)
-                self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
+            # for each pair of fastq files, submit jobs to run alignment
+            # it takes the following arguments: R1, R2, ref, Output sam
+            # the output log (bowtie log) would be in the same dir
+            logging.info("Writing sh files for alignment (GALEN)")
+            sam_df, job_list = cluster.alignment_sh_galen(fastq_map, self._project, self._seq.seq.values.item(), ref_path,
+                                            sam_output, sh_output, self._args.at, self._log, rc)
+            logging.info("Alignment jobs are submitted to GALEN..")
 
-            elif self._args.environment == "DC":
-                # make sh files to submit to DC
-                sh_output = os.path.join(self._output, "DC_aln_sh")
-                os.system("mkdir "+sh_output)
+        elif self._args.environment == "BC2" or self._args.environment == "BC":
+            # make sh files to submit to BC
+            sh_output = os.path.join(self._output, "BC_aln_sh")
+            os.system("mkdir " + sh_output)
+            # make sh files to submit to BC
+            self._log.info("Submitting alignment jobs to BC/BC2...")
+            # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
 
-                self._log.info("Submitting alignment jobs to DC...")
-                if  self._args.rc:
-                    rc = True
-                else:
-                    rc = False
-                sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(),
-                                                           ref_path, sam_output, sh_output,
-                                                           self._args.at, self._log, rc)
-                self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
+            sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(),
+                                                        ref_path, sam_output, sh_output, self._args.at,
+                                                        self._log, rc)
+            self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
+        elif self._args.environment == "DC":
+            # make sh files to submit to DC
+            sh_output = os.path.join(self._output, "DC_aln_sh")
+            os.system("mkdir "+sh_output)
 
-            self._log.info(f"Total jobs submitted: {len(job_list)}")
+            self._log.info("Submitting alignment jobs to DC...")
+            if  self._args.rc:
+                rc = True
+            else:
+                rc = False
+            sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(),
+                                                       ref_path, sam_output, sh_output,
+                                                       self._args.at, self._log, rc)
+            self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
+
+        else:
+            raise ValueError("Wrong environment name")
+
+        self._log.info(f"Total jobs submitted: {len(job_list)}")
+        if self._args.environment == 'GALEN':
+            finished = cluster.parse_jobs_galen(job_list, self._logging.getLogger("track.jobs"))
+        else:
             finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs"))  #
-            # track list
-            # of jobs
+        # track list
+        # of jobs
 
-            if finished:
+        if finished:
 
-                self._log.info(f"Alignment jobs are finished!")
-                self._log.info(f"Merging alignment log files...")
-                # go through alignment output dir and parse all the log files
-                log_files = os.path.join(sam_output, "*.log")
-                log_list = glob.glob(log_files)
-                alignment_master_log = []
-                for f in log_list:
-                    f_info = []
-                    sample_id = os.path.basename(f).split(".")[0]
-                    f_info.append(sample_id)
-                    with open(f, "r") as fp:
-                        for i, line in enumerate(fp):
-                            if i == 0:
-                                line = line.split(" ")
-                                f_info.append(line[0]) # number of reads in r1
-                            elif i == 5:
-                                line = line.split(" ")
-                                f_info.append(line[0]) # overall alignment rate for r1
-                            elif i == 6:
-                                line = line.split(" ")
-                                f_info.append(line[0]) # number of reads in r2
-                            elif i == 11:
-                                line = line.split(" ")
-                                f_info.append(line[0]) # overall alignment rate for r2
-                    alignment_master_log.append(f_info)
-                df = pd.DataFrame(alignment_master_log)
-                df.columns = ["sample_id", "R1_reads", "R1_alignment_rate", "R2_reads", "R2_alignment_rate"]
-                alignment_log = os.path.join(sam_output, "aligned_rate.log")
-                df.to_csv(alignment_log, index=False)
-                self._log.info(f"Alignment log file created")
+            self._log.info(f"Alignment jobs are finished!")
+            self._log.info(f"Merging alignment log files...")
+            # go through alignment output dir and parse all the log files
+            log_files = os.path.join(sam_output, "*.log")
+            log_list = glob.glob(log_files)
+            alignment_master_log = []
+            for f in log_list:
+                f_info = []
+                sample_id = os.path.basename(f).split(".")[0]
+                f_info.append(sample_id)
+                with open(f, "r") as fp:
+                    for i, line in enumerate(fp):
+                        if i == 0:
+                            line = line.split(" ")
+                            f_info.append(line[0]) # number of reads in r1
+                        elif i == 5:
+                            line = line.split(" ")
+                            f_info.append(line[0]) # overall alignment rate for r1
+                        elif i == 6:
+                            line = line.split(" ")
+                            f_info.append(line[0]) # number of reads in r2
+                        elif i == 11:
+                            line = line.split(" ")
+                            f_info.append(line[0]) # overall alignment rate for r2
+                alignment_master_log.append(f_info)
+            df = pd.DataFrame(alignment_master_log)
+            df.columns = ["sample_id", "R1_reads", "R1_alignment_rate", "R2_reads", "R2_alignment_rate"]
+            alignment_log = os.path.join(sam_output, "aligned_rate.log")
+            df.to_csv(alignment_log, index=False)
+            self._log.info(f"Alignment log file created")
 
         return sam_output
 
@@ -264,16 +280,19 @@ class fastq2counts(object):
         # get sam files from parameter file
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
-            exit(1)
+            raise ValueError()
+
         self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
         for i in self._sample_names:
-            sam_f_r1 = glob.glob(f"{sam_dir}{i}_*R1_*.sam") # assume all the sam files have the same name format (id_*.sam)
+            # assume all the sam files have the same name format (id_*.sam)
+            sam_f_r1 = glob.glob(f"{sam_dir}{i}_*R1_*.sam")
             sam_f_r2 = glob.glob(f"{sam_dir}{i}_*R2_*.sam")
-            mut_log_file = os.path.join(self._output)
+
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
                 self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
-                exit(1)
+                raise ValueError()
+
             else:
                 self._log.info(f"Sample {i}")
                 self._log.info(f"Read1: {sam_f_r1[0]}")
@@ -304,13 +323,24 @@ class fastq2counts(object):
                                                  self._args.c) # this
                 # function
                 # will make a sh file for submitting the job
+            elif self._args.environment == "GALEN":
+                logging.info("Submitting mutation counts jobs to GALEN...")
+                # (sample_name, cmd, mt, sh_output_dir, logger)
+                # todo finish this function
+                job_id = cluster.mut_count_sh_galen(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                                 self._args.c) # this
+            else:
+                raise ValueError()
 
             job_list.append(job_id)
 
         jobs = ",".join(job_list)
         self._log.debug(f"All jobs: {jobs}")
         self._log.info(f"Total jobs running: {len(job_list)}")
-        finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs")) # track
+        if self._args.environment == 'GALEN':
+            finished = cluster.parse_jobs_galen(job_list, self._logging.getLogger("track.jobs"))
+        else:
+            finished = cluster.parse_jobs(job_list, self._args.environment, self._logging.getLogger("track.jobs")) # track
         # list of jobs
 
         return finished
@@ -359,9 +389,12 @@ class fastq2counts(object):
             elif self._args.environment == "DC":
                 sh_output = os.path.join(self._output, "DC_jobs")
 
+            elif self._args.environment == "GALEN":
+                sh_output = os.path.join(self._output, "GALEN_jobs")
+
             else:
-                self._log.error("Please provide valid environment: BC/BC2/DC")
-                exit(1)
+                self._log.error("Please provide valid environment: BC/BC2/DC/Galen")
+                raise ValueError("Please provide valid environment: BC/BC2/DC/Galen")
 
             self._log.info(f"Mutation count sh files are made in {sh_output}")
 
@@ -395,17 +428,17 @@ def check(args):
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
     if not args.skip_alignment:
         if args.r1 or args.r2:
-            print(f"Invalid paramters! Please specify --skip_alignment if you want to analyze\
+            raise ValueError(f"Invalid paramters! Please specify --skip_alignment if you want to analyze\
             one pair of sam files")
-            exit(1)
+
     # check if output dir exists
     if not os.path.isdir(args.output):
-        print(f"Output directory not found: {args.output}")
-        exit(2)
+        raise FileNotFoundError(f"Output directory not found: {args.output}")
+
     # check if fastq dir exists
     if args.fastq and not os.path.isdir(args.fastq):
-        print(f"Fastq file path not found: {args.fastq}")
-        exit(3)
+        raise FileNotFoundError(f"Fastq file path not found: {args.fastq}")
+
     # try convert csv to json in the same dir as the csv file
     # convert csv file to json
     if args.param.endswith(".csv"):
@@ -423,14 +456,17 @@ def check(args):
     elif args.param.endswith(".json"):
         param_json = args.param
     else:
-        print("Please provide valid paramter file format (csv or json)")
-        exit(4)
+        raise ValueError("Please provide valid paramter file format (csv or json)")
 
     if not os.path.isfile(param_json):
-        print("Json file does not exist, check conversion!")
-        exit(5)
+        raise ValueError("Json file does not exist, check conversion!")
+
+    # check environment input
+    if args.environment.upper() not in ["BC", "BC2", "DC", "GALEN"]:
+        raise ValueError(f"Wrong input for environment: {args.environment}")
 
     return param_json
+
 
 def main(args):
     """
@@ -493,7 +529,7 @@ def main(args):
         if not os.path.isfile(param_path):
             param_path = shutil.copy(param_json, updated_out, follow_symlinks=True)
 
-        main_log_f = os.path.join(args.output, "main.log")
+        main_log_f = os.path.join(updated_out, "main.log")
         main_log = help_functions.logginginit(args.log_level, main_log_f)
 
         # initialize mutcount object
@@ -502,6 +538,7 @@ def main(args):
 
     # start the run
     mc._main()
+
 
 def write_param(args_log_path, args):
     """
@@ -550,5 +587,6 @@ if __name__ == "__main__":
                                                                    "accordingly")
 
     args = parser.parse_args()
+    args.environment = args.environment.upper()
 
     main(args)

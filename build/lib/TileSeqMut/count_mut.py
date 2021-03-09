@@ -305,8 +305,10 @@ class readSam(object):
 
             line_r1 = line_r1.split()
             line_r2 = line_r2.split()
-            if len(line_r1) < 9 or len(line_r2) < 9:
+            if len(line_r1) < 11 or len(line_r2) < 11:
                 # the read has no sequence
+                self._mut_log.warning(line_r1)
+                self._mut_log.warning(line_r2)
                 self._mut_log.warning("Missing fields in read!")
                 continue
 
@@ -402,11 +404,10 @@ class readSam(object):
             hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
-                if hgvs in hgvs_output:
+                if hgvs_output.get(hgvs, -1) != -1:
                     hgvs_output[hgvs] += 1
                 else:
                     hgvs_output[hgvs] = 1
-                # hgvs_output.append(hgvs)
 
             if len(hgvs_r1_clusters) != 0:
                 r1_popmut += 1

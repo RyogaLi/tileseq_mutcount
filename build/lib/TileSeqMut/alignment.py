@@ -20,7 +20,7 @@ def make_ref(name, ref_seq, ref_path):
 
     return os.path.join(ref_path, name)
 
-def align_main(ref, r1, r2, sam_path, shfile, rc=False):
+def align_main(ref, r1, r2, sam_path, shfile, rc=False, header=""):
     """
     ref: reference fatsa file
     r1: input fastq file - R1
@@ -43,6 +43,9 @@ def align_main(ref, r1, r2, sam_path, shfile, rc=False):
         r2_cmd = f"bowtie2 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}"
 
     with open(shfile, "w") as f:
+        # header is only used on galen
+        if header != "":
+            f.write(header)
         f.write(r1_cmd + "\n")
         f.write(r2_cmd + "\n")
     os.system(f"chmod 755 {shfile}")
