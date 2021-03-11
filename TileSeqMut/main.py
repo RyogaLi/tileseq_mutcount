@@ -220,18 +220,10 @@ class fastq2counts(object):
                 f_info.append(sample_id)
                 with open(f, "r") as fp:
                     for i, line in enumerate(fp):
-                        if i == 0:
+                        # pick corresponding lines in the alignment log file
+                        if i == 0 or i == 5 or i == 6 or i == 11:
                             line = line.split(" ")
-                            f_info.append(line[0]) # number of reads in r1
-                        elif i == 5:
-                            line = line.split(" ")
-                            f_info.append(line[0]) # overall alignment rate for r1
-                        elif i == 6:
-                            line = line.split(" ")
-                            f_info.append(line[0]) # number of reads in r2
-                        elif i == 11:
-                            line = line.split(" ")
-                            f_info.append(line[0]) # overall alignment rate for r2
+                            f_info.append(line[0])
                 alignment_master_log.append(f_info)
             df = pd.DataFrame(alignment_master_log)
             df.columns = ["sample_id", "R1_reads", "R1_alignment_rate", "R2_reads", "R2_alignment_rate"]

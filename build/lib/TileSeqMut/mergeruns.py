@@ -7,7 +7,8 @@ import os
 import pandas as pd
 import json
 import argparse
-from TileSeqMut.main import log
+
+from TileSeqMut.help_functions import logginginit
 
 #for two runs merge the mutation counts files into output folder
 
@@ -94,7 +95,7 @@ def merge_main(args):
 	# log input/output information
 	if not os.path.isdir(args.output):
 		os.mkdir(args.output)
-	logging = log(args.output, args.log_level)
+	logging = logginginit(args.log_level, os.path.join(args.output, "mergeRuns.log"))
 	main_log = logging.getLogger("mergeRuns.log")
 	main_log.info(f"Input dir 1: {args.dir1} with Parameter Sheet: {args.paramOne}")
 	main_log.info(f"Input dir 2: {args.dir2} with Parameter Sheet: {args.paramTwo}")
