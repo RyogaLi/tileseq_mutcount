@@ -14,6 +14,7 @@ parser.add_argument("-d1", "--dir1", help="Path to *_mut_count folder for the fi
 parser.add_argument("-d2", "--dir2", help="Path to *_mut_count folder for the second run", type=str)
 parser.add_argument("-o", "--output", help="Output folder", type=str, required=True)
 # user input arguments with default values set
+parser.add_argument("--subtractWT", help="Subtract wt counts from non-select before merging", action="store_true")
 parser.add_argument("-log", "--log_level", help="set log level: debug, \
         info, warning, error, critical. (default = debug)", type=str, default="debug")
 
