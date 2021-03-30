@@ -18,6 +18,7 @@ n = args.n
 
 for f in os.listdir(args.input):
     if (".fastq" in f) and ("_R1_" in f):
+        print(f)
         r2 = f.replace("_R1_", "_R2_")
 
         r1 = os.path.join(args.input, f)

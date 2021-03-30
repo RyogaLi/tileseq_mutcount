@@ -141,7 +141,7 @@ class MutParser(object):
         merged_df = [snp_df, delins_df]
         merged_df = pd.concat(merged_df)
         merged_df = merged_df.sort_values(by="pos")
-
+        print(merged_df)
         # group mutations based on positions
         # any mutations that are within 3bp are grouped together
         n = 3
