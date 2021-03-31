@@ -104,6 +104,14 @@ class readSam(object):
                              f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
             output_csv.close()
 
+        # build a df for tracking how many reads passed filter at certain position of the read 
+        # df contains ["pos", "m_r1", "m_r2", "passed"] columns
+        # positions referes to all the nt positions in this tile 
+        self._track_reads = pd.DataFrame({}, columns=["pos", "m_r1", "m_r2", "passed"])
+        
+        self._track_reads["pos"] = range(self._tile_begins, self._tile_ends+1)
+        self._track_reads = self._track_reads.set_index("pos")
+        self._track_reads = self._track_reads.fillna(0)
 
     def _merged_main(self):
         """
@@ -114,10 +122,14 @@ class readSam(object):
         read_nomut = 0 # read pairs that have no mutations
 
         hgvs_output = {} # save all the hgvs in this pair of sam files
+        r1_pop_hgvs = {}  # save all the hgvs that are 2/3nt changes based only on R1
+        r2_pop_hgvs = {}  # save all the hgvs that are 2/3nt changes based only on R2
         off_mut = {} # save all the positions that were mapped but outside of the tile
         row = {} # create a dictionary to save all the reads information to pass on to locate_mut.py
-
+        all_df = []
         final_pairs = 0
+        r1_popmut = 0
+        r2_popmut = 0
         off_read = 0
 
         chunkSize = 1500000 # number of characters in each chunk (you will need to adjust this)
@@ -139,10 +151,15 @@ class readSam(object):
 
                 line_r1 = line_r1.split()
                 line_r2 = line_r2.split()
-                if len(line_r1) <= 1:
+                if len(line_r1) < 11 or len(line_r2) < 11:
+                    # the read has no sequence
+                    self._mut_log.warning(line_r1)
+                    self._mut_log.warning(line_r2)
+                    self._mut_log.warning("Missing fields in read!")
                     continue
 
-                read_pair += 1 # count how many read pairs in this pair of sam files
+                # count how many read pairs in this pair of sam files
+                read_pair += 1
                 mapped_name_r1 = line_r1[2]
                 mapped_name_r2 = line_r2[2]
                 if mapped_name_r1 == "*" or mapped_name_r2 == "*": # if one of the read didn't map to ref
@@ -166,22 +183,24 @@ class readSam(object):
                 # the default min_map is 70%
                 # we also assume that the read len is ALWAYS 150
                 r1_end = int(pos_start_r1) + 150
-                # r1_end must cover from start of the tile to 70% of the tile
-                if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
+                # r1_end must cover from start of the tile to 60% of the tile
+                if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
+                        ((int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len))):
                     off_read += 1
                     continue
-                if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
-                    off_read += 1
-                    continue
+
                 # get CIGAR string
                 CIGAR_r1 = line_r1[5]
+                # get sequence
                 seq_r1 = line_r1[9]
+                # get quality str
                 quality_r1 = line_r1[10]
 
                 CIGAR_r2 = line_r2[5]
                 seq_r2 = line_r2[9]
                 quality_r2 = line_r2[10]
 
+                # get mdz str
                 mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
                 mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
 
@@ -195,7 +214,8 @@ class readSam(object):
                 else:
                     mdz_r2 = ""
 
-                if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1)) and ((not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2)):
+                if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1) and ("D" not in CIGAR_r1)) and \
+                        ((not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2) and ("D" not in CIGAR_r2)):
                     # if MDZ string only contains numbers
                     # and no insertions shown in CIGAR string
                     # means there is no mutation in this read
@@ -227,51 +247,89 @@ class readSam(object):
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
                                                   self._tile_begins, self._tile_ends, self._qual,
                                                   self._mut_log, self._mutrate, self._base, self._posteriorQC)
-                hgvs, outside_mut, pos_df, all_posterior= mut_parser._main()
-                if len(hgvs) !=0:
-                    final_pairs +=1
-                    if hgvs in hgvs_output:
+                hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
+                track_df = track_df.set_index("pos")
+                track_df = track_df[track_df.index.isin(self._track_reads.index)]
+                # add track df to track summary 
+                print(self._track_reads)
+                print(track_df)
+                track_all = pd.concat([self._track_reads[["m_r1", "m_r2", "passed"]], track_df[["m_r1", "m_r2", "passed"]]], axis=1).fillna(0)
+                self._track_reads = track_all.groupby(by=track_all.columns, axis=1).sum()
+                if len(hgvs) != 0:
+                    final_pairs += 1
+                    if hgvs_output.get(hgvs, -1) != -1:
                         hgvs_output[hgvs] += 1
                     else:
                         hgvs_output[hgvs] = 1
-                    #hgvs_output.append(hgvs)
+
+                if len(hgvs_r1_clusters) != 0:
+                    r1_popmut += 1
+                    if hgvs_r1_clusters in r1_pop_hgvs:
+                        r1_pop_hgvs[hgvs_r1_clusters] += 1
+                    else:
+                        r1_pop_hgvs[hgvs_r1_clusters] = 1
+
+                if len(hgvs_r2_clusters) != 0:
+                    r2_popmut += 1
+                    if hgvs_r2_clusters in r2_pop_hgvs:
+                        r2_pop_hgvs[hgvs_r2_clusters] += 1
+                    else:
+                        r2_pop_hgvs[hgvs_r2_clusters] = 1
+
                 if outside_mut != []:
                     outside_mut = list(set(outside_mut))
                     for i in outside_mut:
                         if not (i in off_mut):
                             off_mut[i] = 1
-
-        # track mutations that are not within the same tile
-        # track sequencing depth for each sample
-        # write this information to a tmp file
-        # merge the tmp file (in main.py)
-        tmp_f = os.path.join(self._output_counts_dir,f"{self._sample_id}_tmp.csv")
-        off_mut = list(set(off_mut))
-        off_mut.sort()
-        f = open(tmp_f, "w")
-        f.write(f"sample,{self._sample_id},tile,{self._tile_begins}-{self._tile_ends},sequencing_depth,{read_pair},off_tile_reads,{off_read},off_tile_perc,{off_read/read_pair}\n")
-        f.close()
+                if not all_posterior.empty:
+                    all_df.append(all_posterior)
 
         output_csv = open(self._sample_counts_f, "a")
         output_csv.write(f"#Raw read depth:{read_pair}\n")
-        output_csv.write(f"#Number of read pairs without mutations:{read_nomut}\n#Number of read pairs did not map to gene:{un_map}\n#Mutation positions outside of the tile:{off_mut}\n#Number of reads outside of the tile:{off_read}\n")
+        output_csv.write(
+            f"#Number of read pairs without mutations:{read_nomut}\n#Number of read pairs did not map to gene:{un_map}\n#Mutation positions outside of the tile:{off_mut}\n#Number of reads outside of the tile:{off_read}\n")
         output_csv.write(f"#Final read-depth:{read_pair - un_map - off_read}\n")
         output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
-        output_csv.write(f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
+        output_csv.write(
+            f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
 
         output_csv.close()
 
         self._mut_log.info(f"Raw sequencing depth: {read_pair}")
         self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
         self._mut_log.info(f"Final read-depth: {read_pair - un_map - off_read}")
+
+        # save read coverage to csv file 
+        cov_file = os.path.join(self._output_counts_dir, f"{self._sample_id}_coverage.csv")
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()
         if not hgvs_df.empty:
             hgvs_df.columns = ["HGVS", "count"]
-        else:
-            hgvs_df = pd.DataFrame({}, columns=["HGVS", "count"])
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
+        del hgvs_df
+
+        if self._posteriorQC:
+            r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
+            r1_df = r1_df.reset_index()
+            if not r1_df.empty:
+                r1_df.columns = ["HGVS", "count"]
+            r1_df.to_csv(self._sample_counts_r1_f, mode="a", index=False)
+            del r1_f
+
+            r2_df = pd.DataFrame.from_dict(r2_pop_hgvs, orient="index")
+            r2_df = r2_df.reset_index()
+            if not r2_df.empty:
+                r2_df.columns = ["HGVS", "count"]
+            r2_df.to_csv(self._sample_counts_r2_f, mode="a", index=False)
+            del r2_f
+
+            self._mut_log.info(f"Reading posterior unfiltered dfs ...")
+            all_f = os.path.join(self._output_counts_dir, f"{self._sample_id}_posprob_all.csv")
+            for df in all_df:
+                df.to_csv(all_f, mode='a', header=False, index=False)
+            self._mut_log.info(f"Posterior df saved to files ... {all_f}")
+            del all_df
 
     def multi_core(self):
         """
@@ -323,6 +381,8 @@ class readSam(object):
             read_name_r1 = line_r1[0]
             read_name_r2 = line_r2[0]
             if read_name_r1 != read_name_r2:
+                print(read_name_r1)
+                print(read_name_r2)
                 self._mut_log.error("Read pair IDs did not map, please check fastq files")
                 exit(1)
 
@@ -335,10 +395,8 @@ class readSam(object):
             # we also assume that the read len is ALWAYS 150
             r1_end = int(pos_start_r1) + 150
             # r1_end must cover from start of the tile to 70% of the tile
-            if (r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len)):
-                off_read += 1
-                continue
-            if (int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len)):
+            if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
+                    ((int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len))):
                 off_read += 1
                 continue
 
@@ -364,7 +422,8 @@ class readSam(object):
             else:
                 mdz_r2 = ""
 
-            if (not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1) and ("D" not in CIGAR_r2) and (not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2) and ("D" not in CIGAR_r2):
+            if ((not re.search('[a-zA-Z]', mdz_r1)) and ("I" not in CIGAR_r1) and ("D" not in CIGAR_r1)) and \
+                    ((not re.search('[a-zA-Z]', mdz_r2)) and ("I" not in CIGAR_r2) and ("D" not in CIGAR_r2)):
                 # if MDZ string only contains numbers
                 # and no insertions shown in CIGAR string
                 # means there is no mutation in this read

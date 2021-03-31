@@ -141,7 +141,11 @@ class MutParser(object):
         merged_df = [snp_df, delins_df]
         merged_df = pd.concat(merged_df)
         merged_df = merged_df.sort_values(by="pos")
-
+        
+        # build df to track how many mutations were rejected 
+        track_df = merged_df[["pos", "m_r1", "m_r2"]]
+        track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
+        track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].fillna(0)
         # group mutations based on positions
         # any mutations that are within 3bp are grouped together
         n = 3
@@ -154,6 +158,20 @@ class MutParser(object):
                                                                        self._posteriorQC)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
+        print(final_mut)
+        if final_mut != []:
+            final_df = pd.DataFrame([sub.split("|") for sub in final_mut])
+            # give the position col a name
+            final_df = final_df.rename(columns=str).rename(columns={"0": "pos", "1": "passed"})
+            final_df = final_df[["pos", "passed"]]
+            final_df["pos"] = final_df["pos"].astype(int)
+            # merge final df with track df to see how many mutations passed filter on each/both reads
+            merged_track_df = pd.merge(track_df, final_df, how="left", on="pos")
+            merged_track_df["passed"] = merged_track_df["passed"].where(~merged_track_df["passed"].notna(), 1)
+            merged_track_df["passed"] = merged_track_df["passed"].fillna(0)
+        else:
+            merged_track_df = track_df
+            merged_track_df["passed"] = 0
         hgvs_r1_clusters, outside_mut_r1 = [], []
         hgvs_r2_clusters, outside_mut_r2 = [], []
         if not clustered_r1.empty:
@@ -174,7 +192,7 @@ class MutParser(object):
         else:
             hgvs, outside_mut = [], []
 
-        return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
+        return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, merged_track_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """

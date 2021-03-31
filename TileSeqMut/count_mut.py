@@ -104,6 +104,14 @@ class readSam(object):
                              f"#Posterior cutoff:{self._qual}\n#min cover %:{min_cover}\n")
             output_csv.close()
 
+        # build a df for tracking how many reads passed filter at certain position of the read 
+        # df contains ["pos", "m_r1", "m_r2", "passed"] columns
+        # positions referes to all the nt positions in this tile 
+        self._track_reads = pd.DataFrame({}, columns=["pos", "m_r1", "m_r2", "passed"])
+        
+        self._track_reads["pos"] = range(self._tile_begins, self._tile_ends+1)
+        self._track_reads = self._track_reads.set_index("pos")
+        self._track_reads = self._track_reads.fillna(0)
 
     def _merged_main(self):
         """
@@ -239,8 +247,14 @@ class readSam(object):
                 mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup,
                                                   self._tile_begins, self._tile_ends, self._qual,
                                                   self._mut_log, self._mutrate, self._base, self._posteriorQC)
-                hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
-
+                hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
+                track_df = track_df.set_index("pos")
+                track_df = track_df[track_df.index.isin(self._track_reads.index)]
+                # add track df to track summary 
+                print(self._track_reads)
+                print(track_df)
+                track_all = pd.concat([self._track_reads[["m_r1", "m_r2", "passed"]], track_df[["m_r1", "m_r2", "passed"]]], axis=1).fillna(0)
+                self._track_reads = track_all.groupby(by=track_all.columns, axis=1).sum()
                 if len(hgvs) != 0:
                     final_pairs += 1
                     if hgvs_output.get(hgvs, -1) != -1:
@@ -284,6 +298,9 @@ class readSam(object):
         self._mut_log.info(f"Raw sequencing depth: {read_pair}")
         self._mut_log.info(f"Number of reads without mutations:{read_nomut}")
         self._mut_log.info(f"Final read-depth: {read_pair - un_map - off_read}")
+
+        # save read coverage to csv file 
+        cov_file = os.path.join(self._output_counts_dir, f"{self._sample_id}_coverage.csv")
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()
