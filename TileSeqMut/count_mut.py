@@ -251,9 +251,7 @@ class readSam(object):
                 track_df = track_df.set_index("pos")
                 track_df = track_df[track_df.index.isin(self._track_reads.index)]
                 # add track df to track summary 
-                print(self._track_reads)
-                print(track_df)
-                track_all = pd.concat([self._track_reads[["m_r1", "m_r2", "passed"]], track_df[["m_r1", "m_r2", "passed"]]], axis=1).fillna(0)
+                track_all = pd.concat([self._track_reads, track_df], axis=1).fillna(0)
                 self._track_reads = track_all.groupby(by=track_all.columns, axis=1).sum()
                 if len(hgvs) != 0:
                     final_pairs += 1

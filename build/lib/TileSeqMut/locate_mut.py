@@ -10,6 +10,7 @@ import re
 from Bio.Seq import Seq
 
 from TileSeqMut import posterior
+pd.options.mode.chained_assignment = None  # default='warn'
 # import posterior
 
 class MutParser(object):
@@ -141,7 +142,7 @@ class MutParser(object):
         merged_df = [snp_df, delins_df]
         merged_df = pd.concat(merged_df)
         merged_df = merged_df.sort_values(by="pos")
-        
+        merged_df = merged_df.groupby("pos").first().reset_index()
         # build df to track how many mutations were rejected 
         track_df = merged_df[["pos", "m_r1", "m_r2"]]
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
@@ -158,7 +159,6 @@ class MutParser(object):
                                                                        self._posteriorQC)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
-        print(final_mut)
         if final_mut != []:
             final_df = pd.DataFrame([sub.split("|") for sub in final_mut])
             # give the position col a name
