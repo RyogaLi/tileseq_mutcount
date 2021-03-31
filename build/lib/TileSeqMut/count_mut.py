@@ -299,6 +299,7 @@ class readSam(object):
 
         # save read coverage to csv file 
         cov_file = os.path.join(self._output_counts_dir, f"{self._sample_id}_coverage.csv")
+        self._track_reads.to_csv(cov_file)
         # convert list to df with one col
         hgvs_df = pd.DataFrame.from_dict(hgvs_output, orient="index")
         hgvs_df = hgvs_df.reset_index()
@@ -348,9 +349,6 @@ class readSam(object):
         r2_popmut = 0
         off_read = 0
 
-        # chunkSize = 1500000  # number of characters in each chunk
-        # chunk1 = deque([""])  # buffered lines from 1st file
-        # chunk2 = deque([""])  # buffered lines from 2nd file
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
         # init objects
@@ -458,7 +456,7 @@ class readSam(object):
         all_df = []
 
         for job in jobs:
-            hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters = job.get()
+            hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters, track_df = job.get()
             if len(hgvs) != 0:
                 final_pairs += 1
                 if hgvs_output.get(hgvs, -1) != -1:
@@ -487,7 +485,11 @@ class readSam(object):
                         off_mut[i] = 1
             if not all_posterior.empty:
                 all_df.append(all_posterior)
-
+            track_df = track_df.set_index("pos")
+            track_df = track_df[track_df.index.isin(self._track_reads.index)]
+            # add track df to track summary
+            track_all = pd.concat([self._track_reads, track_df], axis=1).fillna(0)
+            self._track_reads = track_all.groupby(by=track_all.columns, axis=1).sum()
         # clean up
         pool.close()
         self._mut_log.info("Pool closed")
@@ -526,6 +528,10 @@ class readSam(object):
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
         del hgvs_df
 
+        # save read coverage to csv file
+        cov_file = os.path.join(self._output_counts_dir, f"{self._sample_id}_coverage.csv")
+        self._track_reads.to_csv(cov_file)
+
         if self._posteriorQC:
             r1_df = pd.DataFrame.from_dict(r1_pop_hgvs, orient="index")
             r1_df = r1_df.reset_index()
@@ -555,8 +561,8 @@ def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual,
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
                                       mutrate, base, posteriorQC)
-    hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters = mut_parser._main()
-    return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters
+    hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
+    return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df
 
 
 # if __name__ == "__main__":

@@ -349,9 +349,6 @@ class readSam(object):
         r2_popmut = 0
         off_read = 0
 
-        # chunkSize = 1500000  # number of characters in each chunk
-        # chunk1 = deque([""])  # buffered lines from 1st file
-        # chunk2 = deque([""])  # buffered lines from 2nd file
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
         # init objects
@@ -493,7 +490,6 @@ class readSam(object):
             # add track df to track summary
             track_all = pd.concat([self._track_reads, track_df], axis=1).fillna(0)
             self._track_reads = track_all.groupby(by=track_all.columns, axis=1).sum()
-
         # clean up
         pool.close()
         self._mut_log.info("Pool closed")

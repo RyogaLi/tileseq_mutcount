@@ -27,7 +27,6 @@ class MutParser(object):
         self._cds = Seq(cds_seq)
         self._start_pos = full_seq.cds_start.values.item() # 1 posisiton
         self._end_pos = full_seq.cds_end.values.item()
-
         self._tile_begins = tile_s
         self._tile_ends = tile_e
         # Note all the position in this df are 1-based
@@ -145,6 +144,8 @@ class MutParser(object):
         merged_df = merged_df.groupby("pos").first().reset_index()
         # build df to track how many mutations were rejected 
         track_df = merged_df[["pos", "m_r1", "m_r2"]]
+        track_df["pos"] = track_df["pos"] - self._start_pos + 1
+        # adjust positions in the df, the postions are template pos not cds pos
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].fillna(0)
         # group mutations based on positions
@@ -165,6 +166,7 @@ class MutParser(object):
             final_df = final_df.rename(columns=str).rename(columns={"0": "pos", "1": "passed"})
             final_df = final_df[["pos", "passed"]]
             final_df["pos"] = final_df["pos"].astype(int)
+            final_df["pos"] = final_df["pos"] - self._start_pos + 1
             # merge final df with track df to see how many mutations passed filter on each/both reads
             merged_track_df = pd.merge(track_df, final_df, how="left", on="pos")
             merged_track_df["passed"] = merged_track_df["passed"].where(~merged_track_df["passed"].notna(), 1)
