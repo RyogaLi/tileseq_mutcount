@@ -529,7 +529,7 @@ class readSam(object):
         del hgvs_df
 
         # save read coverage to csv file
-        cov_file = os.path.join(self._output_counts_dir, f"{self._sample_id}_coverage.csv")
+        cov_file = os.path.join(self._output_counts_dir, f"coverage_{self._sample_id}.csv")
         self._track_reads.to_csv(cov_file)
 
         if self._posteriorQC:

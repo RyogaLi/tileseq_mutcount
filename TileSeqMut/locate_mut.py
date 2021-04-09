@@ -148,6 +148,7 @@ class MutParser(object):
         # adjust positions in the df, the postions are template pos not cds pos
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].fillna(0)
+        print(track_df)
         # group mutations based on positions
         # any mutations that are within 3bp are grouped together
         n = 3
@@ -158,6 +159,7 @@ class MutParser(object):
         pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
                                                                  map_pos_r2, self._mutrate, self._cutoff, self._base,
                                                                        self._posteriorQC)
+        print(pos_df)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
