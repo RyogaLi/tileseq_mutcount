@@ -148,6 +148,8 @@ class MutParser(object):
         # adjust positions in the df, the postions are template pos not cds pos
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].fillna(0)
+        track_df["m_either"] = track_df["m_r1"] + track_df["m_r2"]
+        track_df["m_either"] = track_df["m_either"].replace(2, 0)
         # group mutations based on positions
         # any mutations that are within 3bp are grouped together
         n = 3
