@@ -194,7 +194,6 @@ class MutParser(object):
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
             hgvs, outside_mut = [], []
-
         return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, merged_track_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):

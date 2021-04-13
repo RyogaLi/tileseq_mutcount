@@ -107,7 +107,7 @@ class readSam(object):
         # build a df for tracking how many reads passed filter at certain position of the read 
         # df contains ["pos", "m_r1", "m_r2", "passed"] columns
         # positions referes to all the nt positions in this tile 
-        self._track_reads = pd.DataFrame({}, columns=["pos", "m_both", "m_r1", "m_r2", "passed"])
+        self._track_reads = pd.DataFrame({}, columns=["pos", "m_r1", "m_r2", "m_both", "passed"])
         
         self._track_reads["pos"] = range(self._tile_begins, self._tile_ends+1)
         self._track_reads = self._track_reads.set_index("pos")

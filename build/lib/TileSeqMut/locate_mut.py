@@ -148,8 +148,7 @@ class MutParser(object):
         # adjust positions in the df, the postions are template pos not cds pos
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].where(~track_df[["m_r1", "m_r2"]].notna(), 1)
         track_df[["m_r1", "m_r2"]] = track_df[["m_r1", "m_r2"]].fillna(0)
-        track_df["m_either"] = track_df["m_r1"] + track_df["m_r2"]
-        track_df["m_either"] = track_df["m_either"].replace(2, 0)
+        track_df["m_both"] = track_df["m_r1"] + track_df["m_r2"] - 1
         # group mutations based on positions
         # any mutations that are within 3bp are grouped together
         n = 3
@@ -195,7 +194,7 @@ class MutParser(object):
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
             hgvs, outside_mut = [], []
-
+        print(merged_track_df)
         return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, merged_track_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
