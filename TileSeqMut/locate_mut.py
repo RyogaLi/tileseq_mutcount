@@ -447,6 +447,14 @@ class MutParser(object):
         # output_df = pd.DataFrame(output_df, columns=["mut", "hgvs"])
         # print(output_df)
 
+        if "c.[1004del;1005del]" in mutations:
+            print(self._r1_pos,
+            self._r1_cigar,
+            self._r1_readlen,
+            self._r1_ref,
+            self._r1_qual,
+            self._r1_read ,
+            self._r1_mdz)
         return mutations, outside_mut
 
 
