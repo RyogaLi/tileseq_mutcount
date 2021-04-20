@@ -113,6 +113,14 @@ class readSam(object):
         self._track_reads = self._track_reads.set_index("pos")
         self._track_reads = self._track_reads.fillna(0)
 
+    def adjust_er(self):
+        """
+        Based on the wt samples given in the parameter sheet,
+        calculate new error rate for phred scores
+        this function is dependent on the tileseqMave package
+        please make sure the correct script is installed before running the pipeline
+        """
+        pass
 
     def multi_core(self):
         """

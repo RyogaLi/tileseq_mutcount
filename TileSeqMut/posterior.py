@@ -259,7 +259,7 @@ def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual,
     return pos_df, all_df, clustered_r1_mut, clustered_r2_mut
 
 
-def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1):
+def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adjustthred=False):
     """
     @param basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])
     @param phred: phred score for the base calls (in letters) ["!", "J"]
@@ -280,6 +280,10 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1):
         else:
             all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
+
+    if adjustthred:
+        phred = []
+
 
     # phred = [10**(-(ord(i) - 33) / 10) for i in phred]
     post_p = []

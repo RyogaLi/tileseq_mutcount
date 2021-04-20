@@ -103,6 +103,8 @@ def parse_json(json_file):
         except:
             samples = pd.DataFrame.from_dict(data["samples"], index=[0])
 
+        # todo get relationship table for future use
+
         # get posterior quality cut off
         var_caller = data["varcaller"]
     return project, seq, cds_seq, tile_map, region_map, samples, var_caller

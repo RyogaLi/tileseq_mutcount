@@ -17,6 +17,8 @@
 # 5. Output mutation counts to summary.csv
 
 # modules
+import subprocess
+
 import pandas as pd
 import numpy as np
 import os
@@ -258,6 +260,8 @@ class fastq2counts(object):
         # start = time.time()
         else:
             self._log.info("Running multi-core analysis ... ")
+            # todo add adjust error rate here
+
             mut_counts.multi_core()
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
@@ -417,6 +421,15 @@ def check(args):
     Validate args and convert csv to JSON
     return path to json
     """
+    # todo test if tileseqMave is installed correctly
+    # two script needed: csv2json.R and calibratePhred.R
+    test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
+    test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")
+    if test_csv2json[0] != 0:
+        raise OSError("csv2json.R not installed or not found in path")
+    if test_caliPhred[0] != 0:
+        raise OSError("calibratePhred.R not installed or not found in path")
+
     # check if the correct args are provided
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
     if not args.skip_alignment:
