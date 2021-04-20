@@ -447,14 +447,39 @@ class MutParser(object):
         # output_df = pd.DataFrame(output_df, columns=["mut", "hgvs"])
         # print(output_df)
 
-        if "c.[1004del;1005del]" in mutations:
-            print(self._r1_pos,
-            self._r1_cigar,
-            self._r1_readlen,
-            self._r1_ref,
-            self._r1_qual,
-            self._r1_read ,
-            self._r1_mdz)
+        #if "c.542del" in mutations:
+         #   print(self._r1_pos,
+         #   self._r1_cigar,
+         #   self._r1_readlen,
+         #   self._r1_ref,
+         #   self._r1_qual,
+         #   self._r1_read ,
+         #   self._r1_mdz)
+         #   print(self._r2_pos,
+         #   self._r2_cigar,
+         #   self._r2_readlen,
+         #   self._r2_ref,
+         #   self._r2_qual,
+         #   self._r2_read ,
+         #   self._r2_mdz)
+         #   print("------")
+        #if "c.596del" in mutations:
+        #    print(self._r1_pos,
+        #    self._r1_cigar,
+        #    self._r1_readlen,
+        #    self._r1_ref,
+        #    self._r1_qual,
+        #    self._r1_read ,
+        #    self._r1_mdz)
+        #    print(self._r2_pos,
+        #    self._r2_cigar,
+        #    self._r2_readlen,
+        #    self._r2_ref,
+        #    self._r2_qual,
+        #    self._r2_read ,
+        #    self._r2_mdz)
+        #    print("------")
+
         return mutations, outside_mut
 
 

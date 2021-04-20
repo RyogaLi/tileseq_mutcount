@@ -248,9 +248,10 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         # start = time.time()
         if self._args.test:
-            self._log.info("Testing... ")
+            self._log.info("Testing mode on... ")
             # in testing mode, not using muticore
-            mut_counts._merged_main()
+
+            # mut_counts._merged_main()
         # end = time.time()
         # print('Time taken for original program: ', end - start)
         # testing multicore program

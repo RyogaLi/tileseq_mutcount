@@ -194,7 +194,6 @@ class MutParser(object):
             hgvs, outside_mut = self._get_hgvs(final_mut)
         else:
             hgvs, outside_mut = [], []
-        print(merged_track_df)
         return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, merged_track_df
 
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
@@ -447,6 +446,39 @@ class MutParser(object):
 
         # output_df = pd.DataFrame(output_df, columns=["mut", "hgvs"])
         # print(output_df)
+
+        #if "c.542del" in mutations:
+         #   print(self._r1_pos,
+         #   self._r1_cigar,
+         #   self._r1_readlen,
+         #   self._r1_ref,
+         #   self._r1_qual,
+         #   self._r1_read ,
+         #   self._r1_mdz)
+         #   print(self._r2_pos,
+         #   self._r2_cigar,
+         #   self._r2_readlen,
+         #   self._r2_ref,
+         #   self._r2_qual,
+         #   self._r2_read ,
+         #   self._r2_mdz)
+         #   print("------")
+        #if "c.596del" in mutations:
+        #    print(self._r1_pos,
+        #    self._r1_cigar,
+        #    self._r1_readlen,
+        #    self._r1_ref,
+        #    self._r1_qual,
+        #    self._r1_read ,
+        #    self._r1_mdz)
+        #    print(self._r2_pos,
+        #    self._r2_cigar,
+        #    self._r2_readlen,
+        #    self._r2_ref,
+        #    self._r2_qual,
+        #    self._r2_read ,
+        #    self._r2_mdz)
+        #    print("------")
 
         return mutations, outside_mut
 
