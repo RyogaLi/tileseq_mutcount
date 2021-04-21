@@ -122,7 +122,7 @@ class readSam(object):
         please make sure the correct script is installed before running the pipeline
         """
         r_df = pd.DataFrame(self._relations)
-        phred_output = ""
+        phred_output = []
         if r_df.empty:
             # no relationship is defined
             self._mut_log.warning("No WT relationship! No error rate correction can be applied")
@@ -136,21 +136,24 @@ class readSam(object):
         
         wt_id = ""
 
-        if self._sample_condition in wt["Condition 1"].tolist() and self._sample_rep == 1:
-            # this sample is wt 
-            # run calibratePhred 
-            # we only need 1 wt calibration for each tile (r1 and r2)
-            # we are always using the first rep 
-            wt_id = self._sample_id
+        if self._sample_condition in wt["Condition 1"].tolist():
+            if self._sample_rep == 1:
+                # this sample is wt 
+                # run calibratePhred 
+                # we only need 1 wt calibration for each tile (r1 and r2)
+                # we are always using the first rep 
+                wt_id = self._sample_id
+            else:
+                # this is rep 2 of the wt
+                # find corresponding rep 1 of the wt 
+                wt_id = self._samples[(self._samples["Condition"] == self._sample_condition) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
+
         elif self._sample_condition in wt["Condition 2"].tolist():
             # get corresponding wt 
             wt_name = wt[wt["Condition 2"] == self._sample_condition]["Condition 1"].values[0]
             # get wt sample for this tile and rep 1
             wt_id = self._samples[(self._samples["Condition"] == wt_name) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
         
-        if wt_id == "":
-            print("here")
-            return phred_output
         # check if calibrated
         phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
         phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
@@ -168,10 +171,10 @@ class readSam(object):
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
             cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent"
             os.system(cmd_r2)
-        exit()
-        return phred_output
 
-    def multi_core(self):
+        return [phred_output_r1, phred_output_r2]
+
+    def multi_core(self, adjusted_er=[]):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
@@ -287,7 +290,7 @@ class readSam(object):
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                                self._tile_ends, self._qual, self._mut_log, self._mutrate,
-                                                           self._base, self._posteriorQC)))
+                                                           self._base, self._posteriorQC, adjusted_er)))
             row = {} # flush
 
         r1_f.close()
@@ -397,11 +400,11 @@ class readSam(object):
 
 
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base,
-                    posteriorQC):
+                    posteriorQC, adjusted_er):
     """
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
-                                      mutrate, base, posteriorQC)
+                                      mutrate, base, posteriorQC, adjusted_er=adjusted_er)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df

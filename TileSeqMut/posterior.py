@@ -9,7 +9,7 @@ import numpy as np
 from fractions import Fraction
 
 def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
-                        r2_mappos: dict, mut_rate: float, cut_off: float, base: int, posteriorQC: bool):
+                        r2_mappos: dict, mut_rate: float, cut_off: float, base: int, posteriorQC: bool, adjustthred=[]):
     """
     Parse cluster of mutations
     mut_cluster is a  list of clusters (clustered mutations found in one read pair)
@@ -21,15 +21,15 @@ def cluster(mut_cluster: dict, r1_qual: str, r2_qual: str, r1_mappos: dict,
     if posteriorQC:
         pos_df, all_df, clustered_r1_mut, clustered_r2_mut = call_prob_withposterior(mut_cluster, r1_mappos,
                                                                                      r2_mappos, r1_qual, r2_qual,
-                                                                                     mut_rate, base, cut_off)
+                                                                                     mut_rate, base, cut_off, adjustthred=adjustthred)
     else:
         pos_df, all_df, clustered_r1_mut, clustered_r2_mut = call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual,
-                                                                       r2_qual, mut_rate, base, cut_off)
+                                                                       r2_qual, mut_rate, base, cut_off, adjustthred=adjustthred)
 
     return pos_df, all_df, clustered_r1_mut, clustered_r2_mut
 
 
-def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off):
+def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off, adjustthred=[]):
 
     pos_prob = {"m": [], "prob": [], "read": []}
 
@@ -50,7 +50,7 @@ def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, bas
                 r1_qual_base = r1_qual[r1_mappos[int(row["pos"])]]
                 # calculate posterior prob
                 pos = bayesian_variant_call([row["ref_r2"], row["alt_r2"]], [r1_qual_base, row["qual_r2"]],
-                                            row["ref_r2"], mut_rate, base, c_size)
+                                            row["ref_r2"], mut_rate, base, c_size, adjustthred=adjustthred)
 
 
                 if pos[row["alt_r2"]] > cut_off and pos[row["ref_r2"]] <= pos[row["alt_r2"]]:
@@ -68,7 +68,7 @@ def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, bas
                 pos = bayesian_variant_call([row["alt_r1"], row["ref_r1"]], [row["qual_r1"], r2_qual_base],
                                             row["ref_r1"],
                                             mut_rate,
-                                            base, c_size)
+                                            base, c_size, adjustthred=adjustthred)
                 if pos[row["alt_r1"]] > cut_off and pos[row["ref_r1"]] <= pos[row["alt_r1"]]:
 
                     pos_prob["m"].append(row["m_r1"])
@@ -79,7 +79,7 @@ def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, bas
 
                 basecall = [row["alt_r1"], row["alt_r2"]]
                 qual = [row["qual_r1"], row["qual_r2"]]
-                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, base, c_size)
+                pos = bayesian_variant_call(basecall, qual, row["ref_r1"], mut_rate, base, c_size, adjustthred=adjustthred)
 
                 # if (pos[row["ref_r1"]] > pos[row["alt_r1"]]) and (pos[row["ref_r2"]] > pos[row["alt_r2"]]): continue
 
@@ -101,7 +101,7 @@ def call_prob(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, bas
     return pos_df, pd.DataFrame({}), pd.DataFrame({}), pd.DataFrame({})
 
 
-def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off):
+def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual, mut_rate, base, cut_off, adjustthred=[]):
 
     pos_prob = {"m": [], "prob": [], "read": []}
     all_prob = {"m": [], "prob": [], "read": [], "pass": []}
@@ -123,7 +123,7 @@ def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual,
         for index, row in mutcall.iterrows():
 
             if (pd.isnull(row["m_r1"]) or row["alt_r1"] == "N") and not pd.isnull(row["ref_r2"]):
-
+               
                 if r1_mappos.get(int(row["pos"])) is None:
                     continue
 
@@ -259,7 +259,7 @@ def call_prob_withposterior(mut_cluster, r1_mappos, r2_mappos, r1_qual, r2_qual,
     return pos_df, all_df, clustered_r1_mut, clustered_r2_mut
 
 
-def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adjustthred=False):
+def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adjustthred=[]):
     """
     @param basecall: list of base calls (i.e R1 -> A R2 -> C :  ["A", "C"])
     @param phred: phred score for the base calls (in letters) ["!", "J"]
@@ -280,10 +280,17 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
         else:
             all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
-
-    if adjustthred:
+    if len(adjustthred) == 2:
         phred = []
-
+        phred_r1_df = pd.read_csv(adjustthred[0], index_col=0)
+        phred_r2_df = pd.read_csv(adjustthred[1], index_col=0)
+        phred_r1_df["observed"] = phred_r1_df["observed"].fillna(phred_r1_df["specification"])
+        phred_r2_df["observed"] = phred_r2_df["observed"].fillna(phred_r2_df["specification"])
+        r1_qual = qual[0].split(",")
+        phred_r1 = np.prod(phred_r1_df[phred_r1_df.index.isin(r1_qual)]["observed"])
+        r2_qual = qual[1].split(",")
+        phred_r2 = np.prod(phred_r2_df[phred_r2_df.index.isin(r2_qual)]["observed"])
+        phred = [phred_r1, phred_r2]
 
     # phred = [10**(-(ord(i) - 33) / 10) for i in phred]
     post_p = []

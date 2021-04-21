@@ -250,8 +250,8 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         self._log.info("Running multi-core analysis ... ")
         # todo add adjust error rate here
-        mut_counts.adjust_er()
-        mut_counts.multi_core()
+        adjusted_phred = mut_counts.adjust_er()
+        mut_counts.multi_core(adjusted_er=adjusted_phred)
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
