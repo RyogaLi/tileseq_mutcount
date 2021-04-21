@@ -17,6 +17,8 @@
 # 5. Output mutation counts to summary.csv
 
 # modules
+import subprocess
+
 import pandas as pd
 import numpy as np
 import os
@@ -63,7 +65,7 @@ class fastq2counts(object):
 
         # parse parameter json file
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, \
-            self._samples, self._var = help_functions.parse_json(param_path)
+            self._samples, self._var, self._relations = help_functions.parse_json(param_path)
         self._sample_names = self._samples["Sample ID"].tolist()
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
@@ -246,19 +248,10 @@ class fastq2counts(object):
         # run main.py with -r1 and -r2
         logger_mut = self._logging.getLogger("count.mut.log")
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
-        # start = time.time()
-        if self._args.test:
-            self._log.info("Testing mode on... ")
-            # in testing mode, not using muticore
-
-            # mut_counts._merged_main()
-        # end = time.time()
-        # print('Time taken for original program: ', end - start)
-        # testing multicore program
-        # start = time.time()
-        else:
-            self._log.info("Running multi-core analysis ... ")
-            mut_counts.multi_core()
+        self._log.info("Running multi-core analysis ... ")
+        # todo add adjust error rate here
+        mut_counts.adjust_er()
+        mut_counts.multi_core()
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
@@ -417,6 +410,15 @@ def check(args):
     Validate args and convert csv to JSON
     return path to json
     """
+    # todo test if tileseqMave is installed correctly
+    # two script needed: csv2json.R and calibratePhred.R
+    test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
+    test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")
+    if test_csv2json[0] != 0:
+        raise OSError("csv2json.R not installed or not found in path")
+    if test_caliPhred[0] != 0:
+        raise OSError("calibratePhred.R not installed or not found in path")
+
     # check if the correct args are provided
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
     if not args.skip_alignment:

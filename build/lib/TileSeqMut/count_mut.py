@@ -36,7 +36,8 @@ class readSam(object):
         """
         self._r1 = sam_r1
         self._r2 = sam_r2
-        self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples, self._var = help_functions.parse_json(param)
+        self._param = param
+        self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples, self._var, self._relations = help_functions.parse_json(param)
 
         self._qual = self._var["posteriorThreshold"]
         min_cover = self._var["minCover"]
@@ -58,7 +59,7 @@ class readSam(object):
 
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
-        self._sample_rep = self._sample_info["Replicate"].values[0]
+        self._sample_rep = int(self._sample_info["Replicate"].values[0])
 
         self._seq_lookup = help_functions.build_lookup(self._cds_start.values.item(), self._seq.cds_end.values.item(), self._cds_seq)
 
@@ -113,6 +114,62 @@ class readSam(object):
         self._track_reads = self._track_reads.set_index("pos")
         self._track_reads = self._track_reads.fillna(0)
 
+    def adjust_er(self):
+        """
+        Based on the wt samples given in the parameter sheet,
+        calculate new error rate for phred scores
+        this function is dependent on the tileseqMave package
+        please make sure the correct script is installed before running the pipeline
+        """
+        r_df = pd.DataFrame(self._relations)
+        phred_output = ""
+        if r_df.empty:
+            # no relationship is defined
+            self._mut_log.warning("No WT relationship! No error rate correction can be applied")
+            return phred_output
+        # find out wt sample ID for this sample
+        wt = r_df[r_df["Relationship"]=="is_wt_control_for"]
+        if wt.empty:
+            # no wt relationship is defined
+            self._mut_log.warning("No WT relationship! No error rate correction can be applied")
+            return phred_output
+        
+        wt_id = ""
+
+        if self._sample_condition in wt["Condition 1"].tolist() and self._sample_rep == 1:
+            # this sample is wt 
+            # run calibratePhred 
+            # we only need 1 wt calibration for each tile (r1 and r2)
+            # we are always using the first rep 
+            wt_id = self._sample_id
+        elif self._sample_condition in wt["Condition 2"].tolist():
+            # get corresponding wt 
+            wt_name = wt[wt["Condition 2"] == self._sample_condition]["Condition 1"].values[0]
+            # get wt sample for this tile and rep 1
+            wt_id = self._samples[(self._samples["Condition"] == wt_name) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
+        
+        if wt_id == "":
+            print("here")
+            return phred_output
+        # check if calibrated
+        phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
+        phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
+        if not os.path.isfile(phred_output_r1):
+            # create an empty file as place holder 
+            with open(phred_output_r1, 'w') as fp:
+                pass
+            log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
+            cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent"
+            os.system(cmd_r1)
+        if not os.path.isfile(phred_output_r2):
+            # create an empty file as place holder 
+            with open(phred_output_r2, 'w') as fp:
+                pass
+            log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
+            cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent"
+            os.system(cmd_r2)
+        exit()
+        return phred_output
 
     def multi_core(self):
         """
