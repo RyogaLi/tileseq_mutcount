@@ -114,7 +114,7 @@ class readSam(object):
         self._track_reads = self._track_reads.set_index("pos")
         self._track_reads = self._track_reads.fillna(0)
 
-    def adjust_er(self):
+    def adjust_er(self, wt_override=False):
         """
         Based on the wt samples given in the parameter sheet,
         calculate new error rate for phred scores
@@ -123,17 +123,29 @@ class readSam(object):
         """
         r_df = pd.DataFrame(self._relations)
         phred_output = []
-        if r_df.empty:
-            # no relationship is defined
-            self._mut_log.warning("No WT relationship! No error rate correction can be applied")
-            return phred_output
-        # find out wt sample ID for this sample
-        wt = r_df[r_df["Relationship"]=="is_wt_control_for"]
-        if wt.empty:
-            # no wt relationship is defined
-            self._mut_log.warning("No WT relationship! No error rate correction can be applied")
-            return phred_output
         
+        if r_df.empty:
+            if not wt_override:
+                # no wt relationship is defined
+                self._mut_log.warning("No WT relationship! No error rate correction can be applied")
+                return phred_output
+
+            else:  # treating EVERYTHING in the run as wt
+                self._mut_log.warning("WT OVERRIDE ON, TREATING EVERYTHING AS WT")
+                wt = pd.DataFrame({}, columns=["Condition 1", "Relationship", "Condition 2"])
+                wt["Condition 1"] = self._samples["Condition"]
+        else:
+            # find out wt sample ID for this sample
+            wt = r_df[r_df["Relationship"]=="is_wt_control_for"]
+            if wt.empty:
+                if not wt_override:
+                    # no wt relationship is defined
+                    self._mut_log.warning("No WT relationship! No error rate correction can be applied")
+                    return phred_output
+
+                else:  # treating EVERYTHING in the run as wt
+                    self._mut_log.warning("WT OVERRIDE ON, TREATING EVERYTHING AS WT")
+                    wt["Condition 1"] = self._samples["Condtion"]
         wt_id = ""
 
         if self._sample_condition in wt["Condition 1"].tolist():
@@ -155,6 +167,7 @@ class readSam(object):
             wt_id = self._samples[(self._samples["Condition"] == wt_name) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
         
         # check if calibrated
+        print(wt_id)
         phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
         phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
         if not os.path.isfile(phred_output_r1):

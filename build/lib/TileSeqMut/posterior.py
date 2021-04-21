@@ -280,7 +280,6 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
         else:
             all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
-    print(qual)
     if len(adjustthred) == 2:
         phred = []
         phred_r1_df = pd.read_csv(adjustthred[0], index_col=0)
@@ -292,7 +291,6 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
         r2_qual = qual[1].split(",")
         phred_r2 = np.prod(phred_r2_df[phred_r2_df.index.isin(r2_qual)]["observed"])
         phred = [phred_r1, phred_r2]
-        print(phred)
 
     # phred = [10**(-(ord(i) - 33) / 10) for i in phred]
     post_p = []

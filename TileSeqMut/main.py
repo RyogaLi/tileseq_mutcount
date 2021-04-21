@@ -250,7 +250,8 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         self._log.info("Running multi-core analysis ... ")
         # todo add adjust error rate here
-        adjusted_phred = mut_counts.adjust_er()
+        print(self._args.wt_override)
+        adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
         mut_counts.multi_core(adjusted_er=adjusted_phred)
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
@@ -580,7 +581,9 @@ if __name__ == "__main__":
     parser.add_argument("--posteriorQC", action="store_true", help="Turn on posterior QC mode, this requires more "
                                                                    "memory and runtime, please change the variable "
                                                                    "accordingly")
+    parser.add_argument("--wt_override", action="store_true", help="When no wt conditions defined in the parameter sheet, turn on this option will treat EVERYTHING as wt. Phred scores will be adjusted based on the first replicate")
 
+    
     args = parser.parse_args()
     args.environment = args.environment.upper()
 
