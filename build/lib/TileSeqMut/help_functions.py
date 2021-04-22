@@ -103,9 +103,13 @@ def parse_json(json_file):
         except:
             samples = pd.DataFrame.from_dict(data["samples"], index=[0])
 
+        # todo get relationship table for future use
+        # todo special case: no WT
+        # todo special case: all WT
+        relations = data["conditions"]["definitions"]
         # get posterior quality cut off
         var_caller = data["varcaller"]
-    return project, seq, cds_seq, tile_map, region_map, samples, var_caller
+    return project, seq, cds_seq, tile_map, region_map, samples, var_caller, relations
 
 
 def loadingAnimation(process):
@@ -185,3 +189,9 @@ class StreamToLogger(object):
    def write(self, buf):
       for line in buf.rstrip().splitlines():
          self.logger.log(self.log_level, line.rstrip())
+
+
+if __name__ == "__main__":
+    j = "/home/rothlab2/rli/tileseq_output/210416_CHEK2_QC_2021-04-19-16-02-03/210416_optimizedRef_CHEK2.json"
+    j = "/home/rothlab2/rli/tileseq_output/210120_LDLuptake_2021-01-25-13-13-43/Parameter-sheet_LDLR_20210120_LDLuptake.json"
+    parse_json(j)

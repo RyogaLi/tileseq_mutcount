@@ -6,3 +6,4 @@ test.sh
 *.json
 dist/*
 *.log
+TileSeqMut.egg-info/*

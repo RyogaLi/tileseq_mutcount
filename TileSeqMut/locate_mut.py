@@ -16,7 +16,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 class MutParser(object):
 
     def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate, base,
-                 posteriorQC):
+                 posteriorQC, adjusted_er=[]):
         """
         row: input row includes both reads from sam file
         full_seq: full sequence (including cds and padding sequence)
@@ -43,6 +43,9 @@ class MutParser(object):
         self._logging = logging
         self._base = base
         self._posteriorQC = posteriorQC
+        
+        # if we are adjusting phred scores 
+        self._adjusted_er = adjusted_er
 
     def _get_seq(self):
         """
@@ -158,7 +161,7 @@ class MutParser(object):
         # print(d, self._mutrate, self._cutoff)
         pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
                                                                  map_pos_r2, self._mutrate, self._cutoff, self._base,
-                                                                       self._posteriorQC)
+                                                                       self._posteriorQC, adjustthred=self._adjusted_er)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
@@ -446,6 +449,39 @@ class MutParser(object):
 
         # output_df = pd.DataFrame(output_df, columns=["mut", "hgvs"])
         # print(output_df)
+
+        #if "c.542del" in mutations:
+         #   print(self._r1_pos,
+         #   self._r1_cigar,
+         #   self._r1_readlen,
+         #   self._r1_ref,
+         #   self._r1_qual,
+         #   self._r1_read ,
+         #   self._r1_mdz)
+         #   print(self._r2_pos,
+         #   self._r2_cigar,
+         #   self._r2_readlen,
+         #   self._r2_ref,
+         #   self._r2_qual,
+         #   self._r2_read ,
+         #   self._r2_mdz)
+         #   print("------")
+        #if "c.596del" in mutations:
+        #    print(self._r1_pos,
+        #    self._r1_cigar,
+        #    self._r1_readlen,
+        #    self._r1_ref,
+        #    self._r1_qual,
+        #    self._r1_read ,
+        #    self._r1_mdz)
+        #    print(self._r2_pos,
+        #    self._r2_cigar,
+        #    self._r2_readlen,
+        #    self._r2_ref,
+        #    self._r2_qual,
+        #    self._r2_read ,
+        #    self._r2_mdz)
+        #    print("------")
 
         return mutations, outside_mut
 

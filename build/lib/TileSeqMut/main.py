@@ -17,6 +17,8 @@
 # 5. Output mutation counts to summary.csv
 
 # modules
+import subprocess
+
 import pandas as pd
 import numpy as np
 import os
@@ -63,7 +65,7 @@ class fastq2counts(object):
 
         # parse parameter json file
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, \
-            self._samples, self._var = help_functions.parse_json(param_path)
+            self._samples, self._var, self._relations = help_functions.parse_json(param_path)
         self._sample_names = self._samples["Sample ID"].tolist()
         self._project = self._project.replace(" ", "_")  # project name
         # make main log
@@ -246,18 +248,11 @@ class fastq2counts(object):
         # run main.py with -r1 and -r2
         logger_mut = self._logging.getLogger("count.mut.log")
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
-        # start = time.time()
-        if self._args.test:
-            self._log.info("Testing... ")
-            # in testing mode, not using muticore
-            mut_counts._merged_main()
-        # end = time.time()
-        # print('Time taken for original program: ', end - start)
-        # testing multicore program
-        # start = time.time()
-        else:
-            self._log.info("Running multi-core analysis ... ")
-            mut_counts.multi_core()
+        self._log.info("Running multi-core analysis ... ")
+        # todo add adjust error rate here
+        print(self._args.wt_override)
+        adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
+        mut_counts.multi_core(adjusted_er=adjusted_phred)
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
@@ -303,6 +298,14 @@ class fastq2counts(object):
                       f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
             else:
                 cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+
+            if self._args.wt_override:
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+                      f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} --wt_override"
+            else:
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+
+
 
             if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
@@ -416,6 +419,15 @@ def check(args):
     Validate args and convert csv to JSON
     return path to json
     """
+    # todo test if tileseqMave is installed correctly
+    # two script needed: csv2json.R and calibratePhred.R
+    test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
+    test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")
+    if test_csv2json[0] != 0:
+        raise OSError("csv2json.R not installed or not found in path")
+    if test_caliPhred[0] != 0:
+        raise OSError("calibratePhred.R not installed or not found in path")
+
     # check if the correct args are provided
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
     if not args.skip_alignment:
@@ -577,7 +589,9 @@ if __name__ == "__main__":
     parser.add_argument("--posteriorQC", action="store_true", help="Turn on posterior QC mode, this requires more "
                                                                    "memory and runtime, please change the variable "
                                                                    "accordingly")
+    parser.add_argument("--wt_override", action="store_true", help="When no wt conditions defined in the parameter sheet, turn on this option will treat EVERYTHING as wt. Phred scores will be adjusted based on the first replicate")
 
+    
     args = parser.parse_args()
     args.environment = args.environment.upper()
 
