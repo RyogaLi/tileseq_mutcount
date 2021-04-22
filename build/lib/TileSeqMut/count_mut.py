@@ -10,6 +10,7 @@ import os
 import math
 import logging
 import mmap
+import time
 import multiprocessing as mp
 import argparse
 # import datetime
@@ -167,9 +168,9 @@ class readSam(object):
             wt_id = self._samples[(self._samples["Condition"] == wt_name) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
         
         # check if calibrated
-        print(wt_id)
-        phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
-        phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
+        self._mut_log.info(f"wt sample used to adjust phred scores: {wt_id}")
+        phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R1_calibrate_phred.csv")
+        phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R2_calibrate_phred.csv")
         if not os.path.isfile(phred_output_r1):
             # create an empty file as place holder 
             with open(phred_output_r1, 'w') as fp:
@@ -184,7 +185,28 @@ class readSam(object):
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
             cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent"
             os.system(cmd_r2)
+        
+        # check if both file has something in there
+        # if they are empty, wait for them to finish (they might be running in other jobs 
 
+        t0 = time.time()  # check for timeout
+        while os.stat(phred_output_r1).st_size == 0:
+            os.system("sleep 300")
+            self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
+            t1 = time.time()
+            total = float(t1-t0)
+            if total > 10800:
+                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+        t0 = time.time()
+        while os.stat(phred_output_r2).st_size == 0:
+            os.system("sleep 300")
+            self._mut_log.warning("phred file (R2) found, but empty.. Waiting for the job to finish...")
+            t1 = time.time()
+            total = float(t1-t0)
+            if total > 10800:
+                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+        time.sleep(30)
+        self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
     def multi_core(self, adjusted_er=[]):

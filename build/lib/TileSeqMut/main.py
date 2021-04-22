@@ -299,6 +299,14 @@ class fastq2counts(object):
             else:
                 cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
 
+            if self._args.wt_override:
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+                      f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} --wt_override"
+            else:
+                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+
+
+
             if self._args.environment == "BC2" or self._args.environment == "BC":
                 logging.info("Submitting mutation counts jobs to BC2...")
                 job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,

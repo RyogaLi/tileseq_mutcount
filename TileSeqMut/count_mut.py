@@ -169,8 +169,8 @@ class readSam(object):
         
         # check if calibrated
         self._mut_log.info(f"wt sample used to adjust phred scores: {wt_id}")
-        phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
-        phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
+        phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R1_calibrate_phred.csv")
+        phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R2_calibrate_phred.csv")
         if not os.path.isfile(phred_output_r1):
             # create an empty file as place holder 
             with open(phred_output_r1, 'w') as fp:
@@ -190,7 +190,7 @@ class readSam(object):
         # if they are empty, wait for them to finish (they might be running in other jobs 
 
         t0 = time.time()  # check for timeout
-        while os.stat(adjustthred[0]).st_size == 0:
+        while os.stat(phred_output_r1).st_size == 0:
             os.system("sleep 300")
             self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
             t1 = time.time()
@@ -198,7 +198,7 @@ class readSam(object):
             if total > 10800:
                 raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
         t0 = time.time()
-        while os.stat(adjustthred[1]).st_size == 0:
+        while os.stat(phred_output_r2).st_size == 0:
             os.system("sleep 300")
             self._mut_log.warning("phred file (R2) found, but empty.. Waiting for the job to finish...")
             t1 = time.time()
@@ -206,6 +206,7 @@ class readSam(object):
             if total > 10800:
                 raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
         time.sleep(30)
+        self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
     def multi_core(self, adjusted_er=[]):
