@@ -168,7 +168,7 @@ class readSam(object):
             wt_id = self._samples[(self._samples["Condition"] == wt_name) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
         
         # check if calibrated
-        print(wt_id)
+        self._mut_log.info(f"wt sample used to adjust phred scores: {wt_id}")
         phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R1_calibrate_phred.csv")
         phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_{self._sample_tile}_R2_calibrate_phred.csv")
         if not os.path.isfile(phred_output_r1):
@@ -192,6 +192,7 @@ class readSam(object):
         t0 = time.time()  # check for timeout
         while os.stat(adjustthred[0]).st_size == 0:
             os.system("sleep 300")
+            self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
@@ -199,6 +200,7 @@ class readSam(object):
         t0 = time.time()
         while os.stat(adjustthred[1]).st_size == 0:
             os.system("sleep 300")
+            self._mut_log.warning("phred file (R2) found, but empty.. Waiting for the job to finish...")
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:

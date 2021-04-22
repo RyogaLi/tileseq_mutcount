@@ -283,24 +283,6 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
             phred.append(np.prod(all_phred))
     if len(adjustthred) == 2:
         phred = []
-        # safty check: if the size of these files are zero, then wait 
-        t0 = time.time()  # check for timeout
-        while os.stat(adjustthred[0]).st_size == 0:
-            os.system("sleep 300")
-            t1 = time.time()
-            total = float(t1-t0)
-            if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
-        t0 = time.time()
-        while os.stat(adjustthred[1]).st_size == 0:
-            os.system("sleep 300")
-            t1 = time.time()
-            total = float(t1-t0)
-            if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
-        
-        time.sleep(1)
-
         phred_r1_df = pd.read_csv(adjustthred[0], index_col=0)
         phred_r2_df = pd.read_csv(adjustthred[1], index_col=0)
         phred_r1_df["observed"] = phred_r1_df["observed"].fillna(phred_r1_df["specification"])
