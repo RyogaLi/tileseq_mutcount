@@ -213,7 +213,7 @@ def mut_count_sh_galen(sample_name, cmd, mt, mm, sh_output_dir, logger, cores):
         os.system(f"chmod 755 {shfile}")
     #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
     # submit this to the cluster
-    sub_cmd = sub_cmd = ["sbatch", str(shfile)]
+    sub_cmd = ["sbatch", str(shfile)]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip()
@@ -342,6 +342,32 @@ def parse_jobs_galen(job_list, logger):
             job = subprocess.run(qstat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             qstat_out = job.stdout.decode("utf-8", errors="replace")
             qstat_err = job.stderr.decode("utf-8", errors="replace")
+
+
+def submit_given_jobs(shfile, logger, mt, mm, cores, env=""):
+    """
+    for a given sh file, submit to cluster, return job id
+    """
+    sample_name = shfile.split(".")[0].split("_")[-1]
+    sh_dir = os.path.dirname(shfile)
+    log_f = os.path.join(sh_dir, f"Mut_count_{sample_name}.log")
+    if env == "GALEN":
+        sub_cmd = ["sbatch", str(shfile)]
+        job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+        job_id = job.stdout.decode("utf-8").strip().split()[-1]
+    elif env == "BC2" or env == "BC":
+        sub_cmd = ["submitjob2", "-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
+        job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+        job_id = job.stdout.decode("utf-8").strip()
+    elif env == "DC":
+        sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
+        job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
+        job_id = job.stdout.decode("utf-8").strip()
+    else:
+        raise ValueError("Wrong environment code")
+    # log sample name and job id
+    logger.info(f"Sample {sample_name}: job id - {job_id}")
+    return job_id
 
 if __name__ == "__main__":
     # test job list
