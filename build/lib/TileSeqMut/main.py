@@ -17,6 +17,7 @@
 # 5. Output mutation counts to summary.csv
 
 # modules
+import re
 import subprocess
 
 import pandas as pd
@@ -28,6 +29,7 @@ import logging
 import datetime
 import shutil
 import time
+from pathlib import Path
 
 # pakage modules
 from TileSeqMut import help_functions
@@ -250,17 +252,23 @@ class fastq2counts(object):
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         self._log.info("Running multi-core analysis ... ")
         # todo add adjust error rate here
-        print(self._args.wt_override)
-        adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
-        mut_counts.multi_core(adjusted_er=adjusted_phred)
+        if self._args.calibratePhred:
+            self._log.info("Adjusting phred scores ...")
+            adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
+        else:
+            adjusted_phred = []
+        mut_counts.multi_core(adjusted_phred)
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
-    def _makejobs(self, sh_output, sam_dir):
+    def _makejobs(self, sh_output, sam_dir, samples=""):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
         """
+        if samples == "":
+            samples = self._sample_names
+
         if sam_dir == "":
             # get samples in param file
             sam_dir = os.path.join(self._args.output, "sam_files/") # read sam file from sam_file
@@ -271,61 +279,61 @@ class fastq2counts(object):
 
         self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
-        for i in self._sample_names:
+        for sample in samples:
             # assume all the sam files have the same name format (id_*.sam)
-            sam_f_r1 = glob.glob(f"{sam_dir}{i}_*R1_*.sam")
-            sam_f_r2 = glob.glob(f"{sam_dir}{i}_*R2_*.sam")
-
+            sam_f_r1 = glob.glob(f"{sam_dir}/{sample}_*R1_*.sam")
+            sam_f_r2 = glob.glob(f"{sam_dir}/{sample}_*R2_*.sam")
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
-                self._log.error(f"SAM file for sample {i} not found. Please check your parameter file")
+                self._log.error(f"SAM file for sample {sample} not found. Please check your parameter file")
                 raise ValueError()
 
             else:
-                self._log.info(f"Sample {i}")
+                self._log.info(f"Sample {sample}")
                 self._log.info(f"Read1: {sam_f_r1[0]}")
                 self._log.info(f"Read2: {sam_f_r2[0]}")
                 sam_id_1 = os.path.basename(sam_f_r1[0]).split("_")[0]
                 sam_id_2 = os.path.basename(sam_f_r2[0]).split("_")[0]
-                if (sam_id_1 != i) or (sam_id_1 != sam_id_2) or (sam_id_2 != i):
+                if (sam_id_1 != sample) or (sam_id_1 != sam_id_2) or (sam_id_2 != sample):
                     self._log.error("IDs in sam files don't match!")
                 self._r1 = sam_f_r1[0]
                 self._r2 = sam_f_r2[0]
 
+            job_id = self._submit_mutcount_jobs(sample, sh_output)
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
-            if self._args.sr_Override:
-                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
-                      f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
-            else:
-                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
-
-            if self._args.wt_override:
-                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
-                      f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} --wt_override"
-            else:
-                cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
-
-
-
-            if self._args.environment == "BC2" or self._args.environment == "BC":
-                logging.info("Submitting mutation counts jobs to BC2...")
-                job_id = cluster.mut_count_sh_bc(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
-                                                 self._args.c)
-            elif self._args.environment == "DC":
-                logging.info("Submitting mutation counts jobs to DC...")
-                # (sample_name, cmd, mt, sh_output_dir, logger)
-                job_id = cluster.mut_count_sh_dc(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
-                                                 self._args.c) # this
-                # function
-                # will make a sh file for submitting the job
-            elif self._args.environment == "GALEN":
-                logging.info("Submitting mutation counts jobs to GALEN...")
-                # (sample_name, cmd, mt, sh_output_dir, logger)
-                # todo finish this function
-                job_id = cluster.mut_count_sh_galen(i, cmd, self._args.mt, self._args.mm, sh_output, self._log,
-                                                 self._args.c) # this
-            else:
-                raise ValueError()
+            # if self._args.sr_Override:
+            #     cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+            #           f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
+            # else:
+            #     cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+            #
+            # if self._args.wt_override:
+            #     cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+            #           f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} --wt_override"
+            # else:
+            #     cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+            #
+            #
+            #
+            # if self._args.environment == "BC2" or self._args.environment == "BC":
+            #     logging.info("Submitting mutation counts jobs to BC2...")
+            #     job_id = cluster.mut_count_sh_bc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+            #                                      self._args.c)
+            # elif self._args.environment == "DC":
+            #     logging.info("Submitting mutation counts jobs to DC...")
+            #     # (sample_name, cmd, mt, sh_output_dir, logger)
+            #     job_id = cluster.mut_count_sh_dc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+            #                                      self._args.c) # this
+            #     # function
+            #     # will make a sh file for submitting the job
+            # elif self._args.environment == "GALEN":
+            #     logging.info("Submitting mutation counts jobs to GALEN...")
+            #     # (sample_name, cmd, mt, sh_output_dir, logger)
+            #     # todo finish this function
+            #     job_id = cluster.mut_count_sh_galen(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+            #                                      self._args.c) # this
+            # else:
+            #     raise ValueError()
 
             job_list.append(job_id)
 
@@ -339,6 +347,45 @@ class fastq2counts(object):
         # list of jobs
 
         return finished
+
+    def _submit_mutcount_jobs(self, sample, sh_output):
+        """
+        Make mutation counting jobs and submit for this sample
+        """
+        # submit job with main.py -r1 and -r2
+        # run main.py with -r1 and -r2
+        cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} " 
+        if self._args.sr_Override:
+            cmd = cmd + "-override "
+
+        if self._args.wt_override:
+            cmd = cmd + "--wt_override "
+        
+        if self._args.calibratePhred:
+            cmd = cmd + "--calibratePhred"
+
+        if self._args.environment == "BC2" or self._args.environment == "BC":
+            logging.info("Submitting mutation counts jobs to BC2...")
+            job_id = cluster.mut_count_sh_bc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                             self._args.c)
+        elif self._args.environment == "DC":
+            logging.info("Submitting mutation counts jobs to DC...")
+            # (sample_name, cmd, mt, sh_output_dir, logger)
+            job_id = cluster.mut_count_sh_dc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                             self._args.c)  # this
+            # function
+            # will make a sh file for submitting the job
+        elif self._args.environment == "GALEN":
+            logging.info("Submitting mutation counts jobs to GALEN...")
+            # (sample_name, cmd, mt, sh_output_dir, logger)
+            job_id = cluster.mut_count_sh_galen(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                                self._args.c)  # this
+        else:
+            raise ValueError()
+
+        return job_id
+
 
     def _checkoutput(self, f):
         """
@@ -369,6 +416,39 @@ class fastq2counts(object):
         # if user did not provide r1 and r2 SAM file
         # get r1 and r2 sam files from output dir provided by user
         elif self._r1 == "" and self._r2 == "":
+
+            if self._args.resubmit:
+                # resubmit failed jobs in existing mut_count dir
+                # self.output is the mut_count dir in this case
+                # find out which jobs failed by going through all counts files
+                mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
+                failed_samples = []
+                all_samples_with_csv = []
+                for f in mutcount_list:
+                    m = re.search('.*counts_sample_(.+?).csv', f)
+                    if m:
+                        sample_id = m.group(1)
+                    else:
+                        self._log.error("Sample ID not found")
+                        raise ValueError(f"Sample ID not found for {f}")
+                    all_samples_with_csv.append(sample_id)
+                    mut_n = self._checkoutput(f)
+                    if mut_n == 0:
+                        failed_samples.append(sample_id)
+                other_missing = [i for i in self._sample_names if i not in all_samples_with_csv]
+                failed_samples += other_missing
+                self._log.info(f"Failed samples: {failed_samples}")
+                self._log.info("Resubmitting samples ...")
+                # find the path to jobs dir
+                env_jobs_dir = os.path.join(self._output, f"{self._args.environment}_jobs")
+                parent_dir = os.path.abspath(os.path.join(self._output, os.pardir))
+                sam_dir = os.path.join(parent_dir, "sam_files")
+                # remake sh files for these samples and submit them
+                finished = self._makejobs(env_jobs_dir, sam_dir, samples=failed_samples)
+                
+                self._log.info("ALL DONE!")
+                return finished
+
             if self._skip == False:
                 time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 # make mut count dir alignemnt not skipped
@@ -503,12 +583,16 @@ def main(args):
             mc._init_skip(skip=True, r1=args.r1, r2=args.r2)
 
         else:
-            # user provided a csv file and path to sam files
-            # for each pair of sam file we would submit one job to the cluster for mutation counting
-            # make time stamped output folder for this project
-            updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
-            # sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
-            os.makedirs(updated_out)
+            if not args.resubmit:
+            
+                # user provided a csv file and path to sam files
+                # for each pair of sam file we would submit one job to the cluster for mutation counting
+                # make time stamped output folder for this project
+                updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
+                # sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
+                os.makedirs(updated_out)
+            else:
+                updated_out = args.output
             args_log_path = os.path.join(updated_out, "args.log")
             write_param(args_log_path, args)
             # load json file
@@ -591,7 +675,10 @@ if __name__ == "__main__":
                                                                    "accordingly")
     parser.add_argument("--wt_override", action="store_true", help="When no wt conditions defined in the parameter sheet, turn on this option will treat EVERYTHING as wt. Phred scores will be adjusted based on the first replicate")
 
-    
+    parser.add_argument("--calibratePhred", action="store_true", help="When this parameter is provided, "
+                                                                      "use wt to calibrate phred scores")
+    parser.add_argument("--resubmit", action="store_true", help="For a finished run, batch resubmit failed scripts ("
+                                                                "if any)")
     args = parser.parse_args()
     args.environment = args.environment.upper()
 

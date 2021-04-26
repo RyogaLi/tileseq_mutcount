@@ -16,7 +16,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 class MutParser(object):
 
     def __init__(self, row, full_seq, cds_seq, seq_lookup, tile_s, tile_e, post_prob_cutoff, logging, mut_rate, base,
-                 posteriorQC, adjusted_er=[]):
+                 posteriorQC, adjusted_er):
         """
         row: input row includes both reads from sam file
         full_seq: full sequence (including cds and padding sequence)

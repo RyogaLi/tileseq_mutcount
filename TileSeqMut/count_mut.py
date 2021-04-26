@@ -209,7 +209,7 @@ class readSam(object):
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
-    def multi_core(self, adjusted_er=[]):
+    def multi_core(self, adjusted_er):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
@@ -440,6 +440,6 @@ def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual,
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
-                                      mutrate, base, posteriorQC, adjusted_er=adjusted_er)
+                                      mutrate, base, posteriorQC, adjusted_er)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df
