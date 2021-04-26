@@ -29,6 +29,7 @@ import logging
 import datetime
 import shutil
 import time
+from pathlib import Path
 
 # pakage modules
 from TileSeqMut import help_functions
@@ -252,6 +253,7 @@ class fastq2counts(object):
         self._log.info("Running multi-core analysis ... ")
         # todo add adjust error rate here
         if self._args.calibratePhred:
+            self._log.info("Adjusting phred scores ...")
             adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
         else:
             adjusted_phred = []
@@ -259,11 +261,14 @@ class fastq2counts(object):
         # end = time.time()
         # print('Time taken for 8 cores program: ', end - start)
 
-    def _makejobs(self, sh_output, sam_dir):
+    def _makejobs(self, sh_output, sam_dir, samples=""):
         """
         For each pair of sam files in output/sam_files/
         submit mut count job to the cluster
         """
+        if samples == "":
+            samples = self._sample_names
+
         if sam_dir == "":
             # get samples in param file
             sam_dir = os.path.join(self._args.output, "sam_files/") # read sam file from sam_file
@@ -274,11 +279,10 @@ class fastq2counts(object):
 
         self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
-        for sample in self._sample_names:
+        for sample in samples:
             # assume all the sam files have the same name format (id_*.sam)
-            sam_f_r1 = glob.glob(f"{sam_dir}{sample}_*R1_*.sam")
-            sam_f_r2 = glob.glob(f"{sam_dir}{sample}_*R2_*.sam")
-
+            sam_f_r1 = glob.glob(f"{sam_dir}/{sample}_*R1_*.sam")
+            sam_f_r2 = glob.glob(f"{sam_dir}/{sample}_*R2_*.sam")
             if len(sam_f_r1) == 0 or len(sam_f_r2) == 0:
                 self._log.error(f"SAM file for sample {sample} not found. Please check your parameter file")
                 raise ValueError()
@@ -350,17 +354,16 @@ class fastq2counts(object):
         """
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
+        cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
+                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} " 
         if self._args.sr_Override:
-            cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
-                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -override"
-        else:
-            cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+            cmd = cmd + "-override "
 
         if self._args.wt_override:
-            cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
-                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} --wt_override"
-        else:
-            cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt}"
+            cmd = cmd + "--wt_override "
+        
+        if self._args.calibratePhred:
+            cmd = cmd + "--calibratePhred"
 
         if self._args.environment == "BC2" or self._args.environment == "BC":
             logging.info("Submitting mutation counts jobs to BC2...")
@@ -420,34 +423,29 @@ class fastq2counts(object):
                 # find out which jobs failed by going through all counts files
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 failed_samples = []
+                all_samples_with_csv = []
                 for f in mutcount_list:
-                    m = re.search('counts_sample_(.+?).csv', f)
+                    m = re.search('.*counts_sample_(.+?).csv', f)
                     if m:
                         sample_id = m.group(1)
                     else:
+                        self._log.error("Sample ID not found")
                         raise ValueError(f"Sample ID not found for {f}")
+                    all_samples_with_csv.append(sample_id)
                     mut_n = self._checkoutput(f)
                     if mut_n == 0:
                         failed_samples.append(sample_id)
+                other_missing = [i for i in self._sample_names if i not in all_samples_with_csv]
+                failed_samples += other_missing
                 self._log.info(f"Failed samples: {failed_samples}")
                 self._log.info("Resubmitting samples ...")
                 # find the path to jobs dir
                 env_jobs_dir = os.path.join(self._output, f"{self._args.environment}_jobs")
+                parent_dir = os.path.abspath(os.path.join(self._output, os.pardir))
+                sam_dir = os.path.join(parent_dir, "sam_files")
                 # remake sh files for these samples and submit them
-                job_list = []
-                for i in failed_samples:
-                    job = self._submit_mutcount_jobs(i, env_jobs_dir)
-                    job_list.append(job)
-
-                jobs = ",".join(job_list)
-                self._log.debug(f"All jobs: {jobs}")
-                self._log.info(f"Total jobs running: {len(job_list)}")
-                if self._args.environment == 'GALEN':
-                    finished = cluster.parse_jobs_galen(job_list, self._logging.getLogger("track.jobs"))
-                else:
-                    finished = cluster.parse_jobs(job_list, self._args.environment,
-                                                  self._logging.getLogger("track.jobs"))  # track
-                # list of jobs
+                finished = self._makejobs(env_jobs_dir, sam_dir, samples=failed_samples)
+                
                 self._log.info("ALL DONE!")
                 return finished
 
@@ -585,12 +583,16 @@ def main(args):
             mc._init_skip(skip=True, r1=args.r1, r2=args.r2)
 
         else:
-            # user provided a csv file and path to sam files
-            # for each pair of sam file we would submit one job to the cluster for mutation counting
-            # make time stamped output folder for this project
-            updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
-            # sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
-            os.makedirs(updated_out)
+            if not args.resubmit:
+            
+                # user provided a csv file and path to sam files
+                # for each pair of sam file we would submit one job to the cluster for mutation counting
+                # make time stamped output folder for this project
+                updated_out = os.path.join(args.output, args.name + "_" + time_now + "_mut_count")
+                # sam_dir = os.path.join(args.output, "sam_files/") # read sam file from sam_file
+                os.makedirs(updated_out)
+            else:
+                updated_out = args.output
             args_log_path = os.path.join(updated_out, "args.log")
             write_param(args_log_path, args)
             # load json file

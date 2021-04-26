@@ -176,14 +176,14 @@ class readSam(object):
             with open(phred_output_r1, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
-            cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent"
+            cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
             os.system(cmd_r1)
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder 
             with open(phred_output_r2, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
-            cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent"
+            cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
             os.system(cmd_r2)
         
         # check if both file has something in there
@@ -209,7 +209,7 @@ class readSam(object):
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
-    def multi_core(self, adjusted_er=[]):
+    def multi_core(self, adjusted_er):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
@@ -440,6 +440,6 @@ def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual,
 
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
-                                      mutrate, base, posteriorQC, adjusted_er=adjusted_er)
+                                      mutrate, base, posteriorQC, adjusted_er)
     hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df = mut_parser._main()
     return hgvs, outside_mut, all_df, hgvs_r1_clusters, hgvs_r2_clusters, track_df
