@@ -63,6 +63,17 @@ def merge_runs(input_dir1, input_dir2, map_df, output):
         # save header and counts to file
         merge_counts.to_csv(output_f, mode="a", index=False)
         output_f.close()
+        
+        cov_f1 = os.path.join(input_dir1, f"coverage_{row['Sample ID_run1']}.csv")
+        cov_f2 = os.path.join(input_dir2, f"coverage_{row['Sample ID_run2']}.csv")
+
+        # read coverage files
+        # sum up two df
+        cov_d1 = pd.read_csv(cov_f1).set_index("pos")
+        cov_d2 = pd.read_csv(cov_f2).set_index("pos")
+        df_sum = cov_d1.add(cov_d2, fill_value=0)
+        output_cov = os.path.join(output, f"coverage_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv")
+        df_sum.to_csv(output_cov)
 
     return new_samples
 
