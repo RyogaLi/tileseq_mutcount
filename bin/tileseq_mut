@@ -48,5 +48,5 @@ parser.add_argument("--resubmit", action="store_true", help="For a finished run,
                                                             "if any)")
 args = parser.parse_args()
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.6: testing calibrate thred")
+print("TileSeqMut release 0.6.2: updated merge runs")
 main(args)

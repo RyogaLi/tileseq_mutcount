@@ -75,12 +75,15 @@ def read_json(json_dict):
     condition_def = pd.DataFrame(json_dict["conditions"]["definitions"])
     # get nonselect conditions
     # get wt for nonselect
-    select_relation = condition_def.loc[condition_def["Relationship"].str.contains("is_selection_for")]
-    wt_relation = condition_def.loc[condition_def["Relationship"].str.contains("is_wt_control_for")]
-    select_relation = select_relation[["Condition 1", "Condition 2"]]
-    wt_relation = wt_relation[["Condition 1", "Condition 2"]]
-    relation = pd.merge(select_relation, wt_relation, how="left", left_on="Condition 2", right_on="Condition 2")
-    relation.columns = ["S", "NS", "WT"]
+    try:
+        select_relation = condition_def.loc[condition_def["Relationship"].str.contains("is_selection_for")]
+        wt_relation = condition_def.loc[condition_def["Relationship"].str.contains("is_wt_control_for")]
+        select_relation = select_relation[["Condition 1", "Condition 2"]]
+        wt_relation = wt_relation[["Condition 1", "Condition 2"]]
+        relation = pd.merge(select_relation, wt_relation, how="left", left_on="Condition 2", right_on="Condition 2")
+        relation.columns = ["S", "NS", "WT"]
+    except:
+        relation = pd.DataFrame({})
     samples_df = pd.DataFrame(samples)
     return relation, samples_df
 
