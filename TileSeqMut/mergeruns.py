@@ -27,6 +27,7 @@ def merge_runs(input_dir1, input_dir2, map_df, output):
         merged_header = ""
         mut_count_f1 = os.path.join(input_dir1, f"counts_sample_{row['Sample ID_run1']}.csv")
         mut_count_f2 = os.path.join(input_dir2, f"counts_sample_{row['Sample ID_run2']}.csv")
+
         new_samples.append(f"{row['Sample ID_run1']}-{row['Sample ID_run2']}")
         # join headers
         with open(mut_count_f1) as file1, open(mut_count_f2) as file2:
@@ -74,7 +75,6 @@ def merge_runs(input_dir1, input_dir2, map_df, output):
         df_sum = cov_d1.add(cov_d2, fill_value=0)
         output_cov = os.path.join(output, f"coverage_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv")
         df_sum.to_csv(output_cov)
-
     return new_samples
 
 
