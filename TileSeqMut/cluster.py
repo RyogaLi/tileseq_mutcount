@@ -11,6 +11,10 @@ import time
 # other modules
 from TileSeqMut import alignment
 
+# phix reference sequence
+phix = ""
+
+
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
     fastq_map: df contains paths to fastq files and downsamled fastq files
@@ -42,7 +46,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
         os.system(sub_cmd)
         #break
 
-def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
+def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc, calibratePhix):
     """
     fastq_map: df contains paths to fastq files and downsamled fastq files
     ref_name: name for the reference sequence (same as project name)
@@ -58,6 +62,8 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
     """
     ## build reference
     ref = alignment.make_ref(ref_name, ref_seq, ref_path)
+    phix = alignment.make_ref("phix", ref_seq, ref_path)
+
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
     all_job_id = []
@@ -75,7 +81,12 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
         header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --job-name={sample_name}\n#SBATCH " \
                  f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
 
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc, header=header)
+        if "Undetermined" in sample_name:
+            r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=rc,
+                                                            header=header)
+        else:
+            r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc, header=header)
+
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         sub_cmd = ["sbatch", str(shfile)]
@@ -368,6 +379,7 @@ def submit_given_jobs(shfile, logger, mt, mm, cores, env=""):
     # log sample name and job id
     logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
+
 
 if __name__ == "__main__":
     # test job list

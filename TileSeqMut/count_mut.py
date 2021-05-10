@@ -187,8 +187,7 @@ class readSam(object):
             os.system(cmd_r2)
         
         # check if both file has something in there
-        # if they are empty, wait for them to finish (they might be running in other jobs 
-
+        # if they are empty, wait for them to finish (they might be running in other jobs
         t0 = time.time()  # check for timeout
         while os.stat(phred_output_r1).st_size == 0:
             os.system("sleep 300")
@@ -196,7 +195,7 @@ class readSam(object):
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+                raise TimeoutError(f"Wating for Phred file {phred_output_r1} timeout")
         t0 = time.time()
         while os.stat(phred_output_r2).st_size == 0:
             os.system("sleep 300")
@@ -204,10 +203,24 @@ class readSam(object):
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+                raise TimeoutError(f"Wating for Phred file {phred_output_r2} timeout")
         time.sleep(30)
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
+
+    def adjust_er_phix(self):
+        """
+        If not phix thred adjusted, run calibratePhred.R with phix reads
+        Before running calibrate phred, shrink sam file size by selecting reads aligned to phix only
+        """
+        phred_output_r1 = os.path.join(self._output_counts_dir, f"phix_calibrate_phred.csv")
+        if not os.path.isfile(phred_output_r1):
+            # create an empty file as place holder
+            with open(phred_output_r1, 'w') as fp:
+                pass
+            log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
+            cmd = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
+            os.system(cmd)
 
     def multi_core(self, adjusted_er):
         """
