@@ -155,9 +155,12 @@ class fastq2counts(object):
         # if phix
         if self._phix_fastq != []:
             fastq_map.loc[len(fastq_map)] = self._phix_fastq
-            phix_fasta = os.path.join(self._main_path, "phix.fasta")
+            phix_fasta = os.path.join(os.path.dirname(self._main_path), "data/phix.fasta")
+            #self._log.info(os.path.dirname(self._main_path))
             # save this to ref path
+            #self._log.info(phix_fasta)
             cmd = f"cp {phix_fasta} {ref_path}"
+            #self._log.info(cmd)
             os.system(cmd)
 
         rc = False

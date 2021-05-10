@@ -18,6 +18,7 @@ TileSeqMut.egg-info/SOURCES.txt
 TileSeqMut.egg-info/dependency_links.txt
 TileSeqMut.egg-info/requires.txt
 TileSeqMut.egg-info/top_level.txt
+TileSeqMut/data/phix.fasta
 bin/mergeRuns
 bin/posterior_QC
 bin/random_ds
