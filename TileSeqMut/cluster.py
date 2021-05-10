@@ -46,7 +46,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
         os.system(sub_cmd)
         #break
 
-def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc, calibratePhix):
+def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
     """
     fastq_map: df contains paths to fastq files and downsamled fastq files
     ref_name: name for the reference sequence (same as project name)

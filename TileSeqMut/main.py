@@ -265,6 +265,7 @@ class fastq2counts(object):
         4. Log to main log
         """
         self._log.info("Counting mutations ...")
+
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
         logger_mut = self._logging.getLogger("count.mut.log")
