@@ -11,6 +11,7 @@ import math
 import logging
 import mmap
 import time
+import glob
 import multiprocessing as mp
 import argparse
 # import datetime
@@ -187,8 +188,7 @@ class readSam(object):
             os.system(cmd_r2)
         
         # check if both file has something in there
-        # if they are empty, wait for them to finish (they might be running in other jobs 
-
+        # if they are empty, wait for them to finish (they might be running in other jobs
         t0 = time.time()  # check for timeout
         while os.stat(phred_output_r1).st_size == 0:
             os.system("sleep 300")
@@ -196,7 +196,7 @@ class readSam(object):
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+                raise TimeoutError(f"Wating for Phred file {phred_output_r1} timeout")
         t0 = time.time()
         while os.stat(phred_output_r2).st_size == 0:
             os.system("sleep 300")
@@ -204,10 +204,76 @@ class readSam(object):
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
-                raise TimeoutError(f"Wating for Phred file {adjustthred[0]} timeout")
+                raise TimeoutError(f"Wating for Phred file {phred_output_r2} timeout")
         time.sleep(30)
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
+
+    def adjust_er_phix(self):
+        """
+        If not phix thred adjusted, run calibratePhred.R with phix reads
+        Before running calibrate phred, shrink sam file size by selecting reads aligned to phix only
+        """
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        phix_fasta = os.path.join(dir_path, "data/phix.fasta")
+        tmp_header = os.path.join(self._output_counts_dir, "fakeheader")
+        sam_dir = os.path.dirname(self._r1)
+        phix_r1 = glob.glob(f"{sam_dir}/Undetermined_*_R1_*.sam")[0]
+        phix_r2 = glob.glob(f"{sam_dir}/Undetermined_*_R2_*.sam")[0]
+        with open(tmp_header, "w") as sam_header:
+            sam_header.write("@SQ	SN:phiX	LN:5386")
+
+        phred_output_r1 = os.path.join(self._output_counts_dir, f"phix_R1_calibrate_phred.csv")
+        phred_output_r2 = os.path.join(self._output_counts_dir, f"phix_R2_calibrate_phred.csv")
+        if not os.path.isfile(phred_output_r1):
+
+            # create an empty file as place holder
+            with open(phred_output_r1, 'w') as fp:
+                pass
+            # trim the sam file
+            trimmed = phix_r1.replace(".sam", "_trimmed.sam")
+            cmd = f"cat {tmp_header} {phix_r1} | samtools view -S -F 4 - -o {trimmed}"
+            os.system(cmd)
+
+            log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
+            cmd = f"calibratePhred.R {phix_r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores} --fastaref {phix_fasta}"
+            os.system(cmd)
+        if not os.path.isfile(phred_output_r2):
+            # create an empty file as place holder
+            with open(phred_output_r2, 'w') as fp:
+                pass
+            # trim the sam file
+            trimmed = phix_r2.replace(".sam", "_trimmed.sam")
+            cmd = f"cat {tmp_header} {phix_r2} | samtools view -S -F 4 - -o {trimmed}"
+            os.system(cmd)
+
+            log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
+            cmd = f"calibratePhred.R {phix_r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores" \
+                  f" {self._cores} --fastaref {phix_fasta}"
+            os.system(cmd)
+
+        # check if both file has something in there
+        # if they are empty, wait for them to finish (they might be running in other jobs
+        t0 = time.time()  # check for timeout
+        while os.stat(phred_output_r1).st_size == 0:
+            os.system("sleep 300")
+            self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
+            t1 = time.time()
+            total = float(t1 - t0)
+            if total > 10800:
+                raise TimeoutError(f"Wating for Phred file {phred_output_r1} timeout")
+        t0 = time.time()
+        while os.stat(phred_output_r2).st_size == 0:
+            os.system("sleep 300")
+            self._mut_log.warning("phred file (R2) found, but empty.. Waiting for the job to finish...")
+            t1 = time.time()
+            total = float(t1 - t0)
+            if total > 10800:
+                raise TimeoutError(f"Wating for Phred file {phred_output_r2} timeout")
+        time.sleep(30)
+        self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
+        return [phred_output_r1, phred_output_r2]
+
 
     def multi_core(self, adjusted_er):
         """

@@ -63,6 +63,7 @@ class fastq2counts(object):
             self._fastq_list = glob.glob(self._args.fastq+"/*.fastq.gz")
         else:
             self._fastq_list = []
+
         self._output = output_dir
 
         # parse parameter json file
@@ -122,6 +123,7 @@ class fastq2counts(object):
             self._log.error(f"Fastq files not found for sample {join_list}")
             raise FileNotFoundError()
 
+
         # create mappving for R1 and R2 for each sample
         # ONLY samples provided in the parameter files will be analyzed
         fastq_map = []
@@ -131,16 +133,27 @@ class fastq2counts(object):
                     r2 = r1.replace("_R1_", "_R2_")
                     fastq_map.append([r1,r2])
 
-        # convert to df
-        fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
-
         # make folder to store alignment sam files
         sam_output = os.path.join(self._output, "sam_files/")
-        os.system("mkdir "+sam_output)
+        os.system("mkdir " + sam_output)
 
         # make folder to store ref
         ref_path = os.path.join(self._output, "ref/")
-        os.system("mkdir "+ ref_path)
+        os.system("mkdir " + ref_path)
+
+        # convert to df
+        fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
+        # if phix
+        if self._phix_fastq != []:
+            fastq_map.loc[len(fastq_map)] = self._phix_fastq
+            phix_fasta = os.path.join(os.path.dirname(self._main_path), "data/phix.fasta")
+            #self._log.info(os.path.dirname(self._main_path))
+            # save this to ref path
+            #self._log.info(phix_fasta)
+            cmd = f"cp {phix_fasta} {ref_path}"
+            #self._log.info(cmd)
+            os.system(cmd)
+
         rc = False
         if self._args.rc:
             rc = True
@@ -246,15 +259,19 @@ class fastq2counts(object):
         4. Log to main log
         """
         self._log.info("Counting mutations ...")
+
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
         logger_mut = self._logging.getLogger("count.mut.log")
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         self._log.info("Running multi-core analysis ... ")
         # todo add adjust error rate here
-        if self._args.calibratePhred:
-            self._log.info("Adjusting phred scores ...")
+        if self._args.calibratePhredWT:
+            self._log.info("Adjusting phred scores using WT samples...")
             adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
+        elif self._args.calibratePhredPhix:
+            self._log.info("Adjusting phred scores using Phix...")
+            adjusted_phred = mut_counts.adjust_er_phix()
         else:
             adjusted_phred = []
         mut_counts.multi_core(adjusted_phred)
@@ -269,6 +286,7 @@ class fastq2counts(object):
         if samples == "":
             samples = self._sample_names
 
+
         if sam_dir == "":
             # get samples in param file
             sam_dir = os.path.join(self._args.output, "sam_files/") # read sam file from sam_file
@@ -276,6 +294,9 @@ class fastq2counts(object):
         if not os.path.isdir(sam_dir):
             self._log.error(f"Directory: ./sam_files/ not found in {self._output}")
             raise ValueError()
+
+        #if self._args.calibratePhredPhix:
+        #    samples.append("Undetermined")
 
         self._log.debug(f"Sam files are read from {sam_dir}")
         job_list = []
@@ -297,7 +318,7 @@ class fastq2counts(object):
                     self._log.error("IDs in sam files don't match!")
                 self._r1 = sam_f_r1[0]
                 self._r2 = sam_f_r2[0]
-
+            
             job_id = self._submit_mutcount_jobs(sample, sh_output)
             # submit job with main.py -r1 and -r2
             # run main.py with -r1 and -r2
@@ -336,6 +357,7 @@ class fastq2counts(object):
             #     raise ValueError()
 
             job_list.append(job_id)
+        self._log.info("all samples submitted")
 
         jobs = ",".join(job_list)
         self._log.debug(f"All jobs: {jobs}")
@@ -362,8 +384,11 @@ class fastq2counts(object):
         if self._args.wt_override:
             cmd = cmd + "--wt_override "
         
-        if self._args.calibratePhred:
-            cmd = cmd + "--calibratePhred"
+        if self._args.calibratePhredPhix:
+            cmd = cmd + "--calibratePhredPhix "
+
+        if self._args.calibratePhredWT:
+            cmd = cmd + "--calibratePhredWT "
 
         if self._args.environment == "BC2" or self._args.environment == "BC":
             logging.info("Submitting mutation counts jobs to BC2...")
@@ -382,10 +407,9 @@ class fastq2counts(object):
             job_id = cluster.mut_count_sh_galen(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
                                                 self._args.c)  # this
         else:
-            raise ValueError()
+            raise ValueError("Wrong environment")
 
         return job_id
-
 
     def _checkoutput(self, f):
         """
@@ -455,6 +479,15 @@ class fastq2counts(object):
                 # otherwise the user input dir should be the output dir gnerated
                 self._output = os.path.join(self._output, self._args.name + "_" + time_now + "_mut_count")
                 os.makedirs(self._output)
+                # align to phix if specified
+                if self._args.calibratePhredPhix:
+                    # check if Undetermined reads are in the same folder
+                    self._phix_fastq = glob.glob(self._args.fastq+"/Undetermined_*.fastq.gz")
+                    if len(self._phix_fastq) < 2:
+                        raise ValueError("Cannot find Undetermined fastq files for phix alignment")
+                    else:
+                        self._phix_fastq = []
+
 
             # output directory is the mut_count dir
             # make folder to store all the sh files as well as all the log files
@@ -568,8 +601,7 @@ def main(args):
             # analyze one pair of r1 and r2 file
             # VALIDATE if both files are sam files
             if not args.r1.endswith(".sam") or not args.r2.endswith(".sam"):
-                print("Please provide SAM files")
-                return
+                raise ValueError("Please provide SAM files")
             # copy the parameter file to output dir if the json file is not in the dir
             param_path = os.path.join(args.output, param_base)
             if not os.path.isfile(param_path):
@@ -675,8 +707,10 @@ if __name__ == "__main__":
                                                                    "accordingly")
     parser.add_argument("--wt_override", action="store_true", help="When no wt conditions defined in the parameter sheet, turn on this option will treat EVERYTHING as wt. Phred scores will be adjusted based on the first replicate")
 
-    parser.add_argument("--calibratePhred", action="store_true", help="When this parameter is provided, "
+    parser.add_argument("--calibratePhredWT", action="store_true", help="When this parameter is provided, "
                                                                       "use wt to calibrate phred scores")
+    parser.add_argument("--calibratePhredPhix", action="store_true", help="When this parameter is provided, "
+                                                                      "use phix alignments to calibrate phred scores")
     parser.add_argument("--resubmit", action="store_true", help="For a finished run, batch resubmit failed scripts ("
                                                                 "if any)")
     args = parser.parse_args()

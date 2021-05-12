@@ -11,10 +11,13 @@ def make_ref(name, ref_seq, ref_path):
     given the reference sequence and ref_path
     make fasta file and build from fasta
     """
-    ref_fasta = os.path.join(ref_path, name+".fasta")
-    with open(ref_fasta, "w") as fasta:
-        fasta.write(">"+name+"\n")
-        fasta.write(ref_seq+"\n")
+    if name == "phix":
+        ref_fasta = os.path.join(ref_path, "phix.fasta")
+    else:
+        ref_fasta = os.path.join(ref_path, name+".fasta")
+        with open(ref_fasta, "w") as fasta:
+            fasta.write(">"+name+"\n")
+            fasta.write(ref_seq+"\n")
     build_cmd =f"bowtie2-build --quiet -f {ref_fasta} {os.path.join(ref_path, name)}"
     os.system(build_cmd)
 

@@ -40,8 +40,13 @@ parser.add_argument("-override", "--sr_Override", action="store_true",
 parser.add_argument("--posteriorQC", action="store_true", help="Turn on posterior QC mode, this requires more "
                                                                "memory and runtime, please change the variable "
                                                                "accordingly")
+parser.add_argument("--wt_override", action="store_true", help="When no wt conditions defined in the parameter sheet, turn on this option will treat EVERYTHING as wt. Phred scores will be adjusted based on the first replicate")
 
+parser.add_argument("--calibratePhred", action="store_true", help="When this parameter is provided, "
+                                                                  "use wt to calibrate phred scores")
+parser.add_argument("--resubmit", action="store_true", help="For a finished run, batch resubmit failed scripts ("
+                                                            "if any)")
 args = parser.parse_args()
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.5: stable release")
+print("TileSeqMut release 0.6.2: updated merge runs")
 main(args)
