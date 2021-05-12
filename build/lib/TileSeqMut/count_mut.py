@@ -11,6 +11,7 @@ import math
 import logging
 import mmap
 import time
+import glob
 import multiprocessing as mp
 import argparse
 # import datetime
@@ -213,7 +214,12 @@ class readSam(object):
         If not phix thred adjusted, run calibratePhred.R with phix reads
         Before running calibrate phred, shrink sam file size by selecting reads aligned to phix only
         """
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        phix_fasta = os.path.join(dir_path, "data/phix.fasta")
         tmp_header = os.path.join(self._output_counts_dir, "fakeheader")
+        sam_dir = os.path.dirname(self._r1)
+        phix_r1 = glob.glob(f"{sam_dir}/Undetermined_*_R1_*.sam")[0]
+        phix_r2 = glob.glob(f"{sam_dir}/Undetermined_*_R2_*.sam")[0]
         with open(tmp_header, "w") as sam_header:
             sam_header.write("@SQ	SN:phiX	LN:5386")
 
@@ -225,25 +231,25 @@ class readSam(object):
             with open(phred_output_r1, 'w') as fp:
                 pass
             # trim the sam file
-            trimmed = self._r1.replace(".sam", "_trimmed.sam")
-            cmd = f"cat {tmp_header} {self._r1} | samtools view -S -F 4 - -o {trimmed}"
+            trimmed = phix_r1.replace(".sam", "_trimmed.sam")
+            cmd = f"cat {tmp_header} {phix_r1} | samtools view -S -F 4 - -o {trimmed}"
             os.system(cmd)
 
             log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
-            cmd = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
+            cmd = f"calibratePhred.R {phix_r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores} --fastaref {phix_fasta}"
             os.system(cmd)
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder
             with open(phred_output_r2, 'w') as fp:
                 pass
             # trim the sam file
-            trimmed = self._r1.replace(".sam", "_trimmed.sam")
-            cmd = f"cat {tmp_header} {self._r1} | samtools view -S -F 4 - -o {trimmed}"
+            trimmed = phix_r2.replace(".sam", "_trimmed.sam")
+            cmd = f"cat {tmp_header} {phix_r2} | samtools view -S -F 4 - -o {trimmed}"
             os.system(cmd)
 
             log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
-            cmd = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores" \
-                  f" {self._cores}"
+            cmd = f"calibratePhred.R {phix_r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores" \
+                  f" {self._cores} --fastaref {phix_fasta}"
             os.system(cmd)
 
         # check if both file has something in there
