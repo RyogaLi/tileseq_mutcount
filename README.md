@@ -71,10 +71,10 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         Output folder
   -p PARAM, --param PARAM
-                        csv paramter file
-  -n NAME, --name NAME  Name for this run
+                        csv or json paramter file
+  -n NAME, --name NAME  Name for this run (required)
   --skip_alignment      skip alignment for this analysis, ONLY submit jobs for
-                        counting mutations in existing output folder
+                        counting mutations in existing output folder. 
   -r1 R1                r1 SAM file
   -r2 R2                r2 SAM file
   -log LOG_LEVEL, --log_level LOG_LEVEL
@@ -83,31 +83,53 @@ optional arguments:
   -env ENVIRONMENT, --environment ENVIRONMENT
                         The cluster used to run this script (default = DC)
   -at AT                Alignment time (default = 8h)
-  -mt MT                Mutation call time (default = 48h)
-  -c C                  Number of cores to use for mutation counting
-  -b BASE, --base BASE  ASCII code base
-  -test                 Turn on test mode
+  -mt MT                Mutation call time (default = 36h)
+  -c C                  Number of cores to use for mutation counting (default = 16)
+  -b BASE, --base BASE  ASCII code base (default = 33)
   -rc                   Turn on rc mode, both direction of the reads will be
                         aligned to the reference. Variant calling will be
                         performed on all the reads that are aligned, regardless of their direction (BE
                         CAREFUL!)
   -override, --sr_Override
                         Provide this argument when there is only one replicate
+  --posteriorQC         Turn on posterior QC mode, this requires more memory and runtime, please change the arguments
+                        accordingly
+  --wt_override         When no wt conditions defined in the parameter sheet, turn on this option will treat
+                        EVERYTHING as WT. Phred scores will be adjusted based on the first replicate. 
+                        Only use this when you also have --calibratePhredWT on.
+
+  --calibratePhredWT    When this parameter is provided, use WT samplese (first replicate) to calibrate phred scores.
+  --calibratePhredPhix  When this parameter is provided, use phix alignments to calibrate phred scores. Note that you
+                        need to make sure Undetermined_**.fastq.gz files are also in the fastq directory. 
+
+  --resubmit            For a finished run, batch resubmit failed scripts (if any). Use the *_mut_count dir as -o. 
+                        Also need to provide --skip_alignment
 
 ```
 
 **Start the run**
 
 * Once the run starts, it will first submit alignment jobs to the cluster and keep tracking of all the submitted
- alignment jobs. Once all the jobs are finished, the pipeline will submit another batch of jobs for mutation calling.
+ alignment jobs. Once all the jobs are finished, the pipeline will automatically submit another batch of jobs for
+  mutation calling.
  
  * if you want to skip alignment and only do mutation calls for existing sam files you can run the following command:
  
 * **Example of skipping alignment:**
 
 ```
-tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output
-/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment
+tileseq_mut -p ~/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output
+/190506_MTHFR_WT_2020-01-29-17-07-04/ --skip_alignment -n rerun_mut_count
+```
+
+ * if you want to resubmit mutation calls for failed samples:
+ 
+* **Example of resubmit:**
+
+```
+tileseq_mut -p ~/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output
+/190506_MTHFR_WT_2020-01-29-17-07-04//190506_MTHFR_WT_2020-01-29-17-07-04_mut_count/ --resubmit --skip_alignment -n
+ resub
 ```
 
 ### Input files
@@ -134,21 +156,28 @@ Within each output folder, the following files and folders will be generated:
 
 `./ref/` - Reference fasta file and bowtie2 index
 
-`./env_aln_sh/` - Bash scripts for submitting the alignment jobs
+`./env_jobs/` - Bash scripts for submitting the alignment jobs
 
-`./sam_files/` - Alignment output and log files for the raw fastq files
+`./sam_files/` - Alignment output (SAM) and log files for bowtie2
 
 `./name_time-stamped_mut_count/` - Mutation counts in each sample are saved in csv files
-
-    - `./main.log` - Main log file for mutation calling
-
-    - `./args.log` - command line arguments
     
-    - `./info.csv` - Meta information for each sample: sequencing depth, tile starts/ends and # of reads mapped outside of the targeted tile
-
     - `./count_sample_*.csv` - Raw mutation counts for each sample. With meta data in header. Variants are represented in hgvs format
 
-    - `./env_mut/` - Bash scripts for summitting the mutation count jobs, also log files for each sample.
+    - `./env_jobs/` - Bash scripts for summitting the mutation count jobs, also log files for each sample. 
+    
+        * `./env_jobs/*.log` - log file from the cluster
+        * `./env_jobs/*.sh`  - submission script
+    
+    - `coverage_sample_name.csv` - File contains read counts for each position in the tile. There are
+     four columns in the file: 
+     pos: nt position of the tile 
+     m_both: Number of variants found on both reads covering the site 
+     m_r1: Number of variants found only on Read 1
+     m_r2: Number of variants found only on Read 2
+     passed: Number of variants passed filter
+    
+    - `*_R1/R2_calibrate_phred.csv` - Calibrated Phred scores (if applicable)
 
 The count_sample_\*\*.csv is passed to tileseqMave for further analysis
 
@@ -163,8 +192,16 @@ For each pair of fastq files (R1 and R2), the pipeline submits one alignment job
 Alignments were done using `Bowtie2` with following parameters:
 
 ```
-~/bowtie2 --no-head --norc --no-sq --local -x {ref} -U {r1} -S {r1_sam_file}
-~/bowtie2 --no-head --nofw --no-sq --local -x {ref} -U {r2} -S {r2_sam_file}
+bowtie2 --no-head --norc --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}
+bowtie2 --no-head --nofw --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}
+```
+
+If `-rc` is provided, the following parameters are used. BE CAREFUL! In this case, the reads are aligned to both fw
+ and rc reference and variants are called regardless of which strand the read mapped to.
+
+```
+bowtie2 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r1} -S {r1_sam_file}
+bowtie2 --no-head --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {r2} -S {r2_sam_file}
 ```
 
 ### Mutation Calls
