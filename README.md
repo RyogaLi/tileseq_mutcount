@@ -14,17 +14,17 @@ Output of this pipeline is mutation counts for each pair of fastq files.
 ## Installation 
 Please use conda to set up the environment before installing the package: 
 
-`conda install -n <env_name>`
+* if you don't have python3.7 installed:  `conda install python==3.7`
+
+* create a python3.7 environment:  `conda create -n py37 python=3.7`
+
+* activate an environment: `conda activate py37`
 
 You will also need the script `csv2json.R` which can be installed via installing [tileseqMave](https://github.com/jweiletileseqMave). Make sure `csv2json.R` can be found in `$PATH`
 
-The alpha version is available by running:
+To install the newest stable release:
 
-`python -m pip install TileSeqMut`
-
-To update to the newest stable release:
-
-`python -m pip install TileSeqMut==0.4.201`
+`python -m pip install TileSeqMut==0.6.3`
 
 ### Execution
 ---
@@ -57,10 +57,6 @@ tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/til
 
 ``` bash
 (py37) [rli@dc06 DC_jobs]$ tileseq_mut -h
-usage: tileseq_mut [-h] [-f FASTQ] -o OUTPUT -p PARAM -n NAME
-                   [--skip_alignment] [-r1 R1] [-r2 R2] [-log LOG_LEVEL]
-                   [-env ENVIRONMENT] [-at AT] [-mt MT] [-c C] [-b BASE]
-                   [-test] [-rc] [-override]
 
 TileSeq mutation counts
 

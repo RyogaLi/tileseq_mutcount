@@ -28,8 +28,6 @@ import argparse
 import logging
 import datetime
 import shutil
-import time
-from pathlib import Path
 
 # pakage modules
 from TileSeqMut import help_functions
