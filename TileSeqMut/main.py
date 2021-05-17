@@ -142,12 +142,13 @@ class fastq2counts(object):
         # convert to df
         fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
         # if phix
+        self._phix_fasta = []
         if self._args.calibratePhredPhix:
             # check if Undetermined reads are in the same folder
             self._phix_fastq = glob.glob(self._args.fastq+"/Undetermined_*.fastq.gz")
             if len(self._phix_fastq) < 2:
                 raise ValueError("Cannot find Undetermined fastq files for phix alignment")
-        if self._phix_fastq != []:
+        #if self._phix_fastq != []:
             fastq_map.loc[len(fastq_map)] = self._phix_fastq
             phix_fasta = os.path.join(os.path.dirname(self._main_path), "data/phix.fasta")
             #self._log.info(os.path.dirname(self._main_path))
