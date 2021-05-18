@@ -178,6 +178,7 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
             cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
+            self._mut_log.info(cmd_r1)
             os.system(cmd_r1)
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder 
@@ -185,22 +186,25 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
             cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
+            self._mut_log.info(cmd_r2)
             os.system(cmd_r2)
         
         # check if both file has something in there
         # if they are empty, wait for them to finish (they might be running in other jobs
         t0 = time.time()  # check for timeout
         while os.stat(phred_output_r1).st_size == 0:
-            os.system("sleep 300")
             self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
+
+            os.system("sleep 300")
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:
                 raise TimeoutError(f"Wating for Phred file {phred_output_r1} timeout")
         t0 = time.time()
         while os.stat(phred_output_r2).st_size == 0:
-            os.system("sleep 300")
+
             self._mut_log.warning("phred file (R2) found, but empty.. Waiting for the job to finish...")
+            os.system("sleep 300")
             t1 = time.time()
             total = float(t1-t0)
             if total > 10800:

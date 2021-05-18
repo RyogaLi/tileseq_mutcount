@@ -267,9 +267,12 @@ class fastq2counts(object):
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
         logger_mut = self._logging.getLogger("count.mut.log")
+        self._log.info("Removing existing phred files...")
+        #phred_flist = glob.glob(os.path.join(self._output, '*_phred.*'))
+        #if phred_flist != []:
+        #    os.system(f"rm {os.path.join(self._output, '*_phred.*')}")
         mut_counts = count_mut.readSam(self._r1, self._r2, self._param_json, self._args, self._output, self._args.c, logger_mut)
         self._log.info("Running multi-core analysis ... ")
-        # todo add adjust error rate here
         if self._args.calibratePhredWT:
             self._log.info("Adjusting phred scores using WT samples...")
             adjusted_phred = mut_counts.adjust_er(wt_override=self._args.wt_override)
@@ -381,7 +384,7 @@ class fastq2counts(object):
         # submit job with main.py -r1 and -r2
         # run main.py with -r1 and -r2
         cmd = f"tileseq_mut -n {self._args.name} -r1 {self._r1} -r2 {self._r2} -o {self._output} -p" \
-                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} " 
+                  f" {self._param_json} --skip_alignment -log {self._args.log_level} -env {self._args.environment} -at {self._args.at} -mt {self._args.mt} -c {self._args.c} " 
         if self._args.sr_Override:
             cmd = cmd + "-override "
 
@@ -449,6 +452,10 @@ class fastq2counts(object):
                 # resubmit failed jobs in existing mut_count dir
                 # self.output is the mut_count dir in this case
                 # find out which jobs failed by going through all counts files
+                self._log.info("Removing existing phred files...")
+                phred_flist = glob.glob(os.path.join(self._output, '*_phred.*'))
+                if phred_flist != []:
+                    os.system(f"rm {os.path.join(self._output, '*_phred.*')}")
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 failed_samples = []
                 all_samples_with_csv = []
