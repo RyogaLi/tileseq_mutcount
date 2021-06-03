@@ -213,6 +213,7 @@ class readSam(object):
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
+
     def adjust_er_phix(self):
         """
         If not phix thred adjusted, run calibratePhred.R with phix reads

@@ -543,7 +543,6 @@ def check(args):
     Validate args and convert csv to JSON
     return path to json
     """
-    # todo test if tileseqMave is installed correctly
     # two script needed: csv2json.R and calibratePhred.R
     test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
     test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")

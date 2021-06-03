@@ -51,6 +51,18 @@ def merge_runs(input_dir1, input_dir2, map_df, output):
                     total_depth = n_depth_1 + n_depth_2
                     merged_header += f"#Total read pairs with mutations:{total_depth}\n"
                     continue
+                if "Number of read pairs did not map to gene:" in line1:
+                    n_depth_1 = int(line1.split(":")[1])
+                    n_depth_2 = int(line2.split(":")[1])
+                    total_depth = n_depth_1 + n_depth_2
+                    merged_header += f"#Number of read pairs did not map to gene:{total_depth}\n"
+                    continue
+                if "Number of reads outside of the tile:" in line1:
+                    n_depth_1 = int(line1.split(":")[1])
+                    n_depth_2 = int(line2.split(":")[1])
+                    total_depth = n_depth_1 + n_depth_2
+                    merged_header += f"#Number of reads outside of the tile:{total_depth}\n"
+                    continue
                 merged_header += line1.strip() + "; " + line2
         output_f = open(os.path.join(output, f"counts_sample_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv"), "w")
         output_f.write(merged_header)

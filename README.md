@@ -9,7 +9,7 @@ Output of this pipeline is mutation counts for each pair of fastq files.
 
 `R 3.4.4+`
 
-`Bowtie2 Bowtie2-build`
+`Bowtie2` and `Bowtie2-build` (need to be in the same folder)
 
 ## Installation 
 Please use conda to set up the environment before installing the package: 
