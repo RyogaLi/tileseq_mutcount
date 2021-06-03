@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: TileSeqMut
-Version: 0.6.402
+Version: 0.6.404
 Summary: Analysis scriptsTileSeqMut for TileSeq sequencing data
 Home-page: https://github.com/RyogaLi/tilseq_mutcount
 Author: ROUJIA LI
@@ -17,7 +17,7 @@ Description: ## TileSeq mutation count package
         
         `R 3.4.4+`
         
-        `Bowtie2 Bowtie2-build`
+        `Bowtie2` and `Bowtie2-build` (need to be in the same folder)
         
         ## Installation 
         Please use conda to set up the environment before installing the package: 

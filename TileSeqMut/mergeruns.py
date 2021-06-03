@@ -13,7 +13,7 @@ from TileSeqMut.help_functions import logginginit
 
 #for two runs merge the mutation counts files into output folder
 
-def merge_runs(input_dir1, input_dir2, map_df, output):
+def merge_runs(input_dir1, input_dir2, map_df, output, arguments):
     """
     :param input_dir1: Directory 1 contains mutation counts files
     :param input_dir2: Directory 2 contains mutation counts files
@@ -76,17 +76,18 @@ def merge_runs(input_dir1, input_dir2, map_df, output):
         # save header and counts to file
         merge_counts.to_csv(output_f, mode="a", index=False)
         output_f.close()
-        
-        cov_f1 = os.path.join(input_dir1, f"coverage_{row['Sample ID_run1']}.csv")
-        cov_f2 = os.path.join(input_dir2, f"coverage_{row['Sample ID_run2']}.csv")
 
-        # read coverage files
-        # sum up two df
-        cov_d1 = pd.read_csv(cov_f1).set_index("pos")
-        cov_d2 = pd.read_csv(cov_f2).set_index("pos")
-        df_sum = cov_d1.add(cov_d2, fill_value=0)
-        output_cov = os.path.join(output, f"coverage_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv")
-        df_sum.to_csv(output_cov)
+        if not arguments.covOverride:
+            cov_f1 = os.path.join(input_dir1, f"coverage_{row['Sample ID_run1']}.csv")
+            cov_f2 = os.path.join(input_dir2, f"coverage_{row['Sample ID_run2']}.csv")
+
+            # read coverage files
+            # sum up two df
+            cov_d1 = pd.read_csv(cov_f1).set_index("pos")
+            cov_d2 = pd.read_csv(cov_f2).set_index("pos")
+            df_sum = cov_d1.add(cov_d2, fill_value=0)
+            output_cov = os.path.join(output, f"coverage_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv")
+            df_sum.to_csv(output_cov)
     return new_samples
 
 
@@ -324,7 +325,7 @@ def merge_main(args):
 
     else:
         # map_df = parse_params(args.paramOne, args.paramTwo, args.output, main_log)
-        new_samples = merge_runs(args.dir1, args.dir2, map_df, args.output)
+        new_samples = merge_runs(args.dir1, args.dir2, map_df, args.output, args)
 
     main_log.info(f"Merged files are saved to {args.output}")
 
