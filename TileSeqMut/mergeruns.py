@@ -63,6 +63,12 @@ def merge_runs(input_dir1, input_dir2, map_df, output, arguments):
                     total_depth = n_depth_1 + n_depth_2
                     merged_header += f"#Number of reads outside of the tile:{total_depth}\n"
                     continue
+                if "Raw read depth:" in line1:
+                    n_depth_1 = int(line1.split(":")[1])
+                    n_depth_2 = int(line2.split(":")[1])
+                    total_depth = n_depth_1 + n_depth_2
+                    merged_header += f"#Raw read depth:{total_depth}\n"
+                    continue
                 merged_header += line1.strip() + "; " + line2
         output_f = open(os.path.join(output, f"counts_sample_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv"), "w")
         output_f.write(merged_header)
@@ -339,6 +345,7 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output", help="Output folder path (this folder will be made if not exists when "
                                                "running the script",type=str, required=True)
     parser.add_argument("--subtractWT", help="Subtract wt counts from non-select before merging", action="store_true")
+    parser.add_argument("--covOverride", help="Ignore coverage files", action="store_true")
     parser.add_argument("-log", "--log_level", help="set log level: debug, \
             info, warning, error, critical. (default = debug)", type=str, default="debug")
     # test dirs (local, CHEK2)
