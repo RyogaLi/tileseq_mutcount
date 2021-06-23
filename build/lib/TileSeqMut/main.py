@@ -142,6 +142,13 @@ class fastq2counts(object):
         # convert to df
         fastq_map = pd.DataFrame(fastq_map, columns=["R1", "R2"])
         # if phix
+        phix_fasta = os.path.join(os.path.dirname(self._main_path), "data/phix.fasta")
+        # self._log.info(os.path.dirname(self._main_path))
+        # save this to ref path
+        # self._log.info(phix_fasta)
+        cmd = f"cp {phix_fasta} {ref_path}"
+        # self._log.info(cmd)
+        os.system(cmd)
         self._phix_fasta = []
         if self._args.calibratePhredPhix:
             # check if Undetermined reads are in the same folder
@@ -150,13 +157,7 @@ class fastq2counts(object):
                 raise ValueError("Cannot find Undetermined fastq files for phix alignment")
         #if self._phix_fastq != []:
             fastq_map.loc[len(fastq_map)] = self._phix_fastq
-            phix_fasta = os.path.join(os.path.dirname(self._main_path), "data/phix.fasta")
-            #self._log.info(os.path.dirname(self._main_path))
-            # save this to ref path
-            #self._log.info(phix_fasta)
-            cmd = f"cp {phix_fasta} {ref_path}"
-            #self._log.info(cmd)
-            os.system(cmd)
+
 
         rc = False
         if self._args.rc:
@@ -547,9 +548,9 @@ def check(args):
     test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
     test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")
     if test_csv2json[0] != 0:
-        raise OSError("csv2json.R not installed or not found in path")
+        raise OSError(f"csv2json.R failed with error {test_csv2json[1]}")
     if test_caliPhred[0] != 0:
-        raise OSError("calibratePhred.R not installed or not found in path")
+        raise OSError(f"calibratePhred.R failed with error {test_caliPhred[1]}")
 
     # check if the correct args are provided
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files

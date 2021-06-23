@@ -2,9 +2,10 @@
 
 # Author: Roujia Li
 # email: Roujia.li@mail.utoronto.ca
-
+import TileSeqMut
 from TileSeqMut.main import main
 import argparse
+from pkg_resources import get_distribution
 
 parser = argparse.ArgumentParser(description='TileSeq mutation counts')
 # user input arguments
@@ -44,9 +45,9 @@ parser.add_argument("--wt_override", action="store_true", help="When no wt condi
 
 parser.add_argument("--calibratePhredWT", action="store_true", help="When this parameter is provided, use wt to calibrate phred scores")
 parser.add_argument("--calibratePhredPhix", action="store_true", help="When this parameter is provided, use phix alignments to calibrate phred scores")
-
 parser.add_argument("--resubmit", action="store_true", help="For a finished run, batch resubmit failed scripts (if any)")
 args = parser.parse_args()
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-print("TileSeqMut release 0.6.4: updated merge runs")
+
+print(f"TileSeqMut release {get_distribution('TileSeqMut').version}: updated merge runs")
 main(args)

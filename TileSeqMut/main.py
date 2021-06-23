@@ -548,9 +548,9 @@ def check(args):
     test_csv2json = subprocess.getstatusoutput("csv2json.R -h")
     test_caliPhred = subprocess.getstatusoutput("calibratePhred.R -h")
     if test_csv2json[0] != 0:
-        raise OSError("csv2json.R not installed or not found in path")
+        raise OSError(f"csv2json.R failed with error {test_csv2json[1]}")
     if test_caliPhred[0] != 0:
-        raise OSError("calibratePhred.R not installed or not found in path")
+        raise OSError(f"calibratePhred.R failed with error {test_caliPhred[1]}")
 
     # check if the correct args are provided
     # if you don't specify --skip_alignment then you cannot provide r1 and r2 sam_files
@@ -596,7 +596,7 @@ def check(args):
     return param_json
 
 
-def main(args):
+def main(args, v):
     """
     Main for fastq2counts
     """
@@ -637,7 +637,7 @@ def main(args):
             else:
                 updated_out = args.output
             args_log_path = os.path.join(updated_out, "args.log")
-            write_param(args_log_path, args)
+            write_param(args_log_path, args, v)
             # load json file
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
@@ -671,11 +671,12 @@ def main(args):
     mc._main()
 
 
-def write_param(args_log_path, args):
+def write_param(args_log_path, args, v):
     """
     Write input arguments to param.log
     """
     with open(args_log_path, "w") as args_log:
+        args_log.write(f"{v}\n")
         for arg in vars(args):
             args_log.write(arg+",")
             args_log.write(f"{getattr(args, arg, 'N/A')}\n")
@@ -727,4 +728,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.environment = args.environment.upper()
 
-    main(args)
+    # main(args)

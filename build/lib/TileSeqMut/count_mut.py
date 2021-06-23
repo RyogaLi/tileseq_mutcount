@@ -213,6 +213,7 @@ class readSam(object):
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
+
     def adjust_er_phix(self):
         """
         If not phix thred adjusted, run calibratePhred.R with phix reads
@@ -474,6 +475,8 @@ class readSam(object):
         hgvs_df = hgvs_df.reset_index()
         if not hgvs_df.empty:
             hgvs_df.columns = ["HGVS", "count"]
+        else:
+            hgvs_df = pd.DataFrame({"HGVS": [], "count": []})
         hgvs_df.to_csv(self._sample_counts_f, mode="a", index=False)
         del hgvs_df
 
