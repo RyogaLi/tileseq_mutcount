@@ -654,7 +654,7 @@ def main(args, v):
         os.makedirs(updated_out)  # make directory to save this run
         # write args to file
         args_log_path = os.path.join(updated_out, "args.log")
-        write_param(args_log_path, args)
+        write_param(args_log_path, args, v)
 
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):

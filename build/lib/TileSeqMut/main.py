@@ -596,7 +596,7 @@ def check(args):
     return param_json
 
 
-def main(args):
+def main(args, v):
     """
     Main for fastq2counts
     """
@@ -637,7 +637,7 @@ def main(args):
             else:
                 updated_out = args.output
             args_log_path = os.path.join(updated_out, "args.log")
-            write_param(args_log_path, args)
+            write_param(args_log_path, args, v)
             # load json file
             param_path = os.path.join(updated_out, param_base)
             if not os.path.isfile(param_path):
@@ -654,7 +654,7 @@ def main(args):
         os.makedirs(updated_out)  # make directory to save this run
         # write args to file
         args_log_path = os.path.join(updated_out, "args.log")
-        write_param(args_log_path, args)
+        write_param(args_log_path, args, v)
 
         param_path = os.path.join(updated_out, param_base)
         if not os.path.isfile(param_path):
@@ -671,11 +671,12 @@ def main(args):
     mc._main()
 
 
-def write_param(args_log_path, args):
+def write_param(args_log_path, args, v):
     """
     Write input arguments to param.log
     """
     with open(args_log_path, "w") as args_log:
+        args_log.write(f"{v}\n")
         for arg in vars(args):
             args_log.write(arg+",")
             args_log.write(f"{getattr(args, arg, 'N/A')}\n")
@@ -727,4 +728,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.environment = args.environment.upper()
 
-    main(args)
+    # main(args)

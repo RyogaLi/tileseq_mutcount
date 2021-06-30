@@ -21,7 +21,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.6.500", # CHANGE RELEASE NOTE IN MAIN
+    version="0.6.600", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scriptsTileSeqMut for TileSeq sequencing data",
@@ -29,7 +29,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/RyogaLi/tilseq_mutcount",
     package_data={'TileSeqMut': ['data/*.fasta']},
-    scripts=['bin/tileseq_mut', 'bin/mergeRuns', 'bin/posterior_QC', 'bin/random_ds'],
+    scripts=['bin/tileseq_mut', 'bin/mergeRuns', 'bin/posterior_QC', 'bin/random_ds', 'bin/makePRC'],
 	# For a list of valid classifiers, see https://pypi.org/classifiers/
 	classifiers=[  # Optional
 		# How mature is this project? Common values are
@@ -52,7 +52,7 @@ setup(
 		'Programming Language :: Python :: 3.8',
 	],
 	packages=find_packages(),  # Optional
-	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'fpdf', 'progressbar'],
+	install_requires=['pandas', 'seaborn', 'numpy', 'biopython', 'fpdf', 'progressbar', 'matplotlib'],
     python_requires='>=3.7',
 
 	# # To provide executable scripts, use entry points in preference to the

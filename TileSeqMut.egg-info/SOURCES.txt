@@ -9,6 +9,7 @@ TileSeqMut/help_functions.py
 TileSeqMut/locate_mut.py
 TileSeqMut/main.py
 TileSeqMut/mergeruns.py
+TileSeqMut/parse_clinvar.py
 TileSeqMut/posterior.py
 TileSeqMut/posterior_qc.py
 TileSeqMut/process.py
@@ -19,6 +20,7 @@ TileSeqMut.egg-info/dependency_links.txt
 TileSeqMut.egg-info/requires.txt
 TileSeqMut.egg-info/top_level.txt
 TileSeqMut/data/phix.fasta
+bin/makePRC
 bin/mergeRuns
 bin/posterior_QC
 bin/random_ds

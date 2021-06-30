@@ -48,6 +48,6 @@ parser.add_argument("--calibratePhredPhix", action="store_true", help="When this
 parser.add_argument("--resubmit", action="store_true", help="For a finished run, batch resubmit failed scripts (if any)")
 args = parser.parse_args()
 # print("TileSeqMut release 0.2.1: Supports multiprocess")
-
-print(f"TileSeqMut release {get_distribution('TileSeqMut').version}: updated merge runs")
-main(args)
+v = get_distribution('TileSeqMut').version
+print(f"TileSeqMut release {v}")
+main(args, v)
