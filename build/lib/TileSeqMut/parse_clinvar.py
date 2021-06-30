@@ -242,7 +242,6 @@ def plot_clinvar_annotation(df, gene_name, range, output):
 
     annotation = df["clinvar_anno"].value_counts().to_frame().reset_index()
     annotation.columns = ["Type", "Count"]
-    print(annotation)
     if len(range) == 0:
         t = f"{gene_name} clinvar variants"
     else:

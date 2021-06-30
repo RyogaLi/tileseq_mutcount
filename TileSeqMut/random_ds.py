@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-input", help="input folder contains original fastq files")
-    parser.add_argument("-n", help="number of lines to downsample to")
+    parser.add_argument("-n", help="number of reads to downsample to")
 
     args = parser.parse_args()
 
