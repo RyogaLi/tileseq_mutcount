@@ -68,10 +68,13 @@ class readSam(object):
         # init a new object for logging, log to sample specific file.log
         # log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
         # log_object = help_functions.logginginit(arguments.log_level, log_f)
-
+        # path for the output files
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
+        # file used to track reads mapped outside of the tile
+        self._sample_offreads_r1_f = os.path.join(self._output_counts_dir,f"offreads_{self._sample_id}_r1.csv")
+        self._sample_offreads_r2_f = os.path.join(self._output_counts_dir,f"offreads_{self._sample_id}_r2.csv")
 
         self._base = arguments.base
         self._posteriorQC = arguments.posteriorQC
@@ -213,7 +216,6 @@ class readSam(object):
         self._mut_log.info(f"Adjusted thred files generated: {phred_output_r1}, {phred_output_r2}")
         return [phred_output_r1, phred_output_r2]
 
-
     def adjust_er_phix(self):
         """
         If not phix thred adjusted, run calibratePhred.R with phix reads
@@ -299,6 +301,15 @@ class readSam(object):
         r2_popmut = 0
         off_read = 0
 
+        # used to track read len for read 1 and read 2
+        # this information will be written in the counts file
+        read_length_r1 = {}
+        read_length_r2 = {}
+
+        # used to track reads mapped outside of a tile
+        r1_offmap = open(self._sample_offreads_r1_f, "w")
+        r2_offmap = open(self._sample_offreads_r2_f, "w")
+
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
         # init objects
@@ -335,17 +346,11 @@ class readSam(object):
             # get starting position for r1 and r2
             pos_start_r1 = line_r1[3]
             pos_start_r2 = line_r2[3]
+
             # record reads that are not mapped to this tile
             # this is defined as if the read covers at least min_map percent of the tile
             # the default min_map is 70%
             # we also assume that the read len is ALWAYS 150
-            r1_end = int(pos_start_r1) + 150
-            # r1_end must cover from start of the tile to 70% of the tile
-            if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
-                    ((int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len))):
-                off_read += 1
-                continue
-
             # get CIGAR string
             CIGAR_r1 = line_r1[5]
             seq_r1 = line_r1[9]
@@ -354,6 +359,17 @@ class readSam(object):
             CIGAR_r2 = line_r2[5]
             seq_r2 = line_r2[9]
             quality_r2 = line_r2[10]
+
+            r1_end = int(pos_start_r1) + len(seq_r1)
+
+            # read 1 sequence must cover from start of the tile to 70% of the tile
+            if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
+                    ((int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len))):
+                #todo keep track of read start and end position for read 1 and read 2
+                r1_offmap.write(f"{pos_start_r1}, {len(seq_r1)}")
+                r2_offmap.write(f"{pos_start_r2}, {len(seq_r2)}")
+                off_read += 1
+                continue
 
             mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
             mdz_r2 = [i for i in line_r2 if "MD:Z:" in i]
@@ -392,13 +408,30 @@ class readSam(object):
             row["cigar_r2"] = CIGAR_r2
             row["mdz_r2"] = mdz_r2
             row["seq_r2"] = seq_r2
+
+            # for all the reads that reached to this stage, check the read len for R1 and R2
+            # read len = length of the actual reads
+            read_len_r1 = len(seq_r1)
+            read_len_r2 = len(seq_r2)
+
+            if read_length_r1.get(read_len_r1, -1) == -1:
+                read_length_r1[read_len_r1] = 1
+            else:
+                read_length_r1[read_len_r1] += 1
+
+            if read_length_r2.get(read_len_r2, -1) == -1:
+                read_length_r2[read_len_r2] = 1
+            else:
+                read_length_r2[read_len_r2] += 1
+
             # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                               # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                                self._tile_ends, self._qual, self._mut_log, self._mutrate,
                                                            self._base, self._posteriorQC, adjusted_er)))
             row = {} # flush
-
+        r1_offmap.close()
+        r2_offmap.close()
         r1_f.close()
         r2_f.close()
         self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
@@ -464,7 +497,8 @@ class readSam(object):
         output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
         output_csv.write(
             f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
-
+        output_csv.write(f"Read len for R1: {read_length_r1}\n")
+        output_csv.write(f"Read len for R2: {read_length_r2}\n")
         output_csv.close()
 
         self._mut_log.info(f"Raw sequencing depth: {read_pair}")
