@@ -217,6 +217,112 @@ Description: ## TileSeq mutation count package
         
         In order to eliminate sequencing errors. We apply a posterior probability cut-off. The posterior probability of a mutation was calculated using the Phred scores provided in SAM files.
         
+        
+        ### Other pacakges
+        ---
+        
+        The following pacakges are also installed with TileSeqMut. 
+        
+        `posterior_QC`
+        * Process posterior probability files, generate posteriorQC output. It can only be used when the run was executed with `--posteriorQC`
+        * To run posterior_QC:
+        
+        ```
+        usage: posterior_QC [-h] -i INPUT -p PARAM
+        
+        TileSeq mutation posterior QC, this will generate posterior_QC folder in
+        *_mut_count
+        
+        optional arguments:
+          -h, --help            show this help message and exit
+          -i INPUT, --input INPUT
+                                Path to folder that contains mutation counts
+                                (*_mut_count)
+          -p PARAM, --param PARAM
+                                json paramter file
+        ```
+        
+        `random_ds`
+        * Random downsampling of sequencing data. Note that after downsampling, the output fastq files are saved in the same
+         dir as the original fastq files. You will need to gzip them.
+        * To run random_ds:
+        ```
+        usage: random_ds [-h] [-input INPUT] [-n N]
+        
+        optional arguments:
+          -h, --help    show this help message and exit
+          -input INPUT  input folder contains original fastq files
+          -n N          number of reads to downsample to
+        ```
+        
+        `makePRC`
+        * Before you run this, please install: [yogiroc](https://github.com/jweile/yogiroc)
+        * The script plots balanced Precision Recall Curve (PRC) given the score file (*_simple_aa.csv) and gene name. Plots
+         are made using R package [yogiroc](https://github.com/jweile/yogiroc)
+        * It gets variants from public databases: Clinvar and gnomAD. The pathogenic/likely pathogenic variants from clinvar
+         are used as pathogenic set. The benign/likely benign from clinvar and common variants from gnomAD (MAF > 1e-4) are
+          used as benign set
+        * GRCh38 is used
+        * Currently only supports [VARITY](http://varity.varianteffect.org/) as a comparison
+        * To run makePRC:
+        ```
+        usage: makePRC [-h] -s SCORES -g GENE [-c CLINVAR] [-o OUTPUT]
+                       [-r RANGE RANGE] [-v VARITY]
+        
+        Make PRC curve using DMS scores
+        
+        optional arguments:
+          -h, --help            show this help message and exit
+          -s SCORES, --scores SCORES
+                                Input score file to make prc curve. score file ends
+                                with _simple_aa.csv (required)
+          -g GENE, --gene GENE  Gene symbol (required)
+          -c CLINVAR, --clinvar CLINVAR
+                                Path to Clinvar data, if not provided, the clinvar
+                                database will be download to output dir, this might
+                                take sometime.
+          -o OUTPUT, --output OUTPUT
+                                Output folder, if not specified, output plots will be
+                                saved with score file
+          -r RANGE RANGE, --range RANGE RANGE
+                                Two integers to indicate the start/end of the targeted
+                                region. If specified, only variants in this range will
+                                be included. e.g -r 0 180 means variants in the range
+                                of (0, 180] will be included for PRC curve
+          -v VARITY, --varity VARITY
+                                File contains hgvsp and VARITY scores (VARITY_R and
+                                VARITY_ER) must be in columns.
+        ```
+        
+        `mergeRuns`
+        * Merge mut_counts file from two runs
+        * The script will ONLY add counts from samples with the same condition name, tile, time point and replicate
+        * The script output merged counts files in the output dir, also output a csv file contains the new file names
+        * To run mergeRuns
+        ```
+        usage: mergeRuns [-h] [-p1 PARAMONE] [-p2 PARAMTWO] [-d1 DIR1] [-d2 DIR2] -o
+                         OUTPUT [--covOverride] [--subtractWT] [-log LOG_LEVEL]
+        
+        TileSeq mutation counts - Merge two runs
+        
+        optional arguments:
+          -h, --help            show this help message and exit
+          -p1 PARAMONE, --paramOne PARAMONE
+                                Path to parameter sheet (JSON) for the first run
+          -p2 PARAMTWO, --paramTwo PARAMTWO
+                                Path to parameter sheet (JSON) for the second run
+          -d1 DIR1, --dir1 DIR1
+                                Path to *_mut_count folder for the first run
+          -d2 DIR2, --dir2 DIR2
+                                Path to *_mut_count folder for the second run
+          -o OUTPUT, --output OUTPUT
+                                Output folder
+          --covOverride         Ignore coverage files, please use this if there's no coverage_* file for either of the run
+          --subtractWT          Subtract wt counts from non-select before merging
+          -log LOG_LEVEL, --log_level LOG_LEVEL
+                                set log level: debug, info, warning, error, critical.
+                                (default = debug)
+        ```
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Developers

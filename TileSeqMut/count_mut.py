@@ -73,8 +73,10 @@ class readSam(object):
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
         # file used to track reads mapped outside of the tile
-        self._sample_offreads_r1_f = os.path.join(self._output_counts_dir,f"offreads_{self._sample_id}_r1.csv")
-        self._sample_offreads_r2_f = os.path.join(self._output_counts_dir,f"offreads_{self._sample_id}_r2.csv")
+        self._sample_offreads_f = os.path.join(self._output_counts_dir,f"offreads_{self._sample_id}.csv")
+        offreads = open(self._sample_offreads_f, "w")
+        offreads.write("r1_start, r1_len, r2_start, r2_len\n")
+        offreads.close()
 
         self._base = arguments.base
         self._posteriorQC = arguments.posteriorQC
@@ -307,8 +309,7 @@ class readSam(object):
         read_length_r2 = {}
 
         # used to track reads mapped outside of a tile
-        r1_offmap = open(self._sample_offreads_r1_f, "w")
-        r2_offmap = open(self._sample_offreads_r2_f, "w")
+        offmap = open(self._sample_offreads_f, "a")
 
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
@@ -361,14 +362,15 @@ class readSam(object):
             quality_r2 = line_r2[10]
 
             r1_end = int(pos_start_r1) + len(seq_r1)
-
+            r2_end = int(pos_start_r2) + len(seq_r2)
             # read 1 sequence must cover from start of the tile to 70% of the tile
             if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
-                    ((int(pos_start_r2) - int(self._cds_start)) > (int(self._tile_ends) - int(self._min_map_len))):
+                    ((r2_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))):
                 #todo keep track of read start and end position for read 1 and read 2
-                r1_offmap.write(f"{pos_start_r1}, {len(seq_r1)}")
-                r2_offmap.write(f"{pos_start_r2}, {len(seq_r2)}")
+                offmap.write(f"{int(pos_start_r1) - int(self._cds_start)}, {len(seq_r1)}, {int(pos_start_r2) - int(self._cds_start)}, {len(seq_r2)}\n")
                 off_read += 1
+                #print(seq_r1, pos_start_r1, r1_end)
+                #print(seq_r2, pos_start_r2)
                 continue
 
             mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
@@ -430,8 +432,7 @@ class readSam(object):
                                                self._tile_ends, self._qual, self._mut_log, self._mutrate,
                                                            self._base, self._posteriorQC, adjusted_er)))
             row = {} # flush
-        r1_offmap.close()
-        r2_offmap.close()
+        offmap.close()
         r1_f.close()
         r2_f.close()
         self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
