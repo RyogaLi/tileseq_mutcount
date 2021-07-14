@@ -369,9 +369,8 @@ class readSam(object):
                 #todo keep track of read start and end position for read 1 and read 2
                 offmap.write(f"{int(pos_start_r1) - int(self._cds_start)}, {len(seq_r1)}, {int(pos_start_r2) - int(self._cds_start)}, {len(seq_r2)}\n")
                 off_read += 1
-                print(seq_r1, pos_start_r1, r1_end)
-                print(seq_r2, pos_start_r2)
-                
+                #print(seq_r1, pos_start_r1, r1_end)
+                #print(seq_r2, pos_start_r2)
                 continue
 
             mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
@@ -499,8 +498,8 @@ class readSam(object):
         output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
         output_csv.write(
             f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
-        output_csv.write(f"Read len for R1: {read_length_r1}\n")
-        output_csv.write(f"Read len for R2: {read_length_r2}\n")
+        output_csv.write(f"#Read len for R1: {read_length_r1}\n")
+        output_csv.write(f"#Read len for R2: {read_length_r2}\n")
         output_csv.close()
 
         self._mut_log.info(f"Raw sequencing depth: {read_pair}")
