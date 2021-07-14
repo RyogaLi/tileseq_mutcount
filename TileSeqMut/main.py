@@ -189,33 +189,33 @@ class fastq2counts(object):
                                             sam_output, sh_output, self._args.at, self._log, rc)
             logging.info("Alignment jobs are submitted to GALEN..")
 
-        elif self._args.environment == "BC2" or self._args.environment == "BC":
+        elif self._args.environment == "BC2" or self._args.environment == "BC" or self._args.environment == "DC":
             # make sh files to submit to BC
-            sh_output = os.path.join(self._output, "BC_aln_sh")
+            sh_output = os.path.join(self._output, "CCBR_sh")
             os.system("mkdir " + sh_output)
             # make sh files to submit to BC
-            self._log.info("Submitting alignment jobs to BC/BC2...")
+            self._log.info("Submitting alignment jobs...")
             # alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging)
 
-            sam_df, job_list = cluster.alignment_sh_bc2(fastq_map, self._project, self._seq.seq.values.item(),
+            sam_df, job_list = cluster.alignment_sh_ccbr(fastq_map, self._project, self._seq.seq.values.item(),
                                                         ref_path, sam_output, sh_output, self._args.at,
-                                                        self._log, rc)
+                                                        self._log, rc, self._args.environment)
             self._log.info("Alignment jobs are submitte to BC2. Check pbs-output for STDOUT/STDERR")
 
-        elif self._args.environment == "DC":
-            # make sh files to submit to DC
-            sh_output = os.path.join(self._output, "DC_aln_sh")
-            os.system("mkdir "+sh_output)
-
-            self._log.info("Submitting alignment jobs to DC...")
-            if  self._args.rc:
-                rc = True
-            else:
-                rc = False
-            sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(),
-                                                       ref_path, sam_output, sh_output,
-                                                       self._args.at, self._log, rc)
-            self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
+        # elif self._args.environment == "DC":
+        #     # make sh files to submit to DC
+        #     sh_output = os.path.join(self._output, "DC_aln_sh")
+        #     os.system("mkdir "+sh_output)
+        #
+        #     self._log.info("Submitting alignment jobs to DC...")
+        #     if  self._args.rc:
+        #         rc = True
+        #     else:
+        #         rc = False
+        #     sam_df, job_list = cluster.alignment_sh_dc(fastq_map, self._project, self._seq.seq.values.item(),
+        #                                                ref_path, sam_output, sh_output,
+        #                                                self._args.at, self._log, rc)
+        #     self._log.info("Alignment jobs are submitte to DC. Check pbs-output for STDOUT/STDERR")
 
         else:
             raise ValueError("Wrong environment name")
@@ -398,17 +398,15 @@ class fastq2counts(object):
         if self._args.calibratePhredWT:
             cmd = cmd + "--calibratePhredWT "
 
-        if self._args.environment == "BC2" or self._args.environment == "BC":
-            logging.info("Submitting mutation counts jobs to BC2...")
-            job_id = cluster.mut_count_sh_bc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
-                                             self._args.c)
-        elif self._args.environment == "DC":
-            logging.info("Submitting mutation counts jobs to DC...")
-            # (sample_name, cmd, mt, sh_output_dir, logger)
-            job_id = cluster.mut_count_sh_dc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
-                                             self._args.c)  # this
-            # function
-            # will make a sh file for submitting the job
+        if self._args.environment == "BC2" or self._args.environment == "BC" or self._args.environment == "DC":
+            logging.info("Submitting mutation counts jobs....")
+            job_id = cluster.mut_count_sh_ccbr(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+                                             self._args.c, self._args.environment)
+        # elif :
+        #     logging.info("Submitting mutation counts jobs to DC...")
+        #     # (sample_name, cmd, mt, sh_output_dir, logger)
+        #     job_id = cluster.mut_count_sh_dc(sample, cmd, self._args.mt, self._args.mm, sh_output, self._log,
+        #                                      self._args.c)
         elif self._args.environment == "GALEN":
             logging.info("Submitting mutation counts jobs to GALEN...")
             # (sample_name, cmd, mt, sh_output_dir, logger)
@@ -499,7 +497,6 @@ class fastq2counts(object):
                         raise ValueError("Cannot find Undetermined fastq files for phix alignment")
                     else:
                         self._phix_fastq = []
-
 
             # output directory is the mut_count dir
             # make folder to store all the sh files as well as all the log files
