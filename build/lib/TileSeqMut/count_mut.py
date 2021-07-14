@@ -121,6 +121,9 @@ class readSam(object):
         self._track_reads = self._track_reads.set_index("pos")
         self._track_reads = self._track_reads.fillna(0)
 
+        # single replicate override
+        self._sroverride = arguments.sr_Override
+
     def adjust_er(self, wt_override=False):
         """
         Based on the wt samples given in the parameter sheet,
@@ -183,6 +186,8 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
             cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
+            if self._sroverride:
+                cmd_r1 = cmd_r1 + " --srOverride"
             self._mut_log.info(cmd_r1)
             os.system(cmd_r1)
         if not os.path.isfile(phred_output_r2):
@@ -191,6 +196,8 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
             cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
+            if self._sroverride:
+                cmd_r2 = cmd_r2 + " --srOverride"
             self._mut_log.info(cmd_r2)
             os.system(cmd_r2)
         
@@ -246,6 +253,8 @@ class readSam(object):
 
             log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
             cmd = f"calibratePhred.R {phix_r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores} --fastaref {phix_fasta}"
+            if self._sroverride:
+                cmd = cmd + " --srOverride"
             os.system(cmd)
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder
@@ -259,6 +268,8 @@ class readSam(object):
             log_f = os.path.join(self._output_counts_dir, f"phix_phred.log")
             cmd = f"calibratePhred.R {phix_r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores" \
                   f" {self._cores} --fastaref {phix_fasta}"
+            if self._sroverride:
+                cmd = cmd + " --srOverride"
             os.system(cmd)
 
         # check if both file has something in there

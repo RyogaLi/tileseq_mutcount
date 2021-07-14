@@ -278,7 +278,7 @@ def parse_jobs_galen(job_list, logger):
             # make df
             qstat_df = pd.DataFrame([i.split() for i in qstat_out.split("\n")])
             qstat_df = qstat_df.rename(columns=qstat_df.iloc[0])
-            qstat_df = qstat_df.drop(qstat_df.index[1])
+            #qstat_df = qstat_df.drop(qstat_df.index[1])
             logger.debug(qstat_df)
             # get all active job ID
             running_jobs = qstat_df[qstat_df["ST"] == "R"]["JOBID"].tolist()
@@ -286,11 +286,11 @@ def parse_jobs_galen(job_list, logger):
             queued_jobs = qstat_df[qstat_df["ST"] == "PD"]["JOBID"].tolist()
             # completing
             completed_jobs = qstat_df[qstat_df["ST"] == "CG"]["JOBID"].tolist()
-            logger.debug(running_jobs)
-            logger.debug(queued_jobs)
+            #logger.debug(running_jobs)
+            #logger.debug(queued_jobs)
 
-        logger.info(f"{len(queued_jobs)} jobs queued")
-        logger.info(f"{len(running_jobs)} jobs running")
+        #logger.info(f"{len(queued_jobs)} jobs queued")
+        #logger.info(f"{len(running_jobs)} jobs running")
 
         final_list = list(set(running_jobs + queued_jobs))
         if final_list == []:
@@ -333,6 +333,7 @@ def submit_given_jobs(shfile, logger, mt, mm, cores, env=""):
 
 if __name__ == "__main__":
     # test job list
-    job_list = ["42091", "42090", "42089", "42080"]
+    job_list = ["352344", "348556"]
     # parse_jobs(job_list, "DC", "")
+
     parse_jobs_galen(job_list, "")

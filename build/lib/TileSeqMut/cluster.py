@@ -82,7 +82,7 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
                  f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
 
         if "Undetermined" in sample_name:
-            r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=rc,
+            r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=True,
                                                             header=header)
         else:
             r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc, header=header)
