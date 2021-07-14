@@ -509,8 +509,8 @@ class readSam(object):
         output_csv.write(f"#Total read pairs with mutations:{final_pairs}\n")
         output_csv.write(
             f"#Comment: Total read pairs with mutations = Read pairs with mutations that passed the posterior threshold\n#Comment: Final read-depth = raw read depth - reads didn't map to gene - reads mapped outside of the tile\n")
-        output_csv.write(f"Read len for R1: {read_length_r1}\n")
-        output_csv.write(f"Read len for R2: {read_length_r2}\n")
+        output_csv.write(f"#Read len for R1: {read_length_r1}\n")
+        output_csv.write(f"#Read len for R2: {read_length_r2}\n")
         output_csv.close()
 
         self._mut_log.info(f"Raw sequencing depth: {read_pair}")
