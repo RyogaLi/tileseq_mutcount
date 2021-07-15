@@ -16,6 +16,8 @@ import time
 import subprocess
 from TileSeqMut import help_functions
 from Bio.Data.IUPACData import protein_letters_1to3
+import warnings
+warnings.filterwarnings('ignore')
 sys.path.append('..')
 
 def get_clinvar(data_path):
@@ -72,12 +74,12 @@ def get_clinvar_API(gene_symbol):
     decoded = r.json()
     all_v_stats = decoded["clinvar"]["all_variants"]
     all_benign = pd.DataFrame(decoded["clinvar"]["benign_variants"])
-    all_benign["ClinicalSignificance"] = "Benign/Likely Benign"
+    all_benign["clinvar_anno"] = "Benign/Likely Benign"
 
     all_patho = pd.DataFrame(decoded["clinvar"]["pathogenic_variants"])
-    all_patho["ClinicalSignificance"] = "Pathogenic/Likely Pathogenic"
+    all_patho["clinvar_anno"] = "Pathogenic/Likely Pathogenic"
 
-    all_variants = pd.concat(pd.DataFrame(all_patho), pd.DataFrame(all_benign))
+    all_variants = pd.concat([all_patho, all_benign])
 
     if not all_variants.empty:
         all_variants['hgvsp'] = all_variants['name'].str.extract('(p\.[A-Za-z0-9=]*)', expand=True)
@@ -100,13 +102,13 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     # read clinvar file
     if os.path.isfile(clinvar_master_file):
         clinvar_gene_df = read_clinvar_file(clinvar_master_file, gene_symbol)
+        main_logger.info(f"clinvar data obtained from {clinvar_master_file}")
     else:
         # read clinvar data from mavequest api
         clinvar_gene_df = get_clinvar_API(gene_symbol)
-
+        main_logger.info("clinvar data obtained from MaveQuest")
     # merge mave data with clinvar
     merged_mave_df = merge_mave(clinvar_gene_df, mave_file)
-    main_logger.info("Obtained clinvar data...")
 
     # from merged file, filter syn variants
     # remove mutaions with no hgvs
@@ -140,9 +142,9 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
 
     # simplify clinvar annotation for PRC curve
     filter_with_gnomad["pathogenic"] = np.nan
-    filter_with_gnomad.loc[filter_with_gnomad["ClinicalSignificance"].str.contains("Pathogenic", case=False), "pathogenic"] = True
+    filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Pathogenic", case=False), "pathogenic"] = True
     filter_with_gnomad.loc[filter_with_gnomad["genome_af"].notnull(), "pathogenic"] = False
-    filter_with_gnomad.loc[filter_with_gnomad["ClinicalSignificance"].str.contains("Benign", case=False),"pathogenic"] = False
+    filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Benign", case=False),"pathogenic"] = False
 
     # FLIP DMS score
     filter_with_gnomad["MAVE"] = - filter_with_gnomad["score"]
@@ -156,9 +158,10 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     n_p = prc_df[prc_df["pathogenic"]==True].shape[0]
     n_b = prc_df[prc_df["pathogenic"]==False].shape[0]
     plot_title = f"{gene_symbol} - {os.path.basename(mave_file).split('.')[0]} (P/LP: {n_p}, B/LB/gnomAD common: {n_b})"
+    main_logger.info(plot_title)
     output_file = os.path.join(output_dir, f"{os.path.basename(mave_file).split('.')[0]}_PRC.pdf")
     # make PRC plot
-    call_prc(prc_file, plot_title, output_file)
+    call_prc(prc_file, plot_title, output_file, main_logger)
 
 
 def merge_mave(clinvar_df, mave_file):
@@ -276,14 +279,14 @@ def get_varity(varity_file):
     return varity_df[["hgvsp", "VARITY_R", "VARITY_ER"]]
 
 
-def call_prc(prc_file, plot_title, output_file):
+def call_prc(prc_file, plot_title, output_file, logger):
     """
     Use yogiroc_embeded.R to make prc plots
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     output = subprocess.run([f"Rscript", os.path.join(current_dir, 'yogiroc_embeded.R'), prc_file, plot_title,
                              output_file], capture_output=True, text=True)
-
+    logger.warning(output.stderr)
 
 
 ###### make plots #######
@@ -315,8 +318,8 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--gene", help="Gene symbol", type=str, required=True)
 
     # optional
-    parser.add_argument("-c", "--clinvar", help="Path to Clinvar data, if not provided, the clinvar database will be "
-                                                "download to output dir, this might take sometime.")
+    parser.add_argument("-c", "--clinvar", help="Path to Clinvar data, if not provided, clinvar data will be takend from maveQuest (might not be the newest version")
+    parser.add_argument("--downloadClinvar", help="if provided, raw clinvar data will be downloaded from NCBI")
     parser.add_argument("-o", "--output", help="Output folder, if not specified, output plots will be saved with "
                                                "score file", type=str)
     parser.add_argument("-r", "--range", help="Two integers to indicate the start/end of the targeted region. If "
@@ -328,10 +331,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # for testing
-    get_clinvar_API("LDLR")
-    exit()
-
-
+    #get_clinvar_API("LDLR")
 
     # process input range
     if args.range is None:
@@ -345,9 +345,12 @@ if __name__ == '__main__':
         output_dir = args.output
 
     if args.clinvar is None:
-        clinvar_data = get_clinvar(output_dir)
+        clinvar_data = ""
     else:
         clinvar_data = args.clinvar
+
+    if args.downloadClinvar:
+        clinvar_data = get_clinvar(output_dir)
 
     if args.varity is not None:
         varity_data = get_varity(args.varity)

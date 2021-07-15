@@ -28,7 +28,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/RyogaLi/tilseq_mutcount",
-    package_data={'TileSeqMut': ['data/*.fasta']},
+    package_data={'TileSeqMut': ['data/*.fasta', "*.R", "*.r"]},
     scripts=['bin/tileseq_mut', 'bin/mergeRuns', 'bin/posterior_QC', 'bin/random_ds', 'bin/makePRC'],
 	# For a list of valid classifiers, see https://pypi.org/classifiers/
 	classifiers=[  # Optional
