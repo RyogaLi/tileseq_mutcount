@@ -255,7 +255,6 @@ def plot_clinvar_annotation(df, gene_name, range, output):
 
 
 if __name__ == '__main__':
-    # for testing
     parser = argparse.ArgumentParser(description='Make PRC curve using DMS scores')
     # user input arguments
     # required!
@@ -277,7 +276,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # process input range
-    aa_range = tuple(args.range)
+    if args.range is None:
+        aa_range = ()
+    else:
+        aa_range = tuple(args.range)
     # define output directory
     if args.output is None:
         output_dir = os.path.dirname(args.scores)
