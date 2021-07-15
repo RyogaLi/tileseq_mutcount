@@ -1,4 +1,5 @@
 paramsheets/*
+TileSeqMut.egg-info/*
 output/*
 for_testing/*
 test.sh
