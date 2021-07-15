@@ -1,10 +1,6 @@
 Metadata-Version: 2.1
 Name: TileSeqMut
-<<<<<<< HEAD
-Version: 0.6.710
-=======
-Version: 0.6.700
->>>>>>> e8b0b07c96e6dab7009e5d8911a00fd0f68acc51
+Version: 0.6.730
 Summary: Analysis scriptsTileSeqMut for TileSeq sequencing data
 Home-page: https://github.com/RyogaLi/tilseq_mutcount
 Author: ROUJIA LI

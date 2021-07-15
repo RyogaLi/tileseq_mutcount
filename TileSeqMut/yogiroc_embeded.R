@@ -11,7 +11,7 @@ args<-commandArgs(TRUE)
 inputfile <- args[1]
 plotTitle <- args[2]
 plotFile <- args[3]
-inputData <- read.csv(file = inputfile, colClasses=c("logical","numeric", "numeric"))
+inputData <- read.csv(file = inputfile, colClasses=c("pathogenic"="logical"))
 
 ##load data from file
 #fakeData <- data.frame(
@@ -21,16 +21,17 @@ inputData <- read.csv(file = inputfile, colClasses=c("logical","numeric", "numer
 #)
 #
 
+#print(inputData[ , -1, drop=FALSE])
 #create yogiroc2 object
-yrobj <- yr2(truth=inputData$pathogenic, scores=inputData[ , -1])
-
+#print(inputData)
+yrobj <- yr2(truth=inputData$pathogenic, scores=inputData[ , -1, drop=FALSE])
 #draw PRC curves
 #draw.prc(yrobj)
 
 #draw prior-balanced PRC curves
 pdf(plotFile)
 draw.prc(yrobj,balanced=TRUE,main=plotTitle)
-dev.close()
+dev.off()
 #use custom colors and other graphical parameters
 #draw.prc(yrobj,col=c("chartreuse3","firebrick3"),main="My PRC curve")
 
