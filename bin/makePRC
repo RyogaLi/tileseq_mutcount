@@ -18,7 +18,7 @@ parser.add_argument("-g", "--gene", help="Gene symbol", type=str, required=True)
 
 # optional
 parser.add_argument("-c", "--clinvar", help="Path to Clinvar data, if not provided, clinvar data will be takend from maveQuest (might not be the newest version")
-parser.add_argument("--downloadClinvar", help="if provided, raw clinvar data will be downloaded from NCBI")
+parser.add_argument("--downloadClinvar", action="store_true", help="if provided, raw clinvar data will be downloaded from NCBI")
 parser.add_argument("-o", "--output", help="Output folder, if not specified, output plots will be saved with "
                                                "score file", type=str)
 parser.add_argument("-r", "--range", help="Two integers to indicate the start/end of the targeted region. If "
