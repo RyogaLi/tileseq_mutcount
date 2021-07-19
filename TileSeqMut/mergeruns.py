@@ -73,8 +73,8 @@ def merge_runs(input_dir1, input_dir2, map_df, output, arguments):
         output_f = open(os.path.join(output, f"counts_sample_{row['Sample ID_run1']}-{row['Sample ID_run2']}.csv"), "w")
         output_f.write(merged_header)
         # skip header and read the mutations
-        df1 = pd.read_csv(mut_count_f1, skiprows=18)
-        df2 = pd.read_csv(mut_count_f2, skiprows=18)
+        df1 = pd.read_csv(mut_count_f1, skiprows=20)
+        df2 = pd.read_csv(mut_count_f2, skiprows=20)
         # for each file find the corresponded wt file and read the wt
         merge = [df1, df2]
         merge = pd.concat(merge)

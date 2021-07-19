@@ -20,12 +20,14 @@ import warnings
 warnings.filterwarnings('ignore')
 sys.path.append('..')
 
+
 def get_clinvar(data_path):
     """
     If no clinvar dataset present, download from db
     """
     clinvar_tsv = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz"
     cmd = f"wget -N -P {data_path} {clinvar_tsv}"
+    print(cmd)
     os.system(cmd)
     return os.path.join(data_path, "variant_summary.txt.gz")
 
@@ -47,16 +49,19 @@ def read_clinvar_file(clinvar_file, gene_symbol):
     clinvar_gene_df['hgvsp'] = clinvar_gene_df['Name'].str.extract('(p\.[A-Za-z0-9=]*)', expand=True)
     # simplify clinvar annotation
     clinvar_gene_df["clinvar_anno"] = "Uncertain/Conflicting"
-    clinvar_gene_df.loc[clinvar_gene_df["ClinicalSignificance"].str.contains("Pathogenic", case=False), "clinvar_anno"] = \
-        "Pathogenic/Likely pathogenic"
-    clinvar_gene_df.loc[clinvar_gene_df["ClinicalSignificance"].str.contains("Benign", case=False), "clinvar_anno"] = \
-        "Benign/Likely benign"
+    clinvar_gene_df.loc[(clinvar_gene_df["ClinicalSignificance"].str.contains("Pathogenic", case=False)) 
+            & (clinvar_gene_df["ClinicalSignificance"].str.contains("conflict", case=False) == False), "clinvar_anno"] = "Pathogenic/Likely pathogenic"
+    clinvar_gene_df.loc[(clinvar_gene_df["ClinicalSignificance"].str.contains("Benign", case=False))
+            & (clinvar_gene_df["ClinicalSignificance"].str.contains("conflict", case=False) == False), "clinvar_anno"] = "Benign/Likely benign"
+    clinvar_gene_df = clinvar_gene_df[clinvar_gene_df["OriginSimple"] == "germline"]
+    clinvar_gene_df = clinvar_gene_df[clinvar_gene_df["ReviewStatus"].str.contains("criteria provided,")]
     # filter by assembly (assume we are using grch38)
     clinvar_gene_df = clinvar_gene_df[clinvar_gene_df["Assembly"] == "GRCh38"]
     # remove mutaions with no hgvs
     clinvar_gene_df = clinvar_gene_df[clinvar_gene_df["Name"].str.contains("p\.\?") == False]
 
     return clinvar_gene_df
+
 
 def get_clinvar_API(gene_symbol):
     """
@@ -83,6 +88,8 @@ def get_clinvar_API(gene_symbol):
 
     if not all_variants.empty:
         all_variants['hgvsp'] = all_variants['name'].str.extract('(p\.[A-Za-z0-9=]*)', expand=True)
+        all_variants = all_variants[all_variants["name"].str.contains("p\.\?") == False]
+
     else:
         print("This gene might not have any variants in clinvar, you can also download raw clinvar data and try again")
 
@@ -96,8 +103,9 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     """
     main_log = help_functions.logginginit("info", os.path.join(output_dir, "prc_main.log"))
     main_logger = main_log.getLogger("prc.log")
+    gene_symbol = gene_symbol.upper()
     main_logger.info(f"Start analyzing gene {gene_symbol}, using scores {mave_file}")
-
+    
     # if user provides clinvar file
     # read clinvar file
     if os.path.isfile(clinvar_master_file):
@@ -133,13 +141,14 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
 
     # merge with gnomAD
     filter_with_gnomad = pd.merge(filter_df, gnomad_common, how="left", left_on="hgvsp", right_on="hgvs")
+    filter_with_gnomad = filter_with_gnomad.drop(filter_with_gnomad[(filter_with_gnomad["genome_af"].notnull()) & 
+        (filter_with_gnomad["clinvar_anno"].str.contains("Pathogenic", case=False))].index)
     # merge with varity if provided
     if not varity.empty:
         filter_with_gnomad = pd.merge(filter_with_gnomad, varity, how="left", on="hgvsp")
 
     # make plots for clinvar data
     plot_clinvar_annotation(filter_with_gnomad, gene_symbol, range, output_dir)
-
     # simplify clinvar annotation for PRC curve
     filter_with_gnomad["pathogenic"] = np.nan
     filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Pathogenic", case=False), "pathogenic"] = True
@@ -147,7 +156,8 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Benign", case=False),"pathogenic"] = False
 
     # FLIP DMS score
-    filter_with_gnomad["MAVE"] = - filter_with_gnomad["score"]
+    filter_with_gnomad["MAVE"] = -filter_with_gnomad["score"]
+    filter_with_gnomad = filter_with_gnomad.dropna(subset=["hgvsp"])
     if not varity.empty:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE", "VARITY_ER"]].dropna()
     else:
@@ -318,7 +328,7 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--gene", help="Gene symbol", type=str, required=True)
 
     # optional
-    parser.add_argument("-c", "--clinvar", help="Path to Clinvar data, if not provided, clinvar data will be takend from maveQuest (might not be the newest version")
+    parser.add_argument("-c", "--clinvar", help="Path to Clinvar data, if not provided, clinvar data will be takend from maveQuest (might not be the newest version)")
     parser.add_argument("--downloadClinvar", help="if provided, raw clinvar data will be downloaded from NCBI")
     parser.add_argument("-o", "--output", help="Output folder, if not specified, output plots will be saved with "
                                                "score file", type=str)
