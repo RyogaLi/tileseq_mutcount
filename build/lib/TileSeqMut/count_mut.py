@@ -556,7 +556,6 @@ class readSam(object):
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base,
                     posteriorQC, adjusted_er):
     """
-
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
                                       mutrate, base, posteriorQC, adjusted_er)

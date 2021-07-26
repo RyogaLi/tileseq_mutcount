@@ -11,9 +11,6 @@ import time
 # other modules
 from TileSeqMut import alignment
 
-# phix reference sequence
-phix = ""
-
 
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
@@ -44,7 +41,7 @@ def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_p
         log_file_ds = alignment.align_main(ref, row["r1_ds"], row["r2_ds"], ds_sam_path, shfile_ds)
         sub_cmd = f"qsub -cwd -N {'aln_ds_'+sample_name} -e {log_file_ds} {shfile_ds}"
         os.system(sub_cmd)
-        #break
+
 
 def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
     """
@@ -74,7 +71,6 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
         shfile = os.path.join(sh_output, sample_name+"_aln.sh")
 
         # write header to sh file
-        # assume at is single digit
         time_request = f"0{at}:00:00"
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}")
@@ -82,6 +78,7 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
                  f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
 
         if "Undetermined" in sample_name:
+            # when align undetermined fastq files to phix, we consider reads in both direction, rc = True
             r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=True,
                                                             header=header)
         else:
@@ -97,9 +94,9 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
     return fastq_map, all_job_id
 
 
-def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
+def alignment_sh_ccbr(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc, cluster_name):
     """
-    submit jobs to BC/BC2
+    submit jobs to BC/BC2/DC
     return a df with columns: [R1, R2, r1_sam, r2_sam]
     return a list of job id that we just submited
     """
@@ -119,7 +116,10 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
         row["r2_sam"] = r2_sam
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob2", "-w", str(time), "-c", "1", str(shfile), "2>", sam_log_f]
+        if cluster_name == "BC2" or cluster_name == "BC":
+            sub_cmd = ["submitjob2", "-w", str(time), "-c", "1", str(shfile), "2>", sam_log_f]
+        else:
+            sub_cmd = ["submitjob", "-w", str(time), "-c", "1", str(shfile), "2>", sam_log_f]
         jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
 
         job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
@@ -129,38 +129,7 @@ def alignment_sh_bc2(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output
     return fastq_map, all_job_id
 
 
-def alignment_sh_dc(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_output, at, logging, rc):
-    """
-    submit jobs to BC/BC2
-    return a df with columns: [R1, R2, r1_sam, r2_sam]
-    return a list of job id that we just submited
-    """
-
-    # build reference
-    ref = alignment.make_ref(ref_name, ref_seq, ref_path)
-    # store sam paths
-    fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
-    time = at
-    all_job_id = []
-    for index, row in fastq_map.iterrows(): # go through all the fastq pairs
-        sample_name = os.path.basename(row["R1"]).split("_")[0]
-
-        shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc)
-        row["r1_sam"] = r1_sam
-        row["r2_sam"] = r2_sam
-        # create log file for alignment
-        sam_log_f = os.path.join(sam_path, f"{sample_name}.log")
-        sub_cmd = ["submitjob","-w", str(time),"-c", "1", str(shfile), "2>", sam_log_f]
-        jobs = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-        job_id = jobs.stdout.decode("utf-8").strip().split(".")[0]
-        all_job_id.append(job_id)
-        logging.info(f"Sample {sample_name}: job id - {job_id}")
-
-    return fastq_map, all_job_id
-
-
-def mut_count_sh_bc(sample_name, cmd, mt, mm, sh_output_dir, logger, cores):
+def mut_count_sh_ccbr(sample_name, cmd, mt, mm, sh_output_dir, logger, cores, cluster_name):
     """
     Submit mutation count jobs to BC
 
@@ -173,32 +142,13 @@ def mut_count_sh_bc(sample_name, cmd, mt, mm, sh_output_dir, logger, cores):
         sh.write(cmd+"\n")
         os.system(f"chmod 755 {shfile}")
     # submit this to the cluster
-    sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
+    if cluster_name == "BC" or cluster_name == "BC2":
+        sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
+    else:
+        sub_cmd = ["submitjob","-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
     job_id = job.stdout.decode("utf-8").strip().split(".")[0]
-    # log sample name and job id
-    logger.info(f"Sample {sample_name}: job id - {job_id}")
-    return job_id
-
-
-def mut_count_sh_dc(sample_name, cmd, mt, mm, sh_output_dir, logger, cores):
-    """
-    Submit mutation count jobs to DC
-    """
-    # go through files df and submit jobs for each pair of sam files
-    # counting mutations in raw sam output files
-    shfile = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.sh")
-    log_f = os.path.join(sh_output_dir, f"Mut_count_{sample_name}.log")
-    with open(shfile, "w") as sh:
-        sh.write(cmd+"\n")
-        os.system(f"chmod 755 {shfile}")
-    #sample_error_file = os.path.join(log_dir, f"sample_{sample_name}.log")
-    # submit this to the cluster
-    sub_cmd = ["submitjob", "-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
-    logger.debug(sub_cmd)
-    job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
-    job_id = job.stdout.decode("utf-8").strip()
     # log sample name and job id
     logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
@@ -328,7 +278,7 @@ def parse_jobs_galen(job_list, logger):
             # make df
             qstat_df = pd.DataFrame([i.split() for i in qstat_out.split("\n")])
             qstat_df = qstat_df.rename(columns=qstat_df.iloc[0])
-            qstat_df = qstat_df.drop(qstat_df.index[1])
+            #qstat_df = qstat_df.drop(qstat_df.index[1])
             logger.debug(qstat_df)
             # get all active job ID
             running_jobs = qstat_df[qstat_df["ST"] == "R"]["JOBID"].tolist()
@@ -336,11 +286,11 @@ def parse_jobs_galen(job_list, logger):
             queued_jobs = qstat_df[qstat_df["ST"] == "PD"]["JOBID"].tolist()
             # completing
             completed_jobs = qstat_df[qstat_df["ST"] == "CG"]["JOBID"].tolist()
-            logger.debug(running_jobs)
-            logger.debug(queued_jobs)
+            #logger.debug(running_jobs)
+            #logger.debug(queued_jobs)
 
-        logger.info(f"{len(queued_jobs)} jobs queued")
-        logger.info(f"{len(running_jobs)} jobs running")
+        #logger.info(f"{len(queued_jobs)} jobs queued")
+        #logger.info(f"{len(running_jobs)} jobs running")
 
         final_list = list(set(running_jobs + queued_jobs))
         if final_list == []:
@@ -383,6 +333,7 @@ def submit_given_jobs(shfile, logger, mt, mm, cores, env=""):
 
 if __name__ == "__main__":
     # test job list
-    job_list = ["42091", "42090", "42089", "42080"]
+    job_list = ["352344", "348556"]
     # parse_jobs(job_list, "DC", "")
+
     parse_jobs_galen(job_list, "")

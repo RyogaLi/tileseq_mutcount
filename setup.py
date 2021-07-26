@@ -21,7 +21,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="TileSeqMut",
-    version="0.6.810", # CHANGE RELEASE NOTE IN MAIN
+    version="0.6.820", # CHANGE RELEASE NOTE IN MAIN
     author="ROUJIA LI",
     author_email="roujia.li@mail.utoronto.ca",
     description="Analysis scriptsTileSeqMut for TileSeq sequencing data",
