@@ -1,5 +1,6 @@
 paramsheets/*
 output/*
+build/*
 for_testing/*
 test.sh
 *.csv
