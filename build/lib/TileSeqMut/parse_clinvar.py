@@ -27,7 +27,6 @@ def get_clinvar(data_path):
     """
     clinvar_tsv = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz"
     cmd = f"wget -N -P {data_path} {clinvar_tsv}"
-    print(cmd)
     os.system(cmd)
     return os.path.join(data_path, "variant_summary.txt.gz")
 
@@ -96,7 +95,7 @@ def get_clinvar_API(gene_symbol):
     return all_variants
 
 
-def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir, range, varity=pd.DataFrame({})):
+def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir, range, varity, provean):
     """
     From clinvar master file, get variants for gene_id
     save gene_id and it's variants to a separate file
@@ -147,6 +146,9 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     if not varity.empty:
         filter_with_gnomad = pd.merge(filter_with_gnomad, varity, how="left", on="hgvsp")
 
+    if not provean.empty:
+        filter_with_gnomad = pd.merge(filter_with_gnomad, provean, how="left", on="hgvsp")
+
     # make plots for clinvar data
     plot_clinvar_annotation(filter_with_gnomad, gene_symbol, range, output_dir)
     # simplify clinvar annotation for PRC curve
@@ -160,6 +162,8 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     filter_with_gnomad = filter_with_gnomad.dropna(subset=["hgvsp"])
     if not varity.empty:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE", "VARITY_ER"]].dropna()
+    elif not provean.empty:
+        prc_df = filter_with_gnomad[["pathogenic", "MAVE", "PROVEAN"]].dropna()
     else:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE"]].dropna()
 
@@ -288,6 +292,23 @@ def get_varity(varity_file):
 
     return varity_df[["hgvsp", "VARITY_R", "VARITY_ER"]]
 
+def get_provean(provean_file):
+    """
+    parse input provean file
+    """
+    provean_df = pd.read_csv(provean_file, sep="\t")
+    # convert pos ref alt to hgvs p
+    # make hgvspro
+    provean_df["aa_ref3"] = provean_df['RESIDUE_REF'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
+    else x)
+    provean_df["aa_alt3"] = provean_df['RESIDUE_ALT'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
+    else x)
+    provean_df["hgvsp"] = "p." + provean_df["aa_ref3"] + provean_df["POSITION"].astype(int).astype(str) + provean_df[
+        "aa_alt3"]
+    provean_df = provean_df.rename(columns={"SCORE":"PROVEAN"})
+    provean_df["PROVEAN"] = - provean_df["PROVEAN"]
+    return provean_df[["hgvsp", "PROVEAN"]]
+
 
 def call_prc(prc_file, plot_title, output_file, logger):
     """
@@ -364,6 +385,14 @@ if __name__ == '__main__':
 
     if args.varity is not None:
         varity_data = get_varity(args.varity)
-        parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range, varity=varity_data)
     else:
-        parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range)
+        varity_data = pd.DataFrame({})
+
+    if args.provean is not None:
+        provean_data = get_provean(args.provean)
+    else:
+        provean_data = pd.DataFrame({})
+
+    parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range, varity_data, provean_data)
+
+        # parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range)

@@ -27,7 +27,6 @@ def get_clinvar(data_path):
     """
     clinvar_tsv = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz"
     cmd = f"wget -N -P {data_path} {clinvar_tsv}"
-    print(cmd)
     os.system(cmd)
     return os.path.join(data_path, "variant_summary.txt.gz")
 
@@ -163,6 +162,8 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     filter_with_gnomad = filter_with_gnomad.dropna(subset=["hgvsp"])
     if not varity.empty:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE", "VARITY_ER"]].dropna()
+    elif not provean.empty:
+        prc_df = filter_with_gnomad[["pathogenic", "MAVE", "PROVEAN"]].dropna()
     else:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE"]].dropna()
 
@@ -298,14 +299,15 @@ def get_provean(provean_file):
     provean_df = pd.read_csv(provean_file, sep="\t")
     # convert pos ref alt to hgvs p
     # make hgvspro
-    provean_df["aa_ref3"] = provean_df['aa_ref'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
+    provean_df["aa_ref3"] = provean_df['RESIDUE_REF'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
     else x)
-    provean_df["aa_alt3"] = provean_df['aa_alt'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
+    provean_df["aa_alt3"] = provean_df['RESIDUE_ALT'].apply(lambda x: protein_letters_1to3[x.strip()] if type(x) == str
     else x)
     provean_df["hgvsp"] = "p." + provean_df["aa_ref3"] + provean_df["POSITION"].astype(int).astype(str) + provean_df[
         "aa_alt3"]
-
-    return provean_df[["hgvsp", "SCORE"]]
+    provean_df = provean_df.rename(columns={"SCORE":"PROVEAN"})
+    provean_df["PROVEAN"] = - provean_df["PROVEAN"]
+    return provean_df[["hgvsp", "PROVEAN"]]
 
 
 def call_prc(prc_file, plot_title, output_file, logger):

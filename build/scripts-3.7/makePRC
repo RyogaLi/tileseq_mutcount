@@ -4,9 +4,11 @@
 # email: Roujia.li@mail.utoronto.ca
 import argparse
 import os
+import pandas as pd
 from TileSeqMut.parse_clinvar import parse_clinvar_gnomad
 from TileSeqMut.parse_clinvar import get_varity
 from TileSeqMut.parse_clinvar import get_clinvar
+from TileSeqMut.parse_clinvar import get_provean
 
 
 parser = argparse.ArgumentParser(description='Make PRC curve using DMS scores')
@@ -25,6 +27,7 @@ parser.add_argument("-r", "--range", help="Two integers to indicate the start/en
                                               "specified, only variants in this range will be included. e.g -r 0 180 means variants in the range of (0, 180] will be included for PRC curve",nargs=2, type=int)
 parser.add_argument("-v", "--varity", help="File contains hgvsp and VARITY scores (VARITY_R and VARITY_ER) must "
                                                "be in columns.", type=str)
+parser.add_argument("--provean", help="file contains provean predictions", type=str)
 args = parser.parse_args()
 
 # for testing
@@ -51,6 +54,10 @@ if args.downloadClinvar:
 
 if args.varity is not None:
     varity_data = get_varity(args.varity)
-    parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range, varity=varity_data)
 else:
-    parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range)
+    varity_data = pd.DataFrame({})
+
+if args.provean is not None:
+    provean_data = get_provean(args.provean)
+
+parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range, varity_data, provean_data)
