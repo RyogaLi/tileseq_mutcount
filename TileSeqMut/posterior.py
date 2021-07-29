@@ -281,16 +281,22 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
         else:
             all_phred = [10 ** (-(ord(j) - int(base)) / 10) for j in i.split(",")]
             phred.append(np.prod(all_phred))
+    
     #print(qual)
     #print(f"original phred: {phred}")
+    
     if len(adjustthred) == 2:
         phred = []
         phred_r1_df = pd.read_csv(adjustthred[0], index_col=0)
         phred_r2_df = pd.read_csv(adjustthred[1], index_col=0)
         phred_r1_df["observed"] = phred_r1_df["observed"].fillna(phred_r1_df["specification"])
         phred_r2_df["observed"] = phred_r2_df["observed"].fillna(phred_r2_df["specification"])
-        phred_r1_df["observed"] = phred_r1_df["observed"].replace(1, 0.9999999999)
-        phred_r2_df["observed"] = phred_r2_df["observed"].replace(1, 0.9999999999)
+        phred_r1_df.observed[(phred_r1_df["observed"] == 0) | (phred_r1_df["observed"] == 1)] = phred_r1_df["specification"]
+        phred_r2_df.observed[(phred_r2_df["observed"] == 0) | (phred_r2_df["observed"] == 1)] = phred_r2_df["specification"]
+
+
+        #phred_r1_df["observed"] = phred_r1_df["observed"].replace(1, 0.9999999999)
+        #phred_r2_df["observed"] = phred_r2_df["observed"].replace(1, 0.9999999999)
 
         r1_qual = qual[0].split(",")
         phred_r1 = np.prod(phred_r1_df[phred_r1_df.index.isin(r1_qual)]["observed"])
@@ -311,7 +317,12 @@ def bayesian_variant_call(basecall, qual, wt, mut_rate, base, clusterSize=1, adj
 
         for j in range(len(basecall)):
             if basecall[j] == base:
-                log_odd += (math.log(1-phred[j]) - math.log(phred[j]) + math.log(3))
+                try:
+                    log_odd += (math.log(1-phred[j]) - math.log(phred[j]) + math.log(3))
+                except:
+                    print(phred)
+                    print(qual)
+                    exit()
             else:
                 log_odd += (math.log(phred[j]) - math.log(3) - math.log((1/3) -(phred[j]/9)))
         # print(log_odd)

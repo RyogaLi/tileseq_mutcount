@@ -185,7 +185,11 @@ class readSam(object):
             with open(phred_output_r1, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
-            cmd_r1 = f"calibratePhred.R {self._r1} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
+            # find wt read 1
+
+            wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}_*_R1*.sam")[0]
+            self._mut_log.info(wt_r1_sam)
+            cmd_r1 = f"calibratePhred.R {wt_r1_sam} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
             if self._sroverride:
                 cmd_r1 = cmd_r1 + " --srOverride"
             self._mut_log.info(cmd_r1)
@@ -195,7 +199,10 @@ class readSam(object):
             with open(phred_output_r2, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
-            cmd_r2 = f"calibratePhred.R {self._r2} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
+            wt_r2_sam  = glob.glob(f"{os.path.dirname(self._r2)}/{wt_id}_*_R2*.sam")[0]
+            self._mut_log.info(wt_r2_sam)
+            cmd_r2 = f"calibratePhred.R {wt_r2_sam} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
+
             if self._sroverride:
                 cmd_r2 = cmd_r2 + " --srOverride"
             self._mut_log.info(cmd_r2)
@@ -556,7 +563,6 @@ class readSam(object):
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base,
                     posteriorQC, adjusted_er):
     """
-
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
                                       mutrate, base, posteriorQC, adjusted_er)
