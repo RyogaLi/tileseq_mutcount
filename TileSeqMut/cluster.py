@@ -103,6 +103,7 @@ def alignment_sh_ccbr(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outpu
 
     # build reference
     ref = alignment.make_ref(ref_name, ref_seq, ref_path)
+    phix = alignment.make_ref("phix", ref_seq, ref_path)
     # store sam paths
     fastq_map = pd.concat([fastq_map, pd.DataFrame(columns=["r1_sam", "r2_sam"])])
     time = at
@@ -111,7 +112,12 @@ def alignment_sh_ccbr(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outpu
         sample_name = os.path.basename(row["R1"]).split("_")[0]
 
         shfile = os.path.join(sh_output, f"Aln_{sample_name}.sh")
-        r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc)
+        if "Undetermined" in sample_name:
+            # when align undetermined fastq files to phix, we consider reads in both direction, rc = True
+            r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=True)
+        else:
+            r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc)
+
         row["r1_sam"] = r1_sam
         row["r2_sam"] = r2_sam
         # create log file for alignment
