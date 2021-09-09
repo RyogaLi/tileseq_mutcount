@@ -133,7 +133,6 @@ class MutParser(object):
         # merge two df
         snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         snp_df["pos"] = pd.to_numeric(snp_df["pos"])
-
         final_df_r1 = self._convert_mut(r1_delins, "r1")
         final_df_r2 = self._convert_mut(r2_delins, "r2")
 
@@ -191,7 +190,6 @@ class MutParser(object):
 
             if final_r2_cluster != []:
                 hgvs_r2_clusters, outside_mut_r2 = self._get_hgvs(final_r1_cluster)
-
 
         if final_mut != []:
             hgvs, outside_mut = self._get_hgvs(final_mut)
@@ -354,7 +352,6 @@ class MutParser(object):
         mutations = []
 
         for mut in mut_list:
-
             mut_change = mut.split("|")
             tmp_pos = int(mut_change[0]) # template position
 
@@ -363,14 +360,17 @@ class MutParser(object):
                 cds_pos = self._seq_lookup[self._seq_lookup.temp_pos == tmp_pos].cds_pos.values.item()
             except:
                 # this means that the mutation was on the template
+                #self._logging.debug(f"The mutation is not in CDS region {mut}")
                 continue
 
             if cds_pos < self._tile_begins or cds_pos > self._tile_ends:
                 #self._logging.warning(f"mutation at pos {cds_pos} which is not within the tile")
                 outside_mut.append(cds_pos)
+                #self._logging.debug(f"Mutation found outside of the tile {mut}")
                 continue
 
             if "N" in mut: # do not consider base N
+                #self._logging.debug("Mut contains base N {mut}")
                 continue
 
             if ("del" in mut) or ("ins" in mut): # deletion or insertion

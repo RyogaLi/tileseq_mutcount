@@ -74,7 +74,7 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
         time_request = f"0{at}:00:00"
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}")
-        header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --job-name={sample_name}\n#SBATCH " \
+        header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --mem=5G\n#SBATCH --job-name={sample_name}\n#SBATCH " \
                  f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
 
         if "Undetermined" in sample_name:

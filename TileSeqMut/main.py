@@ -451,10 +451,10 @@ class fastq2counts(object):
                 # resubmit failed jobs in existing mut_count dir
                 # self.output is the mut_count dir in this case
                 # find out which jobs failed by going through all counts files
-                self._log.info("Removing existing phred files if they are empty...")
-                phred_flist = glob.glob(os.path.join(self._output, '*_phred.*'))
-                if phred_flist != []:
-                    os.system(f"rm {os.path.join(self._output, '*_phred.*')}")
+                #self._log.info("Removing existing phred files if they are empty...")
+                #phred_flist = glob.glob(os.path.join(self._output, '*_phred.*'))
+                #if phred_flist != []:
+                #    os.system(f"rm {os.path.join(self._output, '*_phred.*')}")
                 mutcount_list = glob.glob(os.path.join(self._output, "counts_sample_*.csv"))
                 failed_samples = []
                 all_samples_with_csv = []
