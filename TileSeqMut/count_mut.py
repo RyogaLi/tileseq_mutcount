@@ -359,7 +359,7 @@ class readSam(object):
                 print(read_name_r1)
                 print(read_name_r2)
                 self._mut_log.error("Read pair IDs did not map, please check fastq files")
-                exit(1)
+                raise  ValueError("Read pair IDs did not map, please check fastq files")
 
             # get starting position for r1 and r2
             pos_start_r1 = line_r1[3]

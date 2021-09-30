@@ -171,7 +171,7 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     prc_df.to_csv(prc_file, index=False)
     n_p = prc_df[prc_df["pathogenic"]==True].shape[0]
     n_b = prc_df[prc_df["pathogenic"]==False].shape[0]
-    plot_title = f"{gene_symbol} - {os.path.basename(mave_file).split('.')[0]} (P/LP: {n_p}, B/LB/gnomAD common: {n_b})"
+    plot_title = f"{gene_symbol} - {os.path.basename(mave_file).split('.')[0]} (P/LP: {n_p}, proxy benign: {n_b})"
     main_logger.info(plot_title)
     output_file = os.path.join(output_dir, f"{os.path.basename(mave_file).split('.')[0]}_PRC.pdf")
     # make PRC plot
