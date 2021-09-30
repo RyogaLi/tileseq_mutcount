@@ -122,8 +122,8 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     filter_df = merged_mave_df[(merged_mave_df["hgvsp"].notnull()) & (merged_mave_df["hgvsp"].str.contains("=") == False)]
 
     # save raw data to file
-    gene_clinvar_file = os.path.join(output_dir, f"{gene_symbol}_clinvar.csv")
-    filter_df.to_csv(gene_clinvar_file)
+    # gene_clinvar_file = os.path.join(output_dir, f"{gene_symbol}_clinvar.csv")
+    # filter_df.to_csv(gene_clinvar_file)
     # filter variants by range (if provided)
     # range is a tuple of two int
     # extract protein number from hgvsp
@@ -135,7 +135,7 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     # get gnomad missense variants
     gnomad_df = get_gnomad(gene_symbol)
     # filter with 0.0001
-    gnomad_common = gnomad_df[gnomad_df["genome_af"] > 0.0001][["hgvs", "genome_af"]]
+    gnomad_common = gnomad_df[(gnomad_df["genome_af"] > 0.0001) | (gnomad_df["ac_hom"] > 0)][["hgvs", "genome_af", "ac_hom"]]
     main_logger.info("Obtained gnomAD data...")
 
     # merge with gnomAD
@@ -156,7 +156,6 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Pathogenic", case=False), "pathogenic"] = True
     filter_with_gnomad.loc[filter_with_gnomad["genome_af"].notnull(), "pathogenic"] = False
     filter_with_gnomad.loc[filter_with_gnomad["clinvar_anno"].str.contains("Benign", case=False),"pathogenic"] = False
-
     # FLIP DMS score
     filter_with_gnomad["MAVE"] = -filter_with_gnomad["score"]
     filter_with_gnomad = filter_with_gnomad.dropna(subset=["hgvsp"])
@@ -166,6 +165,15 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
         prc_df = filter_with_gnomad[["pathogenic", "MAVE", "PROVEAN"]].dropna()
     else:
         prc_df = filter_with_gnomad[["pathogenic", "MAVE"]].dropna()
+    # save to master file with all variants 
+    file_basename = os.path.basename(mave_file).split(".")[0]
+    filter_with_gnomad.to_csv(os.path.join(output_dir, f"{file_basename}_annotated_with_scores.csv"), index=False)
+    
+    # make sworm plot
+    ax = sns.swarmplot(data=filter_with_gnomad, x="pathogenic", y="score")
+    ax.set(ylabel="MAVE")
+    plt.savefig(os.path.join(output_dir, f"{file_basename}_sworm.pdf"))
+    plt.close()
 
     prc_file = os.path.join(output_dir, f"{os.path.basename(mave_file).split('.')[0]}_prc_input.csv")
     prc_df.to_csv(prc_file, index=False)
@@ -173,7 +181,7 @@ def parse_clinvar_gnomad(clinvar_master_file, gene_symbol, mave_file, output_dir
     n_b = prc_df[prc_df["pathogenic"]==False].shape[0]
     plot_title = f"{gene_symbol} - {os.path.basename(mave_file).split('.')[0]} (P/LP: {n_p}, proxy benign: {n_b})"
     main_logger.info(plot_title)
-    output_file = os.path.join(output_dir, f"{os.path.basename(mave_file).split('.')[0]}_PRC.pdf")
+    output_file = os.path.join(output_dir, f"{file_basename}_PRC.pdf")
     # make PRC plot
     call_prc(prc_file, plot_title, output_file, main_logger)
 
@@ -228,6 +236,9 @@ def get_gnomad(gene_ID):
                 hgvsp
                 genome {
                 af
+                populations{
+                ac_hom
+                }
                 }
                 exome {
                 af
@@ -265,10 +276,24 @@ def get_gnomad(gene_ID):
     # remove nonsense and syn variants
     coding_variants = coding_variants[coding_variants["consequence"] == "missense_variant"]
     # change genome af format
+    coding_variants[["genome_af", "ac_hom"]] = coding_variants[["genome"]].apply(lambda x: parse_gnomad_response(x), axis=1, result_type="expand")
     # coding_variants["genome"] = coding_variants["genome"].astype(dict)
-    coding_variants["genome_af"] = pd.json_normalize(coding_variants["genome"])
-
+    # coding_variants[["genome_af", "ac_hom"]] = pd.json_normalize(coding_variants["genome"])
     return coding_variants
+
+
+def parse_gnomad_response(row):
+    """
+    parse the genome field so it returns af, max(hom count)
+    """
+    genome = dict(row)["genome"]
+    genome_af = genome["af"]
+    hom = list(genome["populations"])
+    m = 0
+    for i in hom:
+        if int(i["ac_hom"]) > m:
+            m = i["ac_hom"]
+    return (genome_af, m)
 
 
 def get_varity(varity_file):
@@ -359,6 +384,7 @@ if __name__ == '__main__':
                         nargs=2, type=int)
     parser.add_argument("-v", "--varity", help="File contains hgvsp and VARITY scores (VARITY_R and VARITY_ER) must "
                                                "be in columns.", type=str)
+    parser.add_argument("-p", "--provean", help="File contains PROVEAN and SIFT scores", type=str)
     args = parser.parse_args()
 
     # for testing

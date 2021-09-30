@@ -59,5 +59,7 @@ else:
 
 if args.provean is not None:
     provean_data = get_provean(args.provean)
+else:
+    provean_data = pd.DataFrame({})
 
 parse_clinvar_gnomad(clinvar_data, args.gene, args.scores, output_dir, aa_range, varity_data, provean_data)

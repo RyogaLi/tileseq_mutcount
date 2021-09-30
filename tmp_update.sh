@@ -1,3 +1,3 @@
 
 python setup.py sdist bdist_wheel
-python -m pip install dist/TileSeqMut-0.6.860.tar.gz
+python -m pip install dist/TileSeqMut-0.6.870.tar.gz
