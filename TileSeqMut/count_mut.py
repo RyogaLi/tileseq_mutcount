@@ -188,7 +188,8 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
             # find wt read 1
-            wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}.*_R1*.sam")[0]
+            print(f"{os.path.dirname(self._r1)}/{wt_id}*_R1*.sam")
+            wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}*_R1*.sam")[0]
             self._mut_log.info("WT file used for calibration:\t" + wt_r1_sam)
             cmd_r1 = f"calibratePhred.R {wt_r1_sam} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
             if self._sroverride:
@@ -201,7 +202,7 @@ class readSam(object):
             with open(phred_output_r2, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
-            wt_r2_sam  = glob.glob(f"{os.path.dirname(self._r2)}/{wt_id}.*_R2*.sam")[0]
+            wt_r2_sam  = glob.glob(f"{os.path.dirname(self._r2)}/{wt_id}*_R2*.sam")[0]
             self._mut_log.info("WT file used for calibration:\t" + wt_r2_sam)
             cmd_r2 = f"calibratePhred.R {wt_r2_sam} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
             if self._sroverride:
@@ -242,8 +243,8 @@ class readSam(object):
         phix_fasta = os.path.join(dir_path, "data/phix.fasta")
         tmp_header = os.path.join(self._output_counts_dir, "fakeheader")
         sam_dir = os.path.dirname(self._r1)
-        phix_r1 = glob.glob(f"{sam_dir}/Undetermined.*_R1_*.sam")[0]
-        phix_r2 = glob.glob(f"{sam_dir}/Undetermined.*_R2_*.sam")[0]
+        phix_r1 = glob.glob(f"{sam_dir}/Undetermined*_R1_*.sam")[0]
+        phix_r2 = glob.glob(f"{sam_dir}/Undetermined*_R2_*.sam")[0]
         with open(tmp_header, "w") as sam_header:
             sam_header.write("@SQ	SN:phiX	LN:5386")
 
