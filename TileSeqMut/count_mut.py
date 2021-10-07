@@ -166,7 +166,7 @@ class readSam(object):
                 # we are always using the first rep 
                 wt_id = self._sample_id
             else:
-                # this is rep 2 of the wt
+                # this sample is rep 2 of the wt
                 # find corresponding rep 1 of the wt 
                 wt_id = self._samples[(self._samples["Condition"] == self._sample_condition) & (self._samples["Tile ID"] == self._sample_tile) & (self._samples["Replicate"] == 1)]["Sample ID"].values[0]
 
@@ -180,26 +180,28 @@ class readSam(object):
         self._mut_log.info(f"wt sample used to adjust phred scores: {wt_id}")
         phred_output_r1 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R1_calibrate_phred.csv")
         phred_output_r2 = os.path.join(self._output_counts_dir, f"{wt_id}_T{self._sample_tile}_R2_calibrate_phred.csv")
+        # if phred output file is not generated
         if not os.path.isfile(phred_output_r1):
-            # create an empty file as place holder 
+            # create an empty file as place holder
+            # to prevent other jobs writing to the same file
             with open(phred_output_r1, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
             # find wt read 1
-
-            wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}_*_R1*.sam")[0]
+            wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}.*_R1*.sam")[0]
             self._mut_log.info("WT file used for calibration:\t" + wt_r1_sam)
             cmd_r1 = f"calibratePhred.R {wt_r1_sam} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
             if self._sroverride:
                 cmd_r1 = cmd_r1 + " --srOverride"
             self._mut_log.info(cmd_r1)
             os.system(cmd_r1)
+
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder 
             with open(phred_output_r2, 'w') as fp:
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R2_phred.log")
-            wt_r2_sam  = glob.glob(f"{os.path.dirname(self._r2)}/{wt_id}_*_R2*.sam")[0]
+            wt_r2_sam  = glob.glob(f"{os.path.dirname(self._r2)}/{wt_id}.*_R2*.sam")[0]
             self._mut_log.info("WT file used for calibration:\t" + wt_r2_sam)
             cmd_r2 = f"calibratePhred.R {wt_r2_sam} -p {self._param} -o {phred_output_r2} -l {log_f} --silent --cores {self._cores}"
             if self._sroverride:
@@ -240,8 +242,8 @@ class readSam(object):
         phix_fasta = os.path.join(dir_path, "data/phix.fasta")
         tmp_header = os.path.join(self._output_counts_dir, "fakeheader")
         sam_dir = os.path.dirname(self._r1)
-        phix_r1 = glob.glob(f"{sam_dir}/Undetermined_*_R1_*.sam")[0]
-        phix_r2 = glob.glob(f"{sam_dir}/Undetermined_*_R2_*.sam")[0]
+        phix_r1 = glob.glob(f"{sam_dir}/Undetermined.*_R1_*.sam")[0]
+        phix_r2 = glob.glob(f"{sam_dir}/Undetermined.*_R2_*.sam")[0]
         with open(tmp_header, "w") as sam_header:
             sam_header.write("@SQ	SN:phiX	LN:5386")
 
@@ -262,6 +264,7 @@ class readSam(object):
             if self._sroverride:
                 cmd = cmd + " --srOverride"
             os.system(cmd)
+
         if not os.path.isfile(phred_output_r2):
             # create an empty file as place holder
             with open(phred_output_r2, 'w') as fp:
@@ -356,8 +359,8 @@ class readSam(object):
             read_name_r1 = line_r1[0]
             read_name_r2 = line_r2[0]
             if read_name_r1 != read_name_r2:
-                print(read_name_r1)
-                print(read_name_r2)
+                self._mut_log.info(read_name_r1)
+                self._mut_log.info(read_name_r2)
                 self._mut_log.error("Read pair IDs did not map, please check fastq files")
                 raise  ValueError("Read pair IDs did not map, please check fastq files")
 
@@ -380,10 +383,10 @@ class readSam(object):
 
             r1_end = int(pos_start_r1) + len(seq_r1)
             r2_end = int(pos_start_r2) + len(seq_r2)
-            # read 1 sequence must cover from start of the tile to 70% of the tile
+            # read 1 sequence must cover from start of the tile to 90% of the tile
+            # 80% defined in parameter sheet
             if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
                     ((r2_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))):
-                #todo keep track of read start and end position for read 1 and read 2
                 offmap.write(f"{int(pos_start_r1) - int(self._cds_start)}, {len(seq_r1)}, {int(pos_start_r2) - int(self._cds_start)}, {len(seq_r2)}\n")
                 off_read += 1
                 #print(seq_r1, pos_start_r1, r1_end)

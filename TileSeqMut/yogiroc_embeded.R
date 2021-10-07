@@ -30,7 +30,7 @@ yrobj <- yr2(truth=inputData$pathogenic, scores=inputData[ , -1, drop=FALSE])
 
 #draw prior-balanced PRC curves
 pdf(plotFile)
-draw.prc(yrobj,balanced=TRUE,main=plotTitle)
+draw.prc.CI(yrobj,balanced=TRUE,main=plotTitle)
 dev.off()
 #use custom colors and other graphical parameters
 #draw.prc(yrobj,col=c("chartreuse3","firebrick3"),main="My PRC curve")
