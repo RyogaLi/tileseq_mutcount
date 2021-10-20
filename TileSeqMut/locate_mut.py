@@ -84,10 +84,14 @@ class MutParser(object):
     def _convert_mut(self, mut_list, read):
         """
         convert a list of mutations into the input format for posterior function
+        @param mut_list: list of mutations
+        @param read: read name (read 1 or read 2)
         return a df with mutations
         """
         if mut_list == []:
             return pd.DataFrame({}, columns=["m", "read", "pos", "ref", "alt", "qual"])
+
+        # flatten deletions
         final_mut = []
         for i in mut_list:
             mut = i.split("|")
@@ -99,6 +103,7 @@ class MutParser(object):
                     final_mut.append(m)
             else:
                 final_mut.append(i)
+
         final_df = pd.DataFrame({"m":final_mut})
         final_df["read"] = read
         final_df[["pos", "ref", "alt", "qual"]] = final_df["m"].str.split("|", expand=True)
@@ -130,13 +135,15 @@ class MutParser(object):
         # parse mutations in R2
         r2_snp, r2_delins, map_pos_r2 = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read,
                                                   self._r2_pos, self._r2_qual)
-
+        # convert snps to df
         final_df_r1 = self._convert_mut(r1_snp, "r1")
         final_df_r2 = self._convert_mut(r2_snp, "r2")
 
         # merge two df
         snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         snp_df["pos"] = pd.to_numeric(snp_df["pos"])
+
+        # convert delins to df
         final_df_r1 = self._convert_mut(r1_delins, "r1")
         final_df_r2 = self._convert_mut(r2_delins, "r2")
 
@@ -144,9 +151,10 @@ class MutParser(object):
         delins_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         delins_df["pos"] = pd.to_numeric(delins_df["pos"])
 
-        merged_df = [snp_df, delins_df]
-        merged_df = pd.concat(merged_df)
+        merged_df = pd.concat([snp_df, delins_df])
+        # sort value by position
         merged_df = merged_df.sort_values(by="pos")
+        # group by position
         merged_df = merged_df.groupby("pos").first().reset_index()
         # build df to track how many mutations were rejected 
         track_df = merged_df[["pos", "m_r1", "m_r2"]]
@@ -161,10 +169,9 @@ class MutParser(object):
         d = dict(tuple(merged_df.groupby(merged_df['pos'].diff().gt(n).cumsum())))
         # analyze the dictionary of clusters
         # and get posterior
-        # print(d, self._mutrate, self._cutoff)
-        pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
+        pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual, self._r2_qual, map_pos_r1,
                                                                  map_pos_r2, self._mutrate, self._cutoff, self._base,
-                                                                       self._posteriorQC, adjustthred=self._adjusted_er)
+                                                                       self._posteriorQC, self._adjusted_er)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
@@ -404,7 +411,7 @@ class MutParser(object):
                     if cds_pos == concecutive_snp[-1] +1:
                         # update position in concec_pos
                         combined_snp+=mut_change[2]
-                        # update basesin combined_bases
+                        # update bases in combined_bases
                         concecutive_snp.append(cds_pos)
                     elif cds_pos == concecutive_snp[-1] +2:
                         # get middle ref

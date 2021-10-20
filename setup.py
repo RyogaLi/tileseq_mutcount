@@ -11,13 +11,25 @@ here = pathlib.Path(__file__).parent.resolve()
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-# python setup.py bdist_wheel --universal
+#  --universal
 # testpypi: twine upload --repository testpypi dist/*
 # pip install --index-url https://test.pypi.org/simple/ TileSeqMut==
 
 # pypi: twine upload dist/*
 # pip install TileSeqMut
 
+########################################
+# set up file for packaging the project
+# 1. change the version of the project (pypi doesn't allow the same version number)
+# 2. To build from source (also in tmp_update.sh)
+#    * Run `python setup.py bdist_wheel`
+#    * Run `python -m pip install dist/TileSeqMut-0.***.tar.gz`
+# 3. To upload to pypi
+#    * Run `python setup.py bdist_wheel`
+#    * Run `python twine upload dist/TileSeqMut-0.***.*`
+# 4. Note: to prevent potential problems of the wheel file, remove the older version before building a new one
+#     (remove build/ and dist/)
+########################################
 
 setup(
     name="TileSeqMut",
