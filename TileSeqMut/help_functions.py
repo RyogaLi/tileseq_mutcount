@@ -66,7 +66,7 @@ def build_lookup(cds_start, cds_end, cds_seq):
     """
     build a lookup df for a given gene
     return a df with columns:
-    temp_pos, na, dna_pos, protein, protein_pos
+    temp_pos, cds, dna_pos, protein, protein_pos
     """
     lookup_table = {}
     # list of template pos

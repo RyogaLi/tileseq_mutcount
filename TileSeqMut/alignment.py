@@ -9,7 +9,7 @@ import os
 def make_ref(name, ref_seq, ref_path):
     """
     given the reference sequence and ref_path
-    make fasta file and build from fasta
+    make fasta file and build index from fasta using bowtie-build
     """
     if name == "phix":
         ref_fasta = os.path.join(ref_path, "phix.fasta")
@@ -29,9 +29,8 @@ def align_main(ref, r1, r2, sam_path, shfile, rc=False, header=""):
     r1: input fastq file - R1
     r2: input fastq file - R2
     sam_path: path to sam files
-    bowtie2: path to bowtie2
     shfile: write the command to this file
-    return shfile
+    return sam
     """
     log_file = os.path.join(sam_path, os.path.basename(shfile).replace(".sh", ".log"))
 
@@ -39,7 +38,6 @@ def align_main(ref, r1, r2, sam_path, shfile, rc=False, header=""):
     r2_sam_file = os.path.join(sam_path, os.path.basename(r2).replace(".fastq.gz", ".sam"))
 
     if not rc:
-
         r1_cmd = f"bowtie2 --no-head --norc --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {os.path.abspath(r1)} -S {r1_sam_file}"
         r2_cmd = f"bowtie2 --no-head --nofw --no-sq --rdg 12,1 --rfg 12,1 --local -x {ref} -U {os.path.abspath(r2)} -S {r2_sam_file}"
     else:

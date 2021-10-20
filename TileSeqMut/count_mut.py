@@ -1,9 +1,5 @@
 #!/usr/bin/env python3.7
 
-## Read sam file (R1 and R2)
-# count mutations in sam files
-# output mutation counts
-
 import pandas as pd
 import re
 import os
@@ -21,8 +17,10 @@ from collections import deque
 from TileSeqMut import help_functions
 from TileSeqMut import locate_mut
 
-# import help_functions
-# import locate_mut
+## Read sam file (R1 and R2)
+# count mutations in sam files
+# output mutation counts
+
 
 class readSam(object):
 
@@ -30,19 +28,18 @@ class readSam(object):
         """
         sam_R1: read one of the sample
         sam_R2: read two of the sample
-
-        output_dir: main output directory
-
-        log_level: settings for logging
-        log_dir: directory to save all the logging for each sample
+        param: parameter sheet
+        arguments: user input arguments
+        output_dir: output directory
+        cores: number of processes to use
+        loggerobj:  logger
         """
         self._r1 = sam_r1
         self._r2 = sam_r2
         self._param = param
         self._project, self._seq, self._cds_seq, self._tile_map, self._region_map, self._samples, self._var, self._relations = help_functions.parse_json(param)
-
+        # settings
         self._qual = self._var["posteriorThreshold"]
-        min_cover = self._var["minCover"]
         self._mutrate = self._var["mutRate"]
         self._output_counts_dir = output_dir
         self._cores = cores
@@ -53,23 +50,28 @@ class readSam(object):
 
         # tile information
         self._sample_tile = self._sample_info["Tile ID"].values[0]
-        self._tile_begins = (self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["Start AA"].values[0] *3)-2 # beginning position of this tile (cds position)
-        self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3  # ending position of this tile (cds position)
+        # beginning position of this tile (cds position)
+        self._tile_begins = (self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["Start AA"].values[0] *3)-2
+        # ending position of this tile (cds position)
+        self._tile_ends = self._tile_map[self._tile_map["Tile Number"] == self._sample_tile]["End AA"].values[0] *3
         self._tile_len = self._tile_ends - self._tile_begins
-        self._cds_start = self._seq.cds_start
+        # min cover is the minimum percentage of the tile that needs to be covered by a read
+        # for example, mincover=0.9 means 90 percent of the tile needs to be covered
+        min_cover = self._var["minCover"]
         self._min_map_len = math.ceil(self._tile_len * float(min_cover))
+        self._cds_start = self._seq.cds_start
 
+        # get sample specific info
         self._sample_condition = self._sample_info["Condition"].values[0]
         self._sample_tp = self._sample_info["Time point"].values[0]
         self._sample_rep = int(self._sample_info["Replicate"].values[0])
-
+        # seq_lookup is a dataframe with the following columns:
+        # temp_pos, cds, dna_pos, protein, protein_pos
         self._seq_lookup = help_functions.build_lookup(self._cds_start.values.item(), self._seq.cds_end.values.item(), self._cds_seq)
 
-        # init a new object for logging, log to sample specific file.log
-        # log_f = os.path.join(output_dir, f"sample_{str(self._sample_id)}_mut_count.log")
-        # log_object = help_functions.logginginit(arguments.log_level, log_f)
         # path for the output files
         self._sample_counts_f = os.path.join(self._output_counts_dir,f"counts_sample_{self._sample_id}.csv")
+        # r1 and r2 files are only used when posteriorQC is enabled
         self._sample_counts_r1_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r1.csv")
         self._sample_counts_r2_f = os.path.join(self._output_counts_dir, f"counts_sample_{self._sample_id}_r2.csv")
         # file used to track reads mapped outside of the tile
@@ -80,8 +82,6 @@ class readSam(object):
 
         self._base = arguments.base
         self._posteriorQC = arguments.posteriorQC
-        # self._mut_log = log_object.getLogger("count.mut")
-        # self._locate_log = log_object.getLogger("locate.mut")
         self._mut_log = loggerobj
         self._mut_log.info(f"Counting mutations in sample-{self._sample_id}")
         self._mut_log.info(f"Sam file input R1:{sam_r1}")
@@ -188,7 +188,7 @@ class readSam(object):
                 pass
             log_f = os.path.join(self._output_counts_dir, f"{wt_id}_R1_phred.log")
             # find wt read 1
-            print(f"{os.path.dirname(self._r1)}/{wt_id}*_R1*.sam")
+            # print(f"{os.path.dirname(self._r1)}/{wt_id}*_R1*.sam")
             wt_r1_sam  = glob.glob(f"{os.path.dirname(self._r1)}/{wt_id}*_R1*.sam")[0]
             self._mut_log.info("WT file used for calibration:\t" + wt_r1_sam)
             cmd_r1 = f"calibratePhred.R {wt_r1_sam} -p {self._param} -o {phred_output_r1} -l {log_f} --silent --cores {self._cores}"
@@ -215,7 +215,6 @@ class readSam(object):
         t0 = time.time()  # check for timeout
         while os.stat(phred_output_r1).st_size == 0:
             self._mut_log.warning("phred file (R1) found, but empty.. Waiting for the job to finish...")
-
             os.system("sleep 300")
             t1 = time.time()
             total = float(t1-t0)
@@ -309,7 +308,7 @@ class readSam(object):
         """
         Read two sam files at the same time, store mutations that passed filter
         """
-        read_pair = 0  # total pairs
+        read_pair = 0  # total read pairs
         un_map = 0  # total number of unmapped reads
         read_nomut = 0  # read pairs that have no mutations
 
@@ -324,7 +323,7 @@ class readSam(object):
         r2_popmut = 0
         off_read = 0
 
-        # used to track read len for read 1 and read 2
+        # used to track read length for read 1 and read 2
         # this information will be written in the counts file
         read_length_r1 = {}
         read_length_r2 = {}
@@ -332,16 +331,17 @@ class readSam(object):
         # used to track reads mapped outside of a tile
         offmap = open(self._sample_offreads_f, "a")
 
+        # stream sam file 1 and sam file 2
         r1_f = open(self._r1, "r")
         r2_f = open(self._r2, "r")
-        # init objects
+        # init pool
         pool = mp.Pool(self._cores)
         jobs = []
-        self._mut_log.info("Start reading SAM files")
+        self._mut_log.info("Start reading SAM files...")
         for line_r1, line_r2 in zip(r1_f, r2_f):
-
             line_r1 = line_r1.split()
             line_r2 = line_r2.split()
+            # if a line has less than 11 fields, skip this line
             if len(line_r1) < 11 or len(line_r2) < 11:
                 # the read has no sequence
                 self._mut_log.warning(line_r1)
@@ -349,10 +349,12 @@ class readSam(object):
                 self._mut_log.warning("Missing fields in read!")
                 continue
 
-            read_pair += 1  # count how many read pairs in this pair of sam files
+            # count how many read pairs in this pair of sam files
+            read_pair += 1
             mapped_name_r1 = line_r1[2]
             mapped_name_r2 = line_r2[2]
-            if mapped_name_r1 == "*" or mapped_name_r2 == "*":  # if one of the read didn't map to ref
+            # if one of the read didn't map to ref
+            if mapped_name_r1 == "*" or mapped_name_r2 == "*":
                 un_map += 1
                 continue
 
@@ -370,10 +372,7 @@ class readSam(object):
             pos_start_r2 = line_r2[3]
 
             # record reads that are not mapped to this tile
-            # this is defined as if the read covers at least min_map percent of the tile
-            # the default min_map is 70%
-            # we also assume that the read len is ALWAYS 150
-            # get CIGAR string
+            # get CIGAR string, sequence and quality
             CIGAR_r1 = line_r1[5]
             seq_r1 = line_r1[9]
             quality_r1 = line_r1[10]
@@ -385,13 +384,10 @@ class readSam(object):
             r1_end = int(pos_start_r1) + len(seq_r1)
             r2_end = int(pos_start_r2) + len(seq_r2)
             # read 1 sequence must cover from start of the tile to 90% of the tile
-            # 80% defined in parameter sheet
             if ((r1_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))) or \
                     ((r2_end - int(self._cds_start)) < (int(self._tile_begins) + int(self._min_map_len))):
                 offmap.write(f"{int(pos_start_r1) - int(self._cds_start)}, {len(seq_r1)}, {int(pos_start_r2) - int(self._cds_start)}, {len(seq_r2)}\n")
                 off_read += 1
-                #print(seq_r1, pos_start_r1, r1_end)
-                #print(seq_r2, pos_start_r2)
                 continue
 
             mdz_r1 = [i for i in line_r1 if "MD:Z:" in i]
@@ -414,18 +410,16 @@ class readSam(object):
                 # means there is no mutation in this read
                 # if both reads have no mutations in them, skip this pair
                 read_nomut += 1
-                # remove reads that have no mutations in MDZ
                 continue
+
             # make the reads in the format of a dictionary
-            # columns=["mapped_name", "pos_start", "qual", "CIGAR", "mdz","seq"])
-            # row["mapped_name_r1"] = mapped_name_r1
+            # columns=["pos_start", "qual", "CIGAR", "mdz","seq"])
             row["pos_start_r1"] = pos_start_r1
             row["qual_r1"] = quality_r1
             row["cigar_r1"] = CIGAR_r1
             row["mdz_r1"] = mdz_r1
             row["seq_r1"] = seq_r1
 
-            # row["mapped_name_r2"] = mapped_name_r2
             row["pos_start_r2"] = pos_start_r2
             row["qual_r2"] = quality_r2
             row["cigar_r2"] = CIGAR_r2
@@ -436,7 +430,7 @@ class readSam(object):
             # read len = length of the actual reads
             read_len_r1 = len(seq_r1)
             read_len_r2 = len(seq_r2)
-
+            # this info is for debug purpose
             if read_length_r1.get(read_len_r1, -1) == -1:
                 read_length_r1[read_len_r1] = 1
             else:
@@ -447,8 +441,6 @@ class readSam(object):
             else:
                 read_length_r2[read_len_r2] += 1
 
-            # mut_parser = locate_mut.MutParser(row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
-                                              # self._tile_ends, self._qual, self._locate_log, self._mutrate)
             jobs.append(pool.apply_async(process_wrapper, (row, self._seq, self._cds_seq, self._seq_lookup, self._tile_begins,
                                                self._tile_ends, self._qual, self._mut_log, self._mutrate,
                                                            self._base, self._posteriorQC, adjusted_er)))
@@ -456,10 +448,9 @@ class readSam(object):
         offmap.close()
         r1_f.close()
         r2_f.close()
-        self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish")
+        self._mut_log.info("File streamed to subprocesses, waiting for jobs to finish...")
         # wait for all jobs to finish
         all_df = []
-
         for job in jobs:
             hgvs, outside_mut, all_posterior, hgvs_r1_clusters, hgvs_r2_clusters, track_df = job.get()
             if len(hgvs) != 0:
@@ -566,6 +557,7 @@ class readSam(object):
 def process_wrapper(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log, mutrate, base,
                     posteriorQC, adjusted_er):
     """
+    Wrapper function to process each line (pair of reads)
     """
     mut_parser = locate_mut.MutParser(row, seq, cds_seq, seq_lookup, tile_begins, tile_ends, qual, locate_log,
                                       mutrate, base, posteriorQC, adjusted_er)

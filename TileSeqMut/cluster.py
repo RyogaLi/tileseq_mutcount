@@ -1,7 +1,5 @@
 #!/usr/bin/env python3.7
 
-# The functions in this script is used to manage submitting jobs to different clusters
-# This script is called by main.py
 import pandas as pd
 import os
 import re
@@ -11,7 +9,10 @@ import time
 # other modules
 from TileSeqMut import alignment
 
+# The functions in this script are used to manage submitting jobs to different clusters
+# This script is called by main.py
 
+# GURU is depreciated
 def alignment_sh_guru(fastq_map, ref_name, ref_seq, ref_path, sam_path, ds_sam_path, sh_output):
     """
     fastq_map: df contains paths to fastq files and downsamled fastq files
@@ -48,16 +49,18 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
     fastq_map: df contains paths to fastq files and downsamled fastq files
     ref_name: name for the reference sequence (same as project name)
     ref_seq: reference sequence to put in fasta file
-    ref_path: build fasta in this path
+    ref_path: build fasta index in this path
     sam_path: path to sam files
-    ds_sam_path: path to downsampled sam files
     sh_output: make sh files to submit to the cluster
+    at: alignment time, default to 8 hours
+    logging: logging object
+    rc: True if the user wants to use reverse complement as well
 
     make reference for bowtie2
     make SGE sh files
     submit sh files to SGE
     """
-    ## build reference
+    ## build references
     ref = alignment.make_ref(ref_name, ref_seq, ref_path)
     phix = alignment.make_ref("phix", ref_seq, ref_path)
 
@@ -150,7 +153,7 @@ def mut_count_sh_ccbr(sample_name, cmd, mt, mm, sh_output_dir, logger, cores, cl
     # submit this to the cluster
     if cluster_name == "BC" or cluster_name == "BC2":
         sub_cmd = ["submitjob2","-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
-    else:
+    else:  # DC
         sub_cmd = ["submitjob","-w", str(mt), "-c", f"{cores}", "-m", f"{mm}", shfile, "&>>", log_f]
     logger.debug(sub_cmd)
     job = subprocess.run(sub_cmd, stdout=subprocess.PIPE)
@@ -207,10 +210,11 @@ def parse_jobs(job_list, env, logger):
         running = []
         queued = []
         completed = []
-
+        # jobs might be finished and no longer in queue
+        # in this case the job ID are returned in sterr
+        # extract job id from std err
+        err = []
         if qstat_err != "":
-            # jobs might be finished and no longer in queue
-            # extract job id from std err
             if env == "BC" or env == "BC2":
                 err = qstat_err.split("\n")[:-1]
                 id_regex = re.compile(r"(\d+).bc")
@@ -232,6 +236,10 @@ def parse_jobs(job_list, env, logger):
 
         if qstat_out != "":
             qstat_out = qstat_out.split("\n")[:-1]
+            # R: running
+            # Q: Queued
+            # C: completed
+            # E: error
             if env == "BC" or env == "BC2":
                 id_regex = re.compile(r"(\d+).bc.+(R|Q|C|E)")
             elif env == "DC":
@@ -295,8 +303,8 @@ def parse_jobs_galen(job_list, logger):
             #logger.debug(running_jobs)
             #logger.debug(queued_jobs)
 
-        #logger.info(f"{len(queued_jobs)} jobs queued")
-        #logger.info(f"{len(running_jobs)} jobs running")
+        logger.info(f"{len(queued_jobs)} jobs queued")
+        logger.info(f"{len(running_jobs)} jobs running")
 
         final_list = list(set(running_jobs + queued_jobs))
         if final_list == []:
@@ -336,10 +344,10 @@ def submit_given_jobs(shfile, logger, mt, mm, cores, env=""):
     logger.info(f"Sample {sample_name}: job id - {job_id}")
     return job_id
 
-
-if __name__ == "__main__":
-    # test job list
-    job_list = ["352344", "348556"]
-    # parse_jobs(job_list, "DC", "")
-
-    parse_jobs_galen(job_list, "")
+#
+# if __name__ == "__main__":
+#     # test job list
+#     job_list = ["352344", "348556"]
+#     # parse_jobs(job_list, "DC", "")
+#
+#     parse_jobs_galen(job_list, "")
