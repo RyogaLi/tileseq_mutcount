@@ -7,7 +7,7 @@ Output of this pipeline is mutation counts for each pair of fastq files.
 
 `python 3.7/3.8 (tested mainly under py3.7)`
 
-`R 3.4.4+`
+`R 3.6+`
 
 `Bowtie2` and `Bowtie2-build` (need to be in the same folder)
 
@@ -20,20 +20,19 @@ Please use conda to set up the environment before installing the package:
 
 * activate an environment: `conda activate py37`
 
-You will also need the script `csv2json.R` which can be installed via installing [tileseqMave](https://github.com/jweiletileseqMave). Make sure `csv2json.R` can be found in `$PATH`
+You will also need the scripts: `csv2json.R` and `calibratePhred.R` which can be installed via installing [tileseqMave](https://github.com/jweiletileseqMave). Make sure `csv2json.R` can be found in `$PATH`
 
-To install the newest stable release:
+To install the package (please visit [pypi page](https://pypi.org/project/TileSeqMut/) for the newest version number):
 
-`python -m pip install TileSeqMut==0.6.3`
+`python -m pip install TileSeqMut`
 
 ### Execution
 ---
 
-After installation, you can run the package: 
+After installation, you can run the package (on DC): 
 
 ```
-tileseq_mut -p ~/path/to/paramSheet.csv -o ~/path/to/output_folder -f ~/path/to/fastq_file_folder/ -name
- name_of_the_run 
+tileseq_mut -p /path/to/paramSheet.csv -o /path/to/output_folder -f ~/path/to/fastq_file_folder/ -name name_of_the_run 
 ```
 
 **Examples:**
@@ -43,9 +42,9 @@ tileseq_mut -p ~/path/to/paramSheet.csv -o ~/path/to/output_folder -f ~/path/to/
 tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
 /tileseq_data/WT/ -name MTHFR_test
 
-# on BC2
+# on GALEN
 tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
-/tileseq_data/WT/ -name MTHFR_test -env BC2
+/tileseq_data/WT/ -name MTHFR_test -env GALEN
 ```
 * This command will analyze fastq files in the folder: `~/tileseq_data/WT/` and make a time stamped output folder
  with the prefix: `MTHFR_test` in `$HOME/dev/tilseq_mutcount/output/` (Using all default parameters, see below)
