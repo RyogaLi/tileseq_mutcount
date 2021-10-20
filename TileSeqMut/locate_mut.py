@@ -84,10 +84,14 @@ class MutParser(object):
     def _convert_mut(self, mut_list, read):
         """
         convert a list of mutations into the input format for posterior function
+        @param mut_list: list of mutations
+        @param read: read name (read 1 or read 2)
         return a df with mutations
         """
         if mut_list == []:
             return pd.DataFrame({}, columns=["m", "read", "pos", "ref", "alt", "qual"])
+
+        # flatten deletions
         final_mut = []
         for i in mut_list:
             mut = i.split("|")
@@ -99,6 +103,7 @@ class MutParser(object):
                     final_mut.append(m)
             else:
                 final_mut.append(i)
+
         final_df = pd.DataFrame({"m":final_mut})
         final_df["read"] = read
         final_df[["pos", "ref", "alt", "qual"]] = final_df["m"].str.split("|", expand=True)
@@ -130,13 +135,15 @@ class MutParser(object):
         # parse mutations in R2
         r2_snp, r2_delins, map_pos_r2 = self._parse_cigar_mdz(self._r2_cigar, self._r2_mdz, self._r2_ref, self._r2_read,
                                                   self._r2_pos, self._r2_qual)
-
+        # convert snps to df
         final_df_r1 = self._convert_mut(r1_snp, "r1")
         final_df_r2 = self._convert_mut(r2_snp, "r2")
 
         # merge two df
         snp_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         snp_df["pos"] = pd.to_numeric(snp_df["pos"])
+
+        # convert delins to df
         final_df_r1 = self._convert_mut(r1_delins, "r1")
         final_df_r2 = self._convert_mut(r2_delins, "r2")
 
@@ -144,9 +151,10 @@ class MutParser(object):
         delins_df = pd.merge(final_df_r1, final_df_r2, on=["pos"], how="outer", suffixes=('_r1', '_r2'))
         delins_df["pos"] = pd.to_numeric(delins_df["pos"])
 
-        merged_df = [snp_df, delins_df]
-        merged_df = pd.concat(merged_df)
+        merged_df = pd.concat([snp_df, delins_df])
+        # sort value by position
         merged_df = merged_df.sort_values(by="pos")
+        # group by position
         merged_df = merged_df.groupby("pos").first().reset_index()
         # build df to track how many mutations were rejected 
         track_df = merged_df[["pos", "m_r1", "m_r2"]]
@@ -161,10 +169,9 @@ class MutParser(object):
         d = dict(tuple(merged_df.groupby(merged_df['pos'].diff().gt(n).cumsum())))
         # analyze the dictionary of clusters
         # and get posterior
-        # print(d, self._mutrate, self._cutoff)
-        pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual,self._r2_qual, map_pos_r1,
+        pos_df, all_df, clustered_r1, clustered_r2 = posterior.cluster(d, self._r1_qual, self._r2_qual, map_pos_r1,
                                                                  map_pos_r2, self._mutrate, self._cutoff, self._base,
-                                                                       self._posteriorQC, adjustthred=self._adjusted_er)
+                                                                       self._posteriorQC, self._adjusted_er)
         final_mut = list(set(pos_df.m.tolist()))
         final_mut.sort()
         if final_mut != []:
@@ -204,11 +211,13 @@ class MutParser(object):
     def _parse_cigar_mdz(self, cigar, mdz_raw, ref, read, pos, qual):
         """
         use CIGAR string and mdz tag to call mutations from a read
-        cigar
-        mdz_raw
-        read
-        pos
-        qual
+        @param: cigar: CIGAR string in a list (i.e [("149", "M"), ("1", "S")]
+        @param: mdz_raw: MDZ raw str, (i.e 39G2A14A21A14C4T9A1T7T11C4C13)
+        @param: read: input read sequence
+        @param: pos: pos of read mapped to 
+        @param: qual: quality str of the read
+        return:  snp_list, delins_list, pos_map
+
         """
         # output list with all the mutations
         # track snp and del/ins separately
@@ -222,14 +231,19 @@ class MutParser(object):
         if cigar[0][1] == "S":
             clip += int(cigar[0][0])
         # convert mdz string into a list
+        # i.e ['5G', '41C', '4G', '11A', '7G', '5G', '10C', '30G']
         mdz = re.findall('.*?[.ATCG]+', mdz_raw)
         ins_pos_ref = 0 # on ref sequence where was the insertion
         ins_pos = [] # store [ins_pos, ins_len]
         mapped = 0
         deleted = 0
+        # make two list: positions on ref sequence and pos on read
+        # merge this two lists into a dictionary later
         ref_positions = []
         read_positions = []
+        # read starts after soft clip
         read_start = 0+clip
+        # ref starts at pos 
         ref_start = pos
         # get insertion position from cigar string
         for i in cigar: # go through each cigar string
@@ -238,27 +252,32 @@ class MutParser(object):
                 if i[1] == "M": # track number of bases mapped
                     ref_positions += list(range(ref_start, ref_start+int(i[0])))
                     read_positions += list(range(read_start, read_start+int(i[0])))
+                    # shift ref to the right
                     ref_start += int(i[0])
+                    # shift read to the right
                     read_start += int(i[0])
+                    # track number of bases mapped
                     mapped += int(i[0])
-
                 if i[1] == "D": # track number of bases deleted
                     deleted += int(i[0])
                     # skip deleted bases on ref read
+                    # no need to skip on read bacause it's deleted
                     ref_start += int(i[0])
             else:
                 # based on number of bases mapped, get the inserted base from read
                 ins_base = read[read_start:read_start+int(i[0])]
-                qual_base = qual[read_start:read_start + int(i[0])]
+                qual_base = qual[read_start:read_start+int(i[0])]
                 qual_base = ",".join(list(qual_base))
-                # calculate inserted base posterior by using the quality string
                 # keep the insertion position and inserted lenth in a list
                 ins_pos.append([ins_pos_ref, int(i[0])])
                 # add the insertion to mut_list
+                # format: inserted position|base(s) inserted|ins|quality of the inserted base(s)
                 delins_list.append(f"{pos + mapped + deleted}|{ins_base}|ins|{qual_base}")
                 # skip inserted bases on read
                 read_start += int(i[0])
+
         # zip two lists into a dictionary
+        # this mapped reference pos to read pos
         pos_map = dict(zip(ref_positions, read_positions))
         # parse snp and deletion from mdz string
         # given the inserted position on reference sequence
@@ -271,7 +290,6 @@ class MutParser(object):
         inserted_pos = 0
         deleted_len = 0
         map_pos = 0 + clip
-
         for i in mdz:
             # for each item in the MD:Z string
             # split the item into number and letter
@@ -289,10 +307,11 @@ class MutParser(object):
                 read_pos += match_len
                 # this means a single nt change
                 pos_on_read = read_pos+inserted_pos-deleted_len+clip
+                # format: position of snp|reference|alt|quality
                 snp_list.append(f"{pos+read_pos}|{base}|{read[pos_on_read]}|{qual[pos_on_read]}")
                 # adjust read pos with 1bp change (move to the right for 1 pos)
                 map_pos += len(base)
-                read_pos += 1
+                read_pos += len(base)
 
             else: # deletion
                 read_pos += match_len
@@ -300,8 +319,9 @@ class MutParser(object):
                 qual_pre = qual[read_pos+inserted_pos-deleted_len+clip-1]
                 # quality of the base after deleted base
                 qual_post = qual[read_pos+inserted_pos-deleted_len+clip]
-                delins_list.append(f"{pos + read_pos}|{base[1:]}|del|{qual_pre},{qual_post}")
-
+                # format: position|deleted base(s)|del|qual score pre to this pos, qual score post to this pos
+                delins_list.append(f"{pos+read_pos}|{base[1:]}|del|{qual_pre},{qual_post}")
+                # adjust bases 
                 deleted_len += len(base[1:])
                 read_pos += len(base[1:])
                 map_pos += len(base[1:])
@@ -326,7 +346,7 @@ class MutParser(object):
         # also record any snp that happened in the range
         delins = []
         mutations = []
-
+        
         for mut in mut_list:
             mut_change = mut.split("|")
             tmp_pos = int(mut_change[0]) # template position
@@ -391,7 +411,7 @@ class MutParser(object):
                     if cds_pos == concecutive_snp[-1] +1:
                         # update position in concec_pos
                         combined_snp+=mut_change[2]
-                        # update basesin combined_bases
+                        # update bases in combined_bases
                         concecutive_snp.append(cds_pos)
                     elif cds_pos == concecutive_snp[-1] +2:
                         # get middle ref

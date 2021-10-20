@@ -257,8 +257,6 @@ class fastq2counts(object):
         else:
             adjusted_phred = []
         mut_counts.multi_core(adjusted_phred)
-        # end = time.time()
-        # print('Time taken for 8 cores program: ', end - start)
 
     def _makejobs(self, sh_output, sam_dir, samples):
         """
@@ -586,9 +584,8 @@ def main(args, v):
             else:
                 updated_out = args.output
 
-            args_log_path = os.path.join(updated_out, "args.log")
+            args_log_path = os.path.join(updated_out, f"{time_now}_args.log")
             # record input parameters
-            # todo change this to include time-stamp
             write_param(args_log_path, args, v)
 
             # load json file
@@ -608,8 +605,7 @@ def main(args, v):
         updated_out = os.path.join(args.output, args.name + "_" + time_now)
         os.makedirs(updated_out)  # make directory to save this run
         # write args to file
-        args_log_path = os.path.join(updated_out, "args.log")
-        # todo change this to include time-stamp
+        args_log_path = os.path.join(updated_out, f"{time_now}_args.log")
         write_param(args_log_path, args, v)
 
         param_path = os.path.join(updated_out, param_base)
