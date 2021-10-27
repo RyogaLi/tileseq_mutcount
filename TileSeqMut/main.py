@@ -151,7 +151,6 @@ class fastq2counts(object):
             # add this to the last row
             fastq_map.loc[len(fastq_map)] = self._phix_fastq
 
-        # todo change here, rc is the actual input
         rc = False
         if self._args.rc:
             rc = True
