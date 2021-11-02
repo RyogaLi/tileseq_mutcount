@@ -9,7 +9,7 @@ from pkg_resources import get_distribution
 import sys
 
 v = get_distribution('TileSeqMut').version
-if sys.argv[1] == "--version" or "-v":
+if sys.argv[1] == "--version" or sys.argv[1] == "-v":
     print(f"TileSeqMut release {v}")
     exit()
 
