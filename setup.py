@@ -26,7 +26,7 @@ with open("README.md", "r") as fh:
 #    * Run `python -m pip install dist/TileSeqMut-0.***.tar.gz`
 # 3. To upload to pypi
 #    * Run `python setup.py bdist_wheel`
-#    * Run `python twine upload dist/TileSeqMut-0.***.*`
+#    * Run `twine upload dist/TileSeqMut-0.***.*`
 # 4. Note: to prevent potential problems of the wheel file, remove the older version before building a new one
 #     (remove build/ and dist/)
 ########################################

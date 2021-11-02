@@ -74,17 +74,21 @@ def alignment_sh_galen(fastq_map, ref_name, ref_seq, ref_path, sam_path, sh_outp
         shfile = os.path.join(sh_output, sample_name+"_aln.sh")
 
         # write header to sh file
-        time_request = f"0{at}:00:00"
+
         # create log file for alignment
         sam_log_f = os.path.join(sam_path, f"{sample_name}")
-        header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --mem=5G\n#SBATCH --job-name={sample_name}\n#SBATCH " \
-                 f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
 
-        if "Undetermined" in sample_name:
+        if "Undetermined" in sample_name: # phix takes longer to align
+            time_request = f"36:00:00"
+            header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --mem=5G\n#SBATCH --job-name={sample_name}\n#SBATCH " \
+                 f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
             # when align undetermined fastq files to phix, we consider reads in both direction, rc = True
             r1_sam, r2_sam, log_file = alignment.align_main(phix, row["R1"], row["R2"], sam_path, shfile, rc=True,
                                                             header=header)
         else:
+            time_request = f"0{at}:00:00"
+            header = f"#!/bin/bash\n#SBATCH --time={time_request}\n#SBATCH --mem=5G\n#SBATCH --job-name={sample_name}\n#SBATCH " \
+                 f"--error={sam_log_f}-%j.log\n#SBATCH --output={sam_log_f}-%j.log\n"
             r1_sam, r2_sam, log_file = alignment.align_main(ref, row["R1"], row["R2"], sam_path, shfile, rc=rc, header=header)
 
         row["r1_sam"] = r1_sam

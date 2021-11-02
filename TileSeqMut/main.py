@@ -377,6 +377,7 @@ class fastq2counts(object):
         elif self._r1 == "" and self._r2 == "":
             # resubmit is used when some jobs in the queue did not finish properly
             if self._args.resubmit:
+                self._skip = True
                 # resubmit failed jobs in existing mut_count dir
                 # self.output is the mut_count dir in this case
                 # find out which jobs failed by going through all counts files
