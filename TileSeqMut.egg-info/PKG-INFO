@@ -15,7 +15,7 @@ Description: ## TileSeq mutation count package
         
         `python 3.7/3.8 (tested mainly under py3.7)`
         
-        `R 3.6+`
+        `R 3.6+` and [tileseqMave](https://github.com/jweiletileseqMave)
         
         `Bowtie2` and `Bowtie2-build` (need to be in the same folder)
         
@@ -32,7 +32,7 @@ Description: ## TileSeq mutation count package
         
         To install the package (please visit [pypi page](https://pypi.org/project/TileSeqMut/) for the newest version number):
         
-        `python -m pip install TileSeqMut`
+        `python -m pip install TileSeqMut==newest_version`
         
         ### Execution
         ---
@@ -48,11 +48,11 @@ Description: ## TileSeq mutation count package
         ``` bash
         # on DC
         tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
-        /tileseq_data/WT/ -name MTHFR_test
+        /tileseq_data/WT/ -name MTHFR_test -env DC
         
         # on GALEN
         tileseq_mut -p $HOME/dev/tilseq_mutcount/190506_param_MTHFR.csv -o $HOME/dev/tilseq_mutcount/output/ -f $HOME
-        /tileseq_data/WT/ -name MTHFR_test -env GALEN
+        /tileseq_data/WT/ -name MTHFR_test
         ```
         * This command will analyze fastq files in the folder: `~/tileseq_data/WT/` and make a time stamped output folder
          with the prefix: `MTHFR_test` in `$HOME/dev/tilseq_mutcount/output/` (Using all default parameters, see below)
@@ -67,47 +67,50 @@ Description: ## TileSeq mutation count package
         
         TileSeq mutation counts
         
-        optional arguments:
-          -h, --help            show this help message and exit
+        Required arguments:
           -f FASTQ, --fastq FASTQ
                                 Path to all fastq files you want to analyze
           -o OUTPUT, --output OUTPUT
                                 Output folder
           -p PARAM, --param PARAM
-                                csv or json paramter file
-          -n NAME, --name NAME  Name for this run (required)
+                                csv paramter file
+          -n NAME, --name NAME  Name for this run
+        
+        Optional arguments
+          -h, --help            show this help message and exit
           --skip_alignment      skip alignment for this analysis, ONLY submit jobs for
-                                counting mutations in existing output folder. 
+                                counting mutations in existing output folder
           -r1 R1                r1 SAM file
           -r2 R2                r2 SAM file
           -log LOG_LEVEL, --log_level LOG_LEVEL
                                 set log level: debug, info, warning, error, critical.
                                 (default = info)
           -env ENVIRONMENT, --environment ENVIRONMENT
-                                The cluster used to run this script (default = DC)
+                                The cluster used to run this script (default = GALEN)
           -at AT                Alignment time (default = 8h)
           -mt MT                Mutation call time (default = 36h)
-          -c C                  Number of cores to use for mutation counting (default = 16)
+          -mm MM                Mutation call request memory (default = 15GB)
+          -c C                  Number of cores (default = 8)
           -b BASE, --base BASE  ASCII code base (default = 33)
+          -test                 Turn on testing mode
           -rc                   Turn on rc mode, both direction of the reads will be
                                 aligned to the reference. Variant calling will be
-                                performed on all the reads that are aligned, regardless of their direction (BE
+                                performed on all the reads that are aligned (BE
                                 CAREFUL!)
-          -override, --sr_Override
-                                Provide this argument when there is only one replicate
-          --posteriorQC         Turn on posterior QC mode, this requires more memory and runtime, please change the arguments
-                                accordingly
-          --wt_override         When no wt conditions defined in the parameter sheet, turn on this option will treat
-                                EVERYTHING as WT. Phred scores will be adjusted based on the first replicate. 
-                                Only use this when you also have --calibratePhredWT on.
-        
-          --calibratePhredWT    When this parameter is provided, use WT samplese (first replicate) to calibrate phred scores.
-          --calibratePhredPhix  When this parameter is provided, use phix alignments to calibrate phred scores. Note that you
-                                need to make sure Undetermined_**.fastq.gz files are also in the fastq directory. 
-        
-          --resubmit            For a finished run, batch resubmit failed scripts (if any). Use the *_mut_count dir as -o. 
-                                Also need to provide --skip_alignment
-        
+          --sr_Override         Provide this argument when there is only one replicate
+          --posteriorQC         Turn on posterior QC mode, this requires more memory
+                                and runtime, please change the variable accordingly
+          --wt_override         When no wt conditions defined in the parameter sheet,
+                                turn on this option will treat EVERYTHING as wt (not
+                                recommended). Phred scores will be adjusted based on
+                                the first replicate
+          --calibratePhredWT    When this parameter is provided, use wt to calibrate
+                                phred scores
+          --calibratePhredPhix  When this parameter is provided, use phix alignments
+                                to calibrate phred scores
+          --resubmit            For a finished run, batch resubmit failed scripts (if
+                                any)
+          --version VERSION     print version and exit
         ```
         
         **Start the run**
@@ -131,8 +134,7 @@ Description: ## TileSeq mutation count package
         
         ```
         tileseq_mut -p ~/dev/tilseq_mutcount/190506_param_MTHFR.csv -o /home/rothlab1/rli/dev/tilseq_mutcount/output
-        /190506_MTHFR_WT_2020-01-29-17-07-04//190506_MTHFR_WT_2020-01-29-17-07-04_mut_count/ --resubmit --skip_alignment -n
-         resub
+        /190506_MTHFR_WT_2020-01-29-17-07-04/190506_MTHFR_WT_2020-01-29-17-07-04_mut_count/ --resubmit -n resub
         ```
         
         ### Input files
@@ -159,13 +161,15 @@ Description: ## TileSeq mutation count package
         
         `./ref/` - Reference fasta file and bowtie2 index
         
-        `./env_jobs/` - Bash scripts for submitting the alignment jobs
+        `./env_jobs/` - Bash scripts for submitting the alignment jobs. If any of the sam file(s) didn't generate correctly, use `sbatch *.sh` to resubmit job for this sample
         
-        `./sam_files/` - Alignment output (SAM) and log files for bowtie2
+        `./sam_files/` - Alignment output (SAM) and log files for bowtie2. Also contains alignment log file. Use this to check alignment rate.
         
         `./name_time-stamped_mut_count/` - Mutation counts in each sample are saved in csv files
             
             - `./count_sample_*.csv` - Raw mutation counts for each sample. With meta data in header. Variants are represented in hgvs format
+          
+            - `./offreads_samplename.csv` - Contains information for all the reads that did not cover 90% of the tile
         
             - `./env_jobs/` - Bash scripts for summitting the mutation count jobs, also log files for each sample. 
             
@@ -182,7 +186,7 @@ Description: ## TileSeq mutation count package
             
             - `*_R1/R2_calibrate_phred.csv` - Calibrated Phred scores (if applicable)
         
-        The count_sample_\*\*.csv is passed to tileseqMave for further analysis
+        The count_sample_\*\*.csv is passed to tileseqMave for further analysis. If, for some reason, some of the count_sample_*.csv file did not generate correctly, you can resubmmit the job with the argument `--resubmit` (see example above)
         
         ### Alignment
         ---
